@@ -43,6 +43,7 @@ assert 1 "foo = bar = 1; bar;"
 
 assert 1 "return 1; 2;"
 
+assert 0 "if (0 == 0) 18;"
 assert 18 "if (0 == 0) return 18;"
 assert 0 "if (0 == 1) return 18;"
 assert 1 "if (0 == 0) return 1; else return 0;"
@@ -51,5 +52,6 @@ assert 0 "if (0 == 1) return 1; else return 0;"
 assert 55 "sum = 0; i = 0; while(i < 10) sum = sum + (i = i + 1); sum;"
 
 assert 55 "sum = 0; for (i = 0; i < 10; i = i + 1) sum = sum + i + 1; sum;"
+assert 10 "i = 0; for (;i < 10;) i = i + 1; i;"
 
 echo OK

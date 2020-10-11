@@ -26,16 +26,19 @@ void gen_if_body(Node *node, int l_index) {
     if (node->kind != ND_IF_BODY)
         error("Expected ND_IF_BODY");
 
-    printf("  je .Lelse%d\n", l_index);
-    gen(node->lhs);
-    printf("  jmp .Lend%d\n", l_index);
-    printf(".Lelse%d:\n", l_index);
     if (node->rhs) {
+        printf("  je .Lelse%d\n", l_index);
+        gen(node->lhs);
+        printf("  jmp .Lend%d\n", l_index);
+        printf(".Lelse%d:\n", l_index);
         gen(node->rhs);
     } else {
-        printf("  push 0;\n");
+        printf("  je .Lend%d\n", l_index);
+        gen(node->lhs);
     }
+
     printf(".Lend%d:\n", l_index);
+    printf("  push 0\n"); // if block returns zero.
 }
 
 void gen_while(Node *node, int l_index) {
@@ -47,6 +50,7 @@ void gen_while(Node *node, int l_index) {
     gen(node->rhs);
     printf("  jmp .Lbegin%d\n", l_index);
     printf(".Lend%d:\n", l_index);
+    printf("  push 0\n"); // while loop returns zero.
 }
 
 void gen_for(Node *node, int l_index) {
@@ -72,6 +76,7 @@ void gen_for(Node *node, int l_index) {
         gen(node->lhs);
     printf("  jmp .Lbegin%d\n", l_index);
     printf(".Lend%d:\n", l_index);
+    printf("  push 0\n"); // for loop returns zero.
 }
 
 void gen(Node *node) {
