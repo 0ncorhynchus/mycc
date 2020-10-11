@@ -34,8 +34,8 @@ assert 1 "1 < (1+1);"
 assert 0 "1 >= (1+1);"
 assert 0 "1 > (1+1);"
 
-assert 0 "a;"
-assert 1 "a = 1;"
-assert 1 "a = b = 1; a;"
+assert 1 "foo = 1;"
+assert 1 "foo = bar = 1; foo;"
+assert 1 "foo = bar = 1; bar;"
 
 echo OK

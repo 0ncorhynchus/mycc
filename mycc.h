@@ -22,13 +22,13 @@ typedef enum {
     ND_SUB,    // "-"
     ND_MUL,    // "*"
     ND_DIV,    // "/"
-    ND_NUM,    // [0-9]*
+    ND_NUM,    // [0-9]+
     ND_LT,     // "<"
     ND_LE,     // "<="
     ND_EQ,     // "=="
     ND_NE,     // "!="
     ND_ASSIGN, // "="
-    ND_LVAR,   // [a-z]
+    ND_LVAR,   // [a-z]+
 } NodeKind;
 
 typedef struct Node Node;
@@ -41,13 +41,25 @@ struct Node {
     int offset; // for ND_LVAR
 };
 
+typedef struct LVar LVar;
+
+struct LVar {
+    LVar *next;
+    char *name;
+    int len;
+    int offset;
+};
+
 extern char *user_input;
 extern Token *token;
 extern Node *code[100];
+extern LVar *locals;
 
 void error(char *fmt, ...);
 
 Token *tokenize(char *p);
+
+LVar *find_lvar(Token *tok);
 
 Node *expr();
 void program();
