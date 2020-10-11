@@ -164,13 +164,14 @@ Token *tokenize(char *p) {
             }
 
             int len = p - first;
+            TokenKind kind;
 
-            if (len == 6 && strncmp(first, "return", 6) == 0) {
-                cur = new_token(TK_RETURN, cur, first, 6);
-                continue;
-            }
+            if (len == 6 && strncmp(first, "return", 6) == 0)
+                kind = TK_RETURN;
+            else
+                kind = TK_IDENT;
 
-            cur = new_token(TK_IDENT, cur, first, len);
+            cur = new_token(kind, cur, first, len);
             continue;
         }
 
