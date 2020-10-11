@@ -3,6 +3,7 @@
 #include <string.h>
 
 LVar *locals;
+int maximum_offset = 8;
 
 LVar *find_lvar(Token *tok) {
     for (LVar *var = locals; var; var = var->next)

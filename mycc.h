@@ -56,6 +56,7 @@ extern char *user_input;
 extern Token *token;
 extern Node *code[100];
 extern LVar *locals;
+extern int maximum_offset;
 
 void error(char *fmt, ...);
 
