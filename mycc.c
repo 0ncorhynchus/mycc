@@ -32,13 +32,16 @@ struct Token {
 char *user_input;
 Token *token;
 
-void error_at(char *loc, char *fmt, ...) {
+void error_at(char *loc, int len, char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
 
     int pos = loc - user_input;
     fprintf(stderr, "%s\n", user_input);
-    fprintf(stderr, "%*s^ ", pos, "");
+    fprintf(stderr, "%*s", pos, "");
+    for (int i = 0; i < len; i++)
+        fprintf(stderr, "^");
+    fprintf(stderr, " ");
     vfprintf(stderr, fmt, ap);
     fprintf(stderr, "\n");
     exit(1);
@@ -55,14 +58,16 @@ bool consume(char *op) {
 void expect(char *op) {
     if (token->kind != TK_RESERVED || strlen(op) != token->len ||
         memcmp(token->str, op, token->len))
-        error_at(token->str, "Unexpected token: '%c' expected, but got '%c'",
-                 op, token->str[0]);
+        error_at(token->str, token->len,
+                 "Unexpected token: '%c' expected, but got '%c'", op,
+                 token->str[0]);
     token = token->next;
 }
 
 int expect_number() {
     if (token->kind != TK_NUM)
-        error_at(token->str, "Unexpected token: a number expected.");
+        error_at(token->str, token->len,
+                 "Unexpected token: a number expected.");
     int val = token->val;
     token = token->next;
     return val;
@@ -102,7 +107,7 @@ Token *tokenize(char *p) {
             continue;
         }
 
-        error_at(p, "Failed to tokenize");
+        error_at(p, 1, "Failed to tokenize");
     }
 
     new_token(TK_EOF, cur, p, 0);
