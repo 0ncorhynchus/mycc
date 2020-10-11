@@ -28,7 +28,7 @@ typedef enum {
     ND_EQ,     // "=="
     ND_NE,     // "!="
     ND_ASSIGN, // "="
-    ND_LVAR,   // [a-z]+
+    ND_LVAR,   // [a-zA-Z_][a-zA-Z0-9_]*
 } NodeKind;
 
 typedef struct Node Node;

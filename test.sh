@@ -35,6 +35,9 @@ assert 0 "1 >= (1+1);"
 assert 0 "1 > (1+1);"
 
 assert 1 "foo = 1;"
+assert 1 "f00 = 1;"
+assert 1 "FOO = 1;"
+assert 1 "_ = 1;"
 assert 1 "foo = bar = 1; foo;"
 assert 1 "foo = bar = 1; bar;"
 

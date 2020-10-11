@@ -35,6 +35,11 @@ void error_at(char *loc, int len, char *fmt, ...) {
     exit(1);
 }
 
+int is_alnum(char c) {
+    return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') ||
+           ('0' <= c && c <= '9') || (c == '_');
+}
+
 bool consume(char *op) {
     if (token->kind != TK_RESERVED || strlen(op) != token->len ||
         memcmp(token->str, op, token->len))
@@ -140,11 +145,11 @@ Token *tokenize(char *p) {
             continue;
         }
 
-        if ('a' <= *p && *p <= 'z') {
+        if ('a' <= *p && *p <= 'z' || 'A' <= *p && *p <= 'Z' || *p == '_') {
             char *first = p;
 
             p++;
-            while ('a' <= *p && *p <= 'z') {
+            while (is_alnum(*p)) {
                 p++;
             }
 
