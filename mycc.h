@@ -42,6 +42,7 @@ typedef enum {
     ND_FOR_COND, // expr?;
     ND_FOR_BODY, // expr?; ")" stmt
     ND_BLOCK,    // "{" stmt* "}"
+    ND_CALL,     // <function call>
 } NodeKind;
 
 typedef struct Node Node;
@@ -52,6 +53,7 @@ struct Node {
     Node *rhs;
     int val;    // for ND_NUM
     int offset; // for ND_LVAR
+    char *func; // for ND_CALL
 };
 
 typedef struct LVar LVar;

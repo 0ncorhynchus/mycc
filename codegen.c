@@ -131,6 +131,10 @@ void gen(Node *node) {
     case ND_BLOCK:
         gen_block(node);
         return;
+    case ND_CALL:
+        printf("  call %s\n", node->func);
+        printf("  push 0\n");
+        return;
     }
 
     gen(node->lhs);

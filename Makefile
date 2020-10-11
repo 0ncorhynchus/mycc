@@ -7,13 +7,20 @@ mycc: $(OBJS)
 
 $(OBJS): mycc.h
 
-test: mycc
+test: mycc foo-test
 	./test.sh
+	./foo-test
 
 clean:
 	rm -f mycc *.o *~ tmp*
 
 fmt:
 	clang-format -i mycc.h $(SRCS)
+
+foo.s: mycc
+	./mycc 'foo();' > $@
+
+foo-test: foo.o foo.s
+	$(CC) -o $@ foo.s foo.o
 
 .PHONY: test clean fmt

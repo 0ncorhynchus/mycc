@@ -22,7 +22,9 @@
 //  add         =  mul ("+" mul | "-" mul)*
 //  mul         =  unary ( "*" unary | "/" unary)*
 //  unary       =  ("+" | "-")? primary
-//  primary     =  num | ident | "(" expr ")"
+//  primary     =  num
+//               | ident ("(" ")")?
+//               | "(" expr ")"
 //
 
 void error_at(char *loc, int len, char *fmt, ...) {
@@ -249,6 +251,15 @@ Node *primary() {
     if (tok) {
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_LVAR;
+        char *func = calloc(tok->len + 1, sizeof(char));
+        memcpy(func, tok->str, tok->len);
+
+        if (consume("(")) {
+            node->kind = ND_CALL;
+            node->func = func;
+            expect(")");
+            return node;
+        }
 
         LVar *lvar = find_lvar(tok);
         if (lvar) {
