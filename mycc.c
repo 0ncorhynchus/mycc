@@ -26,6 +26,7 @@ struct Token {
     Token *next;
     int val;
     char *str;
+    int len;
 };
 
 char *user_input;
@@ -43,15 +44,17 @@ void error_at(char *loc, char *fmt, ...) {
     exit(1);
 }
 
-bool consume(char op) {
-    if (token->kind != TK_RESERVED || token->str[0] != op)
+bool consume(char *op) {
+    if (token->kind != TK_RESERVED || strlen(op) != token->len ||
+        memcmp(token->str, op, token->len))
         return false;
     token = token->next;
     return true;
 }
 
-void expect(char op) {
-    if (token->kind != TK_RESERVED || token->str[0] != op)
+void expect(char *op) {
+    if (token->kind != TK_RESERVED || strlen(op) != token->len ||
+        memcmp(token->str, op, token->len))
         error_at(token->str, "Unexpected token: '%c' expected, but got '%c'",
                  op, token->str[0]);
     token = token->next;
@@ -67,10 +70,11 @@ int expect_number() {
 
 bool at_eof() { return token->kind == TK_EOF; }
 
-Token *new_token(TokenKind kind, Token *cur, char *str) {
+Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
     Token *tok = calloc(1, sizeof(Token));
     tok->kind = kind;
     tok->str = str;
+    tok->len = len;
     cur->next = tok;
     return tok;
 }
@@ -88,12 +92,12 @@ Token *tokenize(char *p) {
 
         if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' ||
             *p == ')') {
-            cur = new_token(TK_RESERVED, cur, p++);
+            cur = new_token(TK_RESERVED, cur, p++, 1);
             continue;
         }
 
         if (isdigit(*p)) {
-            cur = new_token(TK_NUM, cur, p);
+            cur = new_token(TK_NUM, cur, p, 1);
             cur->val = strtol(p, &p, 10);
             continue;
         }
@@ -101,7 +105,7 @@ Token *tokenize(char *p) {
         error_at(p, "Failed to tokenize");
     }
 
-    new_token(TK_EOF, cur, p);
+    new_token(TK_EOF, cur, p, 0);
     return head.next;
 }
 
@@ -140,9 +144,9 @@ Node *new_node_num(int val) {
 Node *expr();
 
 Node *primary() {
-    if (consume('(')) {
+    if (consume("(")) {
         Node *node = expr();
-        expect(')');
+        expect(")");
         return node;
     }
 
@@ -150,9 +154,9 @@ Node *primary() {
 }
 
 Node *unary() {
-    if (consume('+'))
+    if (consume("+"))
         return primary();
-    if (consume('-'))
+    if (consume("-"))
         return new_node(ND_SUB, new_node_num(0), primary());
     return primary();
 }
@@ -161,9 +165,9 @@ Node *mul() {
     Node *node = unary();
 
     for (;;) {
-        if (consume('*'))
+        if (consume("*"))
             node = new_node(ND_MUL, node, unary());
-        else if (consume('/'))
+        else if (consume("/"))
             node = new_node(ND_DIV, node, unary());
         else
             return node;
@@ -174,9 +178,9 @@ Node *expr() {
     Node *node = mul();
 
     for (;;) {
-        if (consume('+'))
+        if (consume("+"))
             node = new_node(ND_ADD, node, mul());
-        else if (consume('-'))
+        else if (consume("-"))
             node = new_node(ND_SUB, node, mul());
         else
             return node;
