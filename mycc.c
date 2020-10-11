@@ -7,10 +7,13 @@
 
 // # EBNF
 //
-//  expr     =  mul ("+" mul | "-" mul)*
-//  mul      =  unary ( "*" unary | "/" unary)*
-//  unary    =  ("+" | "-")? primary
-//  primary  =  num | "(" expr ")"
+//  expr        =  equality
+//  equality    =  relational ("==" relational | "!=" relational)*
+//  relational  =  add ("<" add | "<=" add | ">" add | ">=" add)*
+//  add         =  mul ("+" mul | "-" mul)*
+//  mul         =  unary ( "*" unary | "/" unary)*
+//  unary       =  ("+" | "-")? primary
+//  primary     =  num | "(" expr ")"
 //
 
 typedef enum {
@@ -95,6 +98,30 @@ Token *tokenize(char *p) {
             continue;
         }
 
+        if (*p == '=' || *p == '!') {
+            if (!*(p + 1) || *(p + 1) != '=') {
+                error_at(p, 1, "Failed to tokenize");
+            }
+
+            cur = new_token(TK_RESERVED, cur, p, 2);
+            p += 2;
+            continue;
+        }
+
+        if (*p == '<' || *p == '>') {
+            int len;
+
+            if (*(p + 1) && *(p + 1) == '=') {
+                len = 2;
+            } else {
+                len = 1;
+            }
+
+            cur = new_token(TK_RESERVED, cur, p, len);
+            p += len;
+            continue;
+        }
+
         if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' ||
             *p == ')') {
             cur = new_token(TK_RESERVED, cur, p++, 1);
@@ -115,11 +142,15 @@ Token *tokenize(char *p) {
 }
 
 typedef enum {
-    ND_ADD,
-    ND_SUB,
-    ND_MUL,
-    ND_DIV,
-    ND_NUM,
+    ND_ADD, // "+"
+    ND_SUB, // "-"
+    ND_MUL, // "*"
+    ND_DIV, // "/"
+    ND_NUM, // [0-9]*
+    ND_LT,  // "<"
+    ND_LE,  // "<="
+    ND_EQ,  // "=="
+    ND_NE,  // "!="
 } NodeKind;
 
 typedef struct Node Node;
@@ -179,7 +210,7 @@ Node *mul() {
     }
 }
 
-Node *expr() {
+Node *add() {
     Node *node = mul();
 
     for (;;) {
@@ -191,6 +222,38 @@ Node *expr() {
             return node;
     }
 }
+
+Node *relational() {
+    Node *node = add();
+
+    for (;;) {
+        if (consume("<"))
+            node = new_node(ND_LT, node, add());
+        else if (consume("<="))
+            node = new_node(ND_LE, node, add());
+        else if (consume(">"))
+            node = new_node(ND_LT, add(), node);
+        else if (consume(">="))
+            node = new_node(ND_LE, add(), node);
+        else
+            return node;
+    }
+}
+
+Node *equality() {
+    Node *node = relational();
+
+    for (;;) {
+        if (consume("=="))
+            node = new_node(ND_EQ, node, relational());
+        else if (consume("!="))
+            node = new_node(ND_NE, node, relational());
+        else
+            return node;
+    }
+}
+
+Node *expr() { return equality(); }
 
 void gen(Node *node) {
     if (node->kind == ND_NUM) {
@@ -217,6 +280,26 @@ void gen(Node *node) {
     case ND_DIV:
         printf("  cqo\n");
         printf("  idiv rdi\n");
+        break;
+    case ND_LT:
+        printf("  cmp rax, rdi\n");
+        printf("  setl al\n");
+        printf("  movzb rax, al\n");
+        break;
+    case ND_LE:
+        printf("  cmp rax, rdi\n");
+        printf("  setle al\n");
+        printf("  movzb rax, al\n");
+        break;
+    case ND_EQ:
+        printf("  cmp rax, rdi\n");
+        printf("  sete al\n");
+        printf("  movzb rax, al\n");
+        break;
+    case ND_NE:
+        printf("  cmp rax, rdi\n");
+        printf("  setne al\n");
+        printf("  movzb rax, al\n");
         break;
     }
 
