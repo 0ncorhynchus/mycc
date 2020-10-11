@@ -36,7 +36,8 @@ void error_at(char *loc, char *fmt, ...) {
 }
 
 bool consume(char op) {
-    if (token->kind != TK_RESERVED || token->str[0] != op) return false;
+    if (token->kind != TK_RESERVED || token->str[0] != op)
+        return false;
     token = token->next;
     return true;
 }
