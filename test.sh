@@ -50,4 +50,6 @@ assert 0 "if (0 == 1) return 1; else return 0;"
 
 assert 55 "sum = 0; i = 0; while(i < 10) sum = sum + (i = i + 1); sum;"
 
+assert 55 "sum = 0; for (i = 0; i < 10; i = i + 1) sum = sum + i + 1; sum;"
+
 echo OK

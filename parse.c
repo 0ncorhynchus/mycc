@@ -12,6 +12,7 @@
 //  stmt        =  expr ";"
 //               | "if" "(" expr ")" stmt ("else" stmt)?
 //               | "while" "(" expr ")" stmt
+//               | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //               | "return" expr ";"
 //  expr        =  assign
 //  assign      =  equality ("=" assign)?
@@ -75,6 +76,13 @@ bool consume_else() {
 
 bool consume_while() {
     if (token->kind != TK_WHILE)
+        return false;
+    token = token->next;
+    return true;
+}
+
+bool consume_for() {
+    if (token->kind != TK_FOR)
         return false;
     token = token->next;
     return true;
@@ -196,6 +204,8 @@ Token *tokenize(char *p) {
                 kind = TK_ELSE;
             else if (len == 5 && strncmp(first, "while", 4) == 0)
                 kind = TK_WHILE;
+            else if (len == 3 && strncmp(first, "for", 3) == 0)
+                kind = TK_FOR;
             else if (len == 6 && strncmp(first, "return", 6) == 0)
                 kind = TK_RETURN;
             else
@@ -356,6 +366,29 @@ Node *stmt() {
         node->lhs = expr();
         expect(")");
         node->rhs = stmt();
+    } else if (consume_for()) {
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_FOR_INIT;
+        expect("(");
+        if (!consume(";")) {
+            node->lhs = expr();
+            expect(";");
+        }
+
+        node->rhs = calloc(1, sizeof(Node));
+        node->rhs->kind = ND_FOR_COND;
+        if (!consume(";")) {
+            node->rhs->lhs = expr();
+            expect(";");
+        }
+
+        node->rhs->rhs = calloc(1, sizeof(Node));
+        node->rhs->rhs->kind = ND_FOR_BODY;
+        if (!consume(")")) {
+            node->rhs->rhs->lhs = expr();
+            expect(")");
+        }
+        node->rhs->rhs->rhs = stmt();
     } else if (consume_return()) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_RETURN;
