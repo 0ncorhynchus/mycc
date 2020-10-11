@@ -9,7 +9,7 @@
 // # EBNF
 //
 //  program     =  stmt*
-//  stmt        =  expr ";"
+//  stmt        =  expr ";" | "return" expr ";"
 //  expr        =  assign
 //  assign      =  equality ("=" assign)?
 //  equality    =  relational ("==" relational | "!=" relational)*
@@ -54,6 +54,13 @@ Token *consume_ident() {
     Token *tok = token;
     token = token->next;
     return tok;
+}
+
+bool consume_return() {
+    if (token->kind != TK_RETURN)
+        return false;
+    token = token->next;
+    return true;
 }
 
 void expect(char *op) {
@@ -140,7 +147,7 @@ Token *tokenize(char *p) {
         }
 
         if (isdigit(*p)) {
-            char * first = p;
+            char *first = p;
             int val = strtol(p, &p, 10);
             int len = p - first;
             cur = new_token(TK_NUM, cur, first, len);
@@ -157,8 +164,13 @@ Token *tokenize(char *p) {
             }
 
             int len = p - first;
+
+            if (len == 6 && strncmp(first, "return", 6) == 0) {
+                cur = new_token(TK_RETURN, cur, first, 6);
+                continue;
+            }
+
             cur = new_token(TK_IDENT, cur, first, len);
-            cur->len = len;
             continue;
         }
 
@@ -289,7 +301,16 @@ Node *assign() {
 Node *expr() { return assign(); }
 
 Node *stmt() {
-    Node *node = expr();
+    Node *node;
+
+    if (consume_return()) {
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_RETURN;
+        node->lhs = expr();
+    } else {
+        node = expr();
+    }
+
     expect(";");
     return node;
 }

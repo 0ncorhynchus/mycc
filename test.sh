@@ -41,4 +41,6 @@ assert 1 "_ = 1;"
 assert 1 "foo = bar = 1; foo;"
 assert 1 "foo = bar = 1; bar;"
 
+assert 1 "return 1; 2;"
+
 echo OK
