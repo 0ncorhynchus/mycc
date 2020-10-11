@@ -53,10 +53,12 @@ Token *consume_ident() {
 
 void expect(char *op) {
     if (token->kind != TK_RESERVED || strlen(op) != token->len ||
-        memcmp(token->str, op, token->len))
+        memcmp(token->str, op, token->len)) {
+        char *got = calloc(token->len + 1, sizeof(char));
+        memcpy(got, token->str, token->len);
         error_at(token->str, token->len,
-                 "Unexpected token: '%c' expected, but got '%c'", op,
-                 token->str[0]);
+                 "Unexpected token: '%s': expected, but got '%s'", op, got);
+    }
     token = token->next;
 }
 
