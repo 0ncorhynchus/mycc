@@ -78,7 +78,8 @@ Token *tokenize(char *p) {
             continue;
         }
 
-        if (*p == '+' || *p == '-') {
+        if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' ||
+            *p == ')') {
             cur = new_token(TK_RESERVED, cur, p++);
             continue;
         }
@@ -176,7 +177,7 @@ void gen(Node *node) {
     gen(node->rhs);
 
     printf("  pop rdi\n");
-    printf("  pop rdx\n");
+    printf("  pop rax\n");
 
     switch (node->kind) {
     case ND_ADD:
@@ -205,23 +206,15 @@ int main(int argc, char **argv) {
 
     user_input = argv[1];
     token = tokenize(user_input);
+    Node *node = expr();
 
     printf(".intel_syntax noprefix\n");
     printf(".global main\n");
     printf("main:\n");
 
-    printf("  mov rax, %d\n", expect_number());
+    gen(node);
 
-    while (!at_eof()) {
-        if (consume('+')) {
-            printf("  add rax, %d\n", expect_number());
-            continue;
-        }
-
-        expect('-');
-        printf("  sub rax, %d\n", expect_number());
-    }
-
+    printf("  pop rax\n");
     printf("  ret\n");
     return 0;
 }
