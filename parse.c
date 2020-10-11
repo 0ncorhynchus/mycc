@@ -10,6 +10,7 @@
 //
 //  program     =  stmt*
 //  stmt        =  expr ";"
+//               | "{" stmt* "}"
 //               | "if" "(" expr ")" stmt ("else" stmt)?
 //               | "while" "(" expr ")" stmt
 //               | "for" "(" expr? ";" expr? ";" expr? ")" stmt
@@ -173,7 +174,7 @@ Token *tokenize(char *p) {
         }
 
         if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' ||
-            *p == ')' || *p == ';') {
+            *p == ')' || *p == ';' || *p == '{' || *p == '}') {
             cur = new_token(TK_RESERVED, cur, p++, 1);
             continue;
         }
@@ -394,6 +395,16 @@ Node *stmt() {
         node->kind = ND_RETURN;
         node->lhs = expr();
         expect(";");
+    } else if (consume("{")) {
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_BLOCK;
+        Node *current = node;
+        while (!consume("}")) {
+            current->lhs = stmt();
+            current->rhs = calloc(1, sizeof(Node));
+            current = current->rhs;
+            current->kind = ND_BLOCK;
+        }
     } else {
         node = expr();
         expect(";");

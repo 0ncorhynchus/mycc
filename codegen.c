@@ -79,6 +79,16 @@ void gen_for(Node *node, int l_index) {
     printf("  push 0\n"); // for loop returns zero.
 }
 
+void gen_block(Node *node) {
+    while (node->lhs) {
+        gen(node->lhs);
+        node = node->rhs;
+        if (!node || node->kind != ND_BLOCK)
+            error("Expected ND_BLOCK");
+    }
+    printf("  push 0\n"); // block returns zero.
+}
+
 void gen(Node *node) {
     switch (node->kind) {
     case ND_NUM:
@@ -117,6 +127,9 @@ void gen(Node *node) {
         printf("  mov rsp, rbp\n");
         printf("  pop rbp\n");
         printf("  ret\n");
+        return;
+    case ND_BLOCK:
+        gen_block(node);
         return;
     }
 

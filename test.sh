@@ -54,4 +54,11 @@ assert 55 "sum = 0; i = 0; while(i < 10) sum = sum + (i = i + 1); sum;"
 assert 55 "sum = 0; for (i = 0; i < 10; i = i + 1) sum = sum + i + 1; sum;"
 assert 10 "i = 0; for (;i < 10;) i = i + 1; i;"
 
+assert 0 "{}"
+assert 0 "{1;}"
+assert 0 "{1;2;}"
+assert 3 "{1;2;return 3;}"
+
+assert 144 "i = 1; j = 1; while(i < 100) {tmp = i; i = i + j; j = tmp;} i;"
+
 echo OK

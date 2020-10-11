@@ -41,6 +41,7 @@ typedef enum {
     ND_FOR_INIT, // "for" "(" expr?;
     ND_FOR_COND, // expr?;
     ND_FOR_BODY, // expr?; ")" stmt
+    ND_BLOCK,    // "{" stmt* "}"
 } NodeKind;
 
 typedef struct Node Node;
