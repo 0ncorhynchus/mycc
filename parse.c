@@ -8,17 +8,17 @@
 
 // # EBNF
 //
-//  expr        =  equality
+//  program     =  stmt*
+//  stmt        =  expr ";"
+//  expr        =  assign
+//  assign      =  equality ("=" assign)?
 //  equality    =  relational ("==" relational | "!=" relational)*
 //  relational  =  add ("<" add | "<=" add | ">" add | ">=" add)*
 //  add         =  mul ("+" mul | "-" mul)*
 //  mul         =  unary ( "*" unary | "/" unary)*
 //  unary       =  ("+" | "-")? primary
-//  primary     =  num | "(" expr ")"
+//  primary     =  num | ident | "(" expr ")"
 //
-
-char *user_input;
-Token *token;
 
 void error_at(char *loc, int len, char *fmt, ...) {
     va_list ap;
@@ -41,6 +41,14 @@ bool consume(char *op) {
         return false;
     token = token->next;
     return true;
+}
+
+Token *consume_ident() {
+    if (token->kind != TK_IDENT)
+        return NULL;
+    Token *tok = token;
+    token = token->next;
+    return tok;
 }
 
 void expect(char *op) {
@@ -83,7 +91,18 @@ Token *tokenize(char *p) {
             continue;
         }
 
-        if (*p == '=' || *p == '!') {
+        if (*p == '=') {
+            int len;
+            if (*(p + 1) && *(p + 1) == '=')
+                len = 2;
+            else
+                len = 1;
+            cur = new_token(TK_RESERVED, cur, p, len);
+            p += len;
+            continue;
+        }
+
+        if (*p == '!') {
             if (!*(p + 1) || *(p + 1) != '=') {
                 error_at(p, 1, "Failed to tokenize");
             }
@@ -108,7 +127,7 @@ Token *tokenize(char *p) {
         }
 
         if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' ||
-            *p == ')') {
+            *p == ')' || *p == ';') {
             cur = new_token(TK_RESERVED, cur, p++, 1);
             continue;
         }
@@ -116,6 +135,12 @@ Token *tokenize(char *p) {
         if (isdigit(*p)) {
             cur = new_token(TK_NUM, cur, p, 1);
             cur->val = strtol(p, &p, 10);
+            continue;
+        }
+
+        if ('a' <= *p && *p <= 'z') {
+            cur = new_token(TK_IDENT, cur, p++, 1);
+            cur->len = 1;
             continue;
         }
 
@@ -145,6 +170,14 @@ Node *primary() {
     if (consume("(")) {
         Node *node = expr();
         expect(")");
+        return node;
+    }
+
+    Token *tok = consume_ident();
+    if (tok) {
+        Node *node = calloc(1, sizeof(Node));
+        node->kind = ND_LVAR;
+        node->offset = (tok->str[0] - 'a' + 1) * 8;
         return node;
     }
 
@@ -215,4 +248,25 @@ Node *equality() {
     }
 }
 
-Node *expr() { return equality(); }
+Node *assign() {
+    Node *node = equality();
+    if (consume("="))
+        node = new_node(ND_ASSIGN, node, assign());
+    return node;
+}
+
+Node *expr() { return assign(); }
+
+Node *stmt() {
+    Node *node = expr();
+    expect(";");
+    return node;
+}
+
+void program() {
+    int i = 0;
+    while (!at_eof()) {
+        code[i++] = stmt();
+        code[i] = NULL;
+    }
+}

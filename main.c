@@ -1,6 +1,10 @@
 #include "mycc.h"
 #include <stdio.h>
 
+char *user_input;
+Token *token;
+Node *code[100];
+
 int main(int argc, char **argv) {
     if (argc != 2) {
         fprintf(stderr, "Invalid number of arguments\n");
