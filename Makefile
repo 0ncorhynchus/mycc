@@ -8,4 +8,7 @@ test: mycc
 clean:
 	rm -f mycc *.o *~ tmp*
 
-.PHONY: test clean
+fmt:
+	clang-format -i mycc.c
+
+.PHONY: test clean fmt
