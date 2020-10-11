@@ -45,6 +45,8 @@ extern char *user_input;
 extern Token *token;
 extern Node *code[100];
 
+void error(char *fmt, ...);
+
 Token *tokenize(char *p);
 
 Node *expr();
