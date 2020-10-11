@@ -48,4 +48,6 @@ assert 0 "if (0 == 1) return 18;"
 assert 1 "if (0 == 0) return 1; else return 0;"
 assert 0 "if (0 == 1) return 1; else return 0;"
 
+assert 55 "sum = 0; i = 0; while(i < 10) sum = sum + (i = i + 1); sum;"
+
 echo OK

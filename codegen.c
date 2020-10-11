@@ -38,6 +38,17 @@ void gen_if_body(Node *node, int l_index) {
     printf(".Lend%d:\n", l_index);
 }
 
+void gen_while(Node *node, int l_index) {
+    printf(".Lbegin%d:\n", l_index);
+    gen(node->lhs);
+    printf("  pop rax\n");
+    printf("  cmp rax, 0\n");
+    printf("  je .Lend%d\n", l_index);
+    gen(node->rhs);
+    printf("  jmp .Lbegin%d\n", l_index);
+    printf(".Lend%d:\n", l_index);
+}
+
 void gen(Node *node) {
     switch (node->kind) {
     case ND_NUM:
@@ -63,6 +74,9 @@ void gen(Node *node) {
         printf("  pop rax\n");
         printf("  cmp rax, 0\n");
         gen_if_body(node->rhs, label_index++);
+        return;
+    case ND_WHILE:
+        gen_while(node, label_index++);
         return;
     case ND_RETURN:
         gen(node->lhs);

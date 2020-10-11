@@ -11,6 +11,7 @@
 //  program     =  stmt*
 //  stmt        =  expr ";"
 //               | "if" "(" expr ")" stmt ("else" stmt)?
+//               | "while" "(" expr ")" stmt
 //               | "return" expr ";"
 //  expr        =  assign
 //  assign      =  equality ("=" assign)?
@@ -67,6 +68,13 @@ bool consume_if() {
 
 bool consume_else() {
     if (token->kind != TK_ELSE)
+        return false;
+    token = token->next;
+    return true;
+}
+
+bool consume_while() {
+    if (token->kind != TK_WHILE)
         return false;
     token = token->next;
     return true;
@@ -186,6 +194,8 @@ Token *tokenize(char *p) {
                 kind = TK_IF;
             else if (len == 4 && strncmp(first, "else", 4) == 0)
                 kind = TK_ELSE;
+            else if (len == 5 && strncmp(first, "while", 4) == 0)
+                kind = TK_WHILE;
             else if (len == 6 && strncmp(first, "return", 6) == 0)
                 kind = TK_RETURN;
             else
@@ -339,6 +349,13 @@ Node *stmt() {
         if (consume_else()) {
             node->rhs->rhs = stmt();
         }
+    } else if (consume_while()) {
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_WHILE;
+        expect("(");
+        node->lhs = expr();
+        expect(")");
+        node->rhs = stmt();
     } else if (consume_return()) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_RETURN;
