@@ -43,4 +43,9 @@ assert 1 "foo = bar = 1; bar;"
 
 assert 1 "return 1; 2;"
 
+assert 18 "if (0 == 0) return 18;"
+assert 0 "if (0 == 1) return 18;"
+assert 1 "if (0 == 0) return 1; else return 0;"
+assert 0 "if (0 == 1) return 1; else return 0;"
+
 echo OK

@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+int label_index;
+
 void error(char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
@@ -18,6 +20,22 @@ void gen_lval(Node *node) {
     printf("  mov rax, rbp\n");
     printf("  sub rax, %d\n", node->offset);
     printf("  push rax\n");
+}
+
+void gen_if_body(Node *node, int l_index) {
+    if (node->kind != ND_IF_BODY)
+        error("Expected ND_IF_BODY");
+
+    printf("  je .Lelse%d\n", l_index);
+    gen(node->lhs);
+    printf("  jmp .Lend%d\n", l_index);
+    printf(".Lelse%d:\n", l_index);
+    if (node->rhs) {
+        gen(node->rhs);
+    } else {
+        printf("  push 0;\n");
+    }
+    printf(".Lend%d:\n", l_index);
 }
 
 void gen(Node *node) {
@@ -40,17 +58,18 @@ void gen(Node *node) {
         printf("  mov [rax], rdi\n");
         printf("  push rdi\n");
         return;
+    case ND_IF_COND:
+        gen(node->lhs);
+        printf("  pop rax\n");
+        printf("  cmp rax, 0\n");
+        gen_if_body(node->rhs, label_index++);
+        return;
     case ND_RETURN:
         gen(node->lhs);
         printf("  pop rax\n");
         printf("  mov rsp, rbp\n");
         printf("  pop rbp\n");
         printf("  ret\n");
-        return;
-    }
-
-    if (node->kind == ND_NUM) {
-        printf("  push %d\n", node->val);
         return;
     }
 

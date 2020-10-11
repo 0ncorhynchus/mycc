@@ -9,7 +9,9 @@
 // # EBNF
 //
 //  program     =  stmt*
-//  stmt        =  expr ";" | "return" expr ";"
+//  stmt        =  expr ";"
+//               | "if" "(" expr ")" stmt ("else" stmt)?
+//               | "return" expr ";"
 //  expr        =  assign
 //  assign      =  equality ("=" assign)?
 //  equality    =  relational ("==" relational | "!=" relational)*
@@ -54,6 +56,20 @@ Token *consume_ident() {
     Token *tok = token;
     token = token->next;
     return tok;
+}
+
+bool consume_if() {
+    if (token->kind != TK_IF)
+        return false;
+    token = token->next;
+    return true;
+}
+
+bool consume_else() {
+    if (token->kind != TK_ELSE)
+        return false;
+    token = token->next;
+    return true;
 }
 
 bool consume_return() {
@@ -166,7 +182,11 @@ Token *tokenize(char *p) {
             int len = p - first;
             TokenKind kind;
 
-            if (len == 6 && strncmp(first, "return", 6) == 0)
+            if (len == 2 && strncmp(first, "if", 2) == 0)
+                kind = TK_IF;
+            else if (len == 4 && strncmp(first, "else", 4) == 0)
+                kind = TK_ELSE;
+            else if (len == 6 && strncmp(first, "return", 6) == 0)
                 kind = TK_RETURN;
             else
                 kind = TK_IDENT;
@@ -306,15 +326,29 @@ Node *expr() { return assign(); }
 Node *stmt() {
     Node *node;
 
-    if (consume_return()) {
+    if (consume_if()) {
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_IF_COND;
+        expect("(");
+        node->lhs = expr();
+        expect(")");
+
+        node->rhs = calloc(1, sizeof(Node));
+        node->rhs->kind = ND_IF_BODY;
+        node->rhs->lhs = stmt();
+        if (consume_else()) {
+            node->rhs->rhs = stmt();
+        }
+    } else if (consume_return()) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_RETURN;
         node->lhs = expr();
+        expect(";");
     } else {
         node = expr();
+        expect(";");
     }
 
-    expect(";");
     return node;
 }
 
