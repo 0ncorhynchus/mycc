@@ -23,7 +23,7 @@
 //  mul         =  unary ( "*" unary | "/" unary)*
 //  unary       =  ("+" | "-")? primary
 //  primary     =  num
-//               | ident ("(" ")")?
+//               | ident ("(" (expr ("," expr)*)? ")")?
 //               | "(" expr ")"
 //
 
@@ -176,7 +176,7 @@ Token *tokenize(char *p) {
         }
 
         if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' ||
-            *p == ')' || *p == ';' || *p == '{' || *p == '}') {
+            *p == ')' || *p == ';' || *p == '{' || *p == '}' || *p == ',') {
             cur = new_token(TK_RESERVED, cur, p++, 1);
             continue;
         }
@@ -254,10 +254,24 @@ Node *primary() {
         char *func = calloc(tok->len + 1, sizeof(char));
         memcpy(func, tok->str, tok->len);
 
+        // function call
         if (consume("(")) {
             node->kind = ND_CALL;
             node->func = func;
-            expect(")");
+            if (consume(")"))
+                return node;
+
+            node->lhs = calloc(1, sizeof(Node));
+            Node *current = node->lhs;
+            current->kind = ND_ARGS;
+            current->lhs = expr();
+            while (!consume(")")) {
+                expect(",");
+                current->rhs = calloc(1, sizeof(Node));
+                current = current->rhs;
+                current->kind = ND_ARGS;
+                current->lhs = expr();
+            }
             return node;
         }
 

@@ -43,6 +43,7 @@ typedef enum {
     ND_FOR_BODY, // expr?; ")" stmt
     ND_BLOCK,    // "{" stmt* "}"
     ND_CALL,     // <function call>
+    ND_ARGS,     // function call arguments
 } NodeKind;
 
 typedef struct Node Node;

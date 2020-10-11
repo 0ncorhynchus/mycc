@@ -18,7 +18,7 @@ fmt:
 	clang-format -i mycc.h $(SRCS)
 
 foo.s: mycc
-	./mycc 'foo();' > $@
+	./mycc 'foo();bar(0);piyo(3, 4, 5, 6, 7, 8, 9, 10);' > $@
 
 foo-test: foo.o foo.s
 	$(CC) -o $@ foo.s foo.o
