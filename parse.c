@@ -6,6 +6,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+// # EBNF
+//
+//  expr        =  equality
+//  equality    =  relational ("==" relational | "!=" relational)*
+//  relational  =  add ("<" add | "<=" add | ">" add | ">=" add)*
+//  add         =  mul ("+" mul | "-" mul)*
+//  mul         =  unary ( "*" unary | "/" unary)*
+//  unary       =  ("+" | "-")? primary
+//  primary     =  num | "(" expr ")"
+//
+
 char *user_input;
 Token *token;
 
