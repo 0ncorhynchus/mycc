@@ -176,7 +176,7 @@ void gen(Node *node) {
     case ND_CALL:
         gen_call_args(node->lhs);
         printf("  call %.*s\n", node->len, node->func);
-        push_val(0);
+        push("rax");
         return;
     case ND_FUNC:
         debug("function definition here");
