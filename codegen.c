@@ -210,6 +210,15 @@ void gen(Node *node) {
     case ND_FUNC:
         // skip
         return;
+    case ND_DEREF:
+        gen(node->lhs);
+        pop("rax");
+        printf("  mov rax, [rax]\n");
+        push("rax");
+        return;
+    case ND_ADDR:
+        gen_lval(node->lhs);
+        return;
     }
 
     gen(node->lhs);

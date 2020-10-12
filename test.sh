@@ -109,4 +109,7 @@ assert 2 'foo(i, j) { return j; } main() { return foo(1, 2); }'
 assert 6 'foo(x, y, z, p, q, r) { return r; } main() { return foo(1, 2, 3, 4, 5, 6); }'
 # assert 6 'foo(x, y, z, p, q, r, m) { return r; } main() { return foo(1, 2, 3, 4, 5, 6, 7); }'
 
+assert_main 3 "x = 3; y = &x; return *y;"
+assert_main 3 "x = 3; y = 5; z = &y + 8; return *z;"
+
 echo OK

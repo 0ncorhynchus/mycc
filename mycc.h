@@ -49,6 +49,8 @@ typedef enum {
     ND_FUNC,      // function definition
     ND_FUNC_ARGS, // function arguments
     ND_FUNC_BODY, // function body
+    ND_ADDR,      // "&"
+    ND_DEREF,     // "*"
 } NodeKind;
 
 typedef struct Node Node;

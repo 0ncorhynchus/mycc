@@ -22,7 +22,7 @@
 //  relational  =  add ("<" add | "<=" add | ">" add | ">=" add)*
 //  add         =  mul ("+" mul | "-" mul)*
 //  mul         =  unary ( "*" unary | "/" unary)*
-//  unary       =  ("+" | "-")? primary
+//  unary       =  ("+" | "-")? primary | ("*" | "&") unary
 //  primary     =  num
 //               | ident ("(" (expr ("," expr)*)? ")")?
 //               | "(" expr ")"
@@ -233,7 +233,8 @@ Token *tokenize(char *p) {
         }
 
         if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' ||
-            *p == ')' || *p == ';' || *p == '{' || *p == '}' || *p == ',') {
+            *p == ')' || *p == ';' || *p == '{' || *p == '}' || *p == ',' ||
+            *p == '&') {
             cur = new_token(TK_RESERVED, cur, p++, 1);
             continue;
         }
@@ -345,6 +346,10 @@ Node *unary(Env *env) {
         return primary(env);
     if (consume("-"))
         return new_node(ND_SUB, new_node_num(0), primary(env));
+    if (consume("*"))
+        return new_node(ND_DEREF, unary(env), NULL);
+    if (consume("&"))
+        return new_node(ND_ADDR, unary(env), NULL);
     return primary(env);
 }
 
