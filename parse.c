@@ -86,41 +86,6 @@ Token *expect_ident() {
 
 bool is_ident(Token *token) { return token && token->kind == TK_IDENT; }
 
-bool consume_if() {
-    if (token->kind != TK_IF)
-        return false;
-    token = token->next;
-    return true;
-}
-
-bool consume_else() {
-    if (token->kind != TK_ELSE)
-        return false;
-    token = token->next;
-    return true;
-}
-
-bool consume_while() {
-    if (token->kind != TK_WHILE)
-        return false;
-    token = token->next;
-    return true;
-}
-
-bool consume_for() {
-    if (token->kind != TK_FOR)
-        return false;
-    token = token->next;
-    return true;
-}
-
-bool consume_return() {
-    if (token->kind != TK_RETURN)
-        return false;
-    token = token->next;
-    return true;
-}
-
 void expect(char *op) {
     if (token->kind != TK_RESERVED || strlen(op) != token->len ||
         memcmp(token->str, op, token->len)) {
@@ -260,15 +225,15 @@ Token *tokenize(char *p) {
             TokenKind kind;
 
             if (len == 2 && strncmp(first, "if", 2) == 0)
-                kind = TK_IF;
+                kind = TK_RESERVED;
             else if (len == 4 && strncmp(first, "else", 4) == 0)
-                kind = TK_ELSE;
+                kind = TK_RESERVED;
             else if (len == 5 && strncmp(first, "while", 4) == 0)
-                kind = TK_WHILE;
+                kind = TK_RESERVED;
             else if (len == 3 && strncmp(first, "for", 3) == 0)
-                kind = TK_FOR;
+                kind = TK_RESERVED;
             else if (len == 6 && strncmp(first, "return", 6) == 0)
-                kind = TK_RETURN;
+                kind = TK_RESERVED;
             else
                 kind = TK_IDENT;
 
@@ -476,7 +441,7 @@ Node *function() {
 Node *stmt(Env *env) {
     Node *node = NULL;
 
-    if (consume_if()) {
+    if (consume("if")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_IF_COND;
         expect("(");
@@ -486,17 +451,17 @@ Node *stmt(Env *env) {
         node->rhs = calloc(1, sizeof(Node));
         node->rhs->kind = ND_IF_BODY;
         node->rhs->lhs = stmt(env);
-        if (consume_else()) {
+        if (consume("else")) {
             node->rhs->rhs = stmt(env);
         }
-    } else if (consume_while()) {
+    } else if (consume("while")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_WHILE;
         expect("(");
         node->lhs = expr(env);
         expect(")");
         node->rhs = stmt(env);
-    } else if (consume_for()) {
+    } else if (consume("for")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_FOR_INIT;
         expect("(");
@@ -519,7 +484,7 @@ Node *stmt(Env *env) {
             expect(")");
         }
         node->rhs->rhs->rhs = stmt(env);
-    } else if (consume_return()) {
+    } else if (consume("return")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_RETURN;
         node->lhs = expr(env);

@@ -4,11 +4,6 @@
 
 typedef enum {
     TK_RESERVED,
-    TK_RETURN,
-    TK_IF,
-    TK_ELSE,
-    TK_WHILE,
-    TK_FOR,
     TK_IDENT,
     TK_NUM,
     TK_EOF,
