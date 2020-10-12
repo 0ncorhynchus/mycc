@@ -131,6 +131,27 @@ void gen_call_args(Node *node) {
     }
 }
 
+void gen_func(Node *node) {
+    printf("%.*s:\n", node->len, node->func);
+    printf("  push rbp\n");
+    printf("  mov rbp, rsp\n");
+    printf("  sub rsp, %d /* allocate for local variables */\n",
+           maximum_offset);
+
+    Node *args = node->lhs;
+
+    Node *body = node->rhs;
+    while (body) {
+        gen(body->lhs);
+        body = body->rhs;
+    }
+
+    // epilogue
+    printf("  mov rsp, rbp\n");
+    printf("  pop rbp\n");
+    printf("  ret\n");
+}
+
 void gen(Node *node) {
     switch (node->kind) {
     case ND_NUM:
@@ -179,7 +200,7 @@ void gen(Node *node) {
         push("rax");
         return;
     case ND_FUNC:
-        debug("function definition here");
+        // skip
         return;
     }
 

@@ -72,6 +72,13 @@ struct LVar {
     int offset;
 };
 
+typedef struct FunList FunList;
+
+struct FunList {
+    Node *func;
+    FunList *next;
+};
+
 extern char *user_input;
 extern Token *token;
 extern Node *code[100];
@@ -87,7 +94,10 @@ LVar *find_lvar(Token *tok);
 Node *expr();
 void program();
 
+FunList *get_fun_list();
+
 void gen(Node *node);
+void gen_func(Node *node);
 
 static void debug(char *fmt, ...) {
     fprintf(stderr, "[debug] ");

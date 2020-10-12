@@ -14,12 +14,20 @@ int main(int argc, char **argv) {
     user_input = argv[1];
     token = tokenize(user_input);
     program();
-    /* Node *node = expr(); */
+    FunList *fn = get_fun_list();
 
     printf(".intel_syntax noprefix\n");
     printf(".global main\n");
-    printf("main:\n");
 
+    // generate functions
+    FunList *tmp = fn;
+    while (tmp) {
+        gen_func(tmp->func);
+        printf("\n");
+        tmp = tmp->next;
+    }
+
+    printf("main:\n");
     // prologue
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
