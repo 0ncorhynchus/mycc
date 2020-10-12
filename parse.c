@@ -247,9 +247,61 @@ Type *expect_type() {
     error_at(token->str, token->len, "Unknown type");
 }
 
+char *type_to_str(Type *ty) {
+    int depth = 0;
+    Type *tmp;
+    for (tmp = ty; tmp; tmp = tmp->ptr_to) {
+        switch (tmp->ty) {
+        case INT:
+            depth += 3; // length of "int"
+            break;
+        case PTR:
+            depth += 1; // length of "*"
+            break;
+        }
+    }
+
+    char *buffer = calloc(depth + 1, sizeof(char));
+    for (tmp = ty; tmp; tmp = tmp->ptr_to) {
+        switch (tmp->ty) {
+        case INT:
+            depth -= 3; // length of "int"
+            memcpy(buffer + depth, "int", 3);
+            break;
+        case PTR:
+            depth -= 1; // length of "*"
+            memcpy(buffer + depth, "*", 2);
+            break;
+        }
+    }
+
+    return buffer;
+}
+
+Type *check_type(Type *lhs, Type *rhs) {
+    if (lhs == NULL || rhs == NULL)
+        return NULL;
+    if (rhs->ty == INT)
+        return lhs;
+    if (lhs->ty == INT)
+        return rhs;
+    return check_type(lhs->ptr_to, rhs->ptr_to);
+}
+
+Type *get_type(Node *lhs, Node *rhs) {
+    if (lhs == NULL || rhs == NULL)
+        return NULL;
+    Type *ty = check_type(lhs->ty, rhs->ty);
+    if (ty)
+        return ty;
+    error("Type Mismatched: '%s' and '%s'", type_to_str(lhs->ty),
+          type_to_str(rhs->ty));
+}
+
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = kind;
+    node->ty = get_type(lhs, rhs);
     node->lhs = lhs;
     node->rhs = rhs;
     return node;
@@ -258,6 +310,8 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
 Node *new_node_num(int val) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_NUM;
+    node->ty = calloc(1, sizeof(Type));
+    node->ty->ty = INT;
     node->val = val;
     return node;
 }
@@ -297,6 +351,7 @@ Node *primary(Env *env) {
         }
 
         LVar *lvar = get_lvar(env, tok);
+        node->ty = lvar->ty;
         node->offset = lvar->offset;
 
         return node;
@@ -310,10 +365,29 @@ Node *unary(Env *env) {
         return primary(env);
     if (consume("-"))
         return new_node(ND_SUB, new_node_num(0), primary(env));
-    if (consume("*"))
-        return new_node(ND_DEREF, unary(env), NULL);
-    if (consume("&"))
-        return new_node(ND_ADDR, unary(env), NULL);
+    if (consume("*")) {
+        Node *node = calloc(1, sizeof(Node));
+        node->kind = ND_DEREF;
+        node->lhs = unary(env);
+        if (node->lhs->ty && node->lhs->ty->ty == PTR) {
+            node->ty = node->lhs->ty->ptr_to;
+            return node;
+        }
+        error("Cannot deref: '%s'", type_to_str(node->lhs->ty));
+    }
+    if (consume("&")) {
+        Node *node = calloc(1, sizeof(Node));
+        node->kind = ND_ADDR;
+        node->lhs = unary(env);
+        if (node->lhs && node->lhs->ty) {
+            node->ty = calloc(1, sizeof(Type));
+            node->ty->ty = PTR;
+            node->ty->ptr_to = node->lhs->ty;
+            return node;
+        }
+        error("Internal compile error: try to obtain the address to an unknown "
+              "type");
+    }
     return primary(env);
 }
 

@@ -49,22 +49,26 @@ typedef enum {
     ND_DECLARE,
 } NodeKind;
 
+typedef struct Type Type;
+struct Type {
+    enum { INT, PTR } ty;
+    Type *ptr_to;
+};
+
 typedef struct Node Node;
 
 struct Node {
     NodeKind kind;
     Node *lhs;
     Node *rhs;
-    int val;     // for ND_NUM
-    int offset;  // for ND_LVAR
+    int val; // for ND_NUM
+
+    // for ND_LVAR
+    Type *ty;
+    int offset;
+
     char *ident; // for ND_CALL
     int len;
-};
-
-typedef struct Type Type;
-struct Type {
-    enum { INT, PTR } ty;
-    Type *ptr_to;
 };
 
 typedef struct LVar LVar;
