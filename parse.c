@@ -260,6 +260,9 @@ char *type_to_str(Type *ty) {
         case PTR:
             depth += 1; // length of "*"
             break;
+        case ARRAY:
+            depth += snprintf(NULL, 0, "[%zu]", tmp->array_size);
+            break;
         }
     }
 
@@ -274,6 +277,10 @@ char *type_to_str(Type *ty) {
             depth -= 1; // length of "*"
             memcpy(buffer + depth, "*", 2);
             break;
+        case ARRAY:
+            depth -= snprintf(NULL, 0, "[%zu]", tmp->array_size);
+            sprintf(buffer + depth, "[%zu]", tmp->array_size);
+            break;
         }
     }
 
@@ -283,11 +290,18 @@ char *type_to_str(Type *ty) {
 Type *check_type(Type *lhs, Type *rhs) {
     if (lhs == NULL || rhs == NULL)
         return NULL;
-    if (rhs->ty == INT)
+    if (rhs->ty == INT && lhs->ty == INT)
         return lhs;
-    if (lhs->ty == INT)
+    if (rhs->ty == INT && lhs->ty == PTR)
+        return lhs;
+    if (rhs->ty == PTR && lhs->ty == INT)
         return rhs;
-    return check_type(lhs->ptr_to, rhs->ptr_to);
+    if (rhs->ty == PTR && lhs->ty == PTR)
+        return check_type(lhs->ptr_to, rhs->ptr_to);
+    if (rhs->ty == ARRAY && lhs->ty == ARRAY &&
+        rhs->array_size == lhs->array_size)
+        return check_type(lhs->ptr_to, rhs->ptr_to);
+    return NULL;
 }
 
 Type *get_type(Node *lhs, Node *rhs) {
@@ -298,6 +312,20 @@ Type *get_type(Node *lhs, Node *rhs) {
         return ty;
     error("Type Mismatched: '%s' and '%s'", type_to_str(lhs->ty),
           type_to_str(rhs->ty));
+}
+
+// Implicit converter from array T[] to pointer T*
+Node *as_ptr(Node *array) {
+    if (array == NULL || array->ty == NULL || array->ty->ty != ARRAY)
+        return array;
+
+    Node *ptr = calloc(1, sizeof(Node));
+    ptr->kind = ND_ADDR;
+    ptr->lhs = array;
+    ptr->ty = calloc(1, sizeof(Type));
+    ptr->ty->ty = PTR;
+    ptr->ty->ptr_to = array->ty->ptr_to;
+    return ptr;
 }
 
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
@@ -370,12 +398,13 @@ Node *unary(Env *env) {
     if (consume("*")) {
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_DEREF;
-        node->lhs = unary(env);
-        if (node->lhs->ty && node->lhs->ty->ty == PTR) {
-            node->ty = node->lhs->ty->ptr_to;
+        Node *inner = as_ptr(unary(env));
+        if (inner->ty && inner->ty->ty == PTR) {
+            node->lhs = inner;
+            node->ty = inner->ty->ptr_to;
             return node;
         }
-        error("Cannot deref: '%s'", type_to_str(node->lhs->ty));
+        error("Cannot deref: '%s'", type_to_str(inner->ty));
     }
     if (consume("&")) {
         Node *node = calloc(1, sizeof(Node));
@@ -384,7 +413,11 @@ Node *unary(Env *env) {
         if (node->lhs && node->lhs->ty) {
             node->ty = calloc(1, sizeof(Type));
             node->ty->ty = PTR;
-            node->ty->ptr_to = node->lhs->ty;
+            if (node->lhs->ty->ty == ARRAY) {
+                node->ty->ptr_to = node->lhs->ty->ptr_to;
+            } else {
+                node->ty->ptr_to = node->lhs->ty;
+            }
             return node;
         }
         error("Internal compile error: try to obtain the address to an unknown "
@@ -418,9 +451,9 @@ Node *add(Env *env) {
 
     for (;;) {
         if (consume("+"))
-            node = new_node(ND_ADD, node, mul(env));
+            node = new_node(ND_ADD, as_ptr(node), as_ptr(mul(env)));
         else if (consume("-"))
-            node = new_node(ND_SUB, node, mul(env));
+            node = new_node(ND_SUB, as_ptr(node), as_ptr(mul(env)));
         else
             return node;
     }
@@ -459,7 +492,7 @@ Node *equality(Env *env) {
 Node *assign(Env *env) {
     Node *node = equality(env);
     if (consume("="))
-        node = new_node(ND_ASSIGN, node, assign(env));
+        node = new_node(ND_ASSIGN, node, as_ptr(assign(env)));
     return node;
 }
 
@@ -574,7 +607,7 @@ Node *stmt(Env *env) {
     } else if (consume("return")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_RETURN;
-        node->lhs = expr(env);
+        node->lhs = as_ptr(expr(env));
         expect(";");
     } else if (consume("{")) {
         node = calloc(1, sizeof(Node));
