@@ -176,15 +176,10 @@ void gen_add(Node *node, char *op) {
             printf("  %s rax, rdi\n", op);
             push("rax");
         } else { // node->rhs->ty->ty == PTR
-            int size;
-            if (node->rhs->ty->ptr_to->ty == INT) {
-                size = 4;
-            } else { // node->rhs->ty->ptr_to->ty == PTR
-                size = 8;
-            }
+            size_t size = sizeof_ty(node->rhs->ty->ptr_to);
             gen(node->lhs);
             pop("rax");
-            printf("  mov rdi, %d\n", size);
+            printf("  mov rdi, %zu\n", size);
             printf("  imul rax, rdi\n");
             push("rax");
             gen(node->rhs);
@@ -195,16 +190,11 @@ void gen_add(Node *node, char *op) {
         }
     } else { // node->lhs->ty->ty == PTR
         if (node->rhs->ty->ty == INT) {
-            int size;
-            if (node->lhs->ty->ptr_to->ty == INT) {
-                size = 4;
-            } else { // node->lhs->ty->ptr_to->ty == PTR
-                size = 8;
-            }
+            size_t size = sizeof_ty(node->lhs->ty->ptr_to);
             gen(node->lhs);
             gen(node->rhs);
             pop("rax");
-            printf("  mov rdi, %d\n", size);
+            printf("  mov rdi, %zu\n", size);
             printf("  imul rax, rdi\n");
             push("rax");
             pop("rdi");

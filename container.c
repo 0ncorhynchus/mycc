@@ -3,6 +3,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+size_t sizeof_ty(Type *ty) {
+    switch (ty->ty) {
+    case INT:
+        return 4;
+    case PTR:
+        return 8;
+    case ARRAY:
+        return sizeof_ty(ty->ptr_to) * ty->array_size;
+    }
+}
+
 LVar *find_lvar(Env *env, Token *tok) {
     for (LVar *var = env->locals; var; var = var->next)
         if (var->len == tok->len && !memcmp(tok->str, var->name, var->len))
@@ -29,7 +40,8 @@ LVar *declare_lvar(Env *env, Type *ty, Token *tok) {
     new->name = tok->str;
     new->len = tok->len;
 
-    env->maximum_offset += 8;
+    size_t size = ((sizeof_ty(ty) - 1) / 8 + 1) * 8;
+    env->maximum_offset += size;
     new->offset = env->maximum_offset;
 
     env->locals = new;

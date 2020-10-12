@@ -16,7 +16,7 @@
 //               | "while" "(" expr ")" stmt
 //               | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //               | "return" expr ";"
-//  declare     =  type ident ";"
+//  declare     =  type ident ("[" num "]")? ";"
 //  function    =  type ident
 //                 "(" (type ident ("," type ident)*)? ")"
 //                 "{" stmt* "}"
@@ -177,7 +177,7 @@ void tokenize(char *p) {
 
         if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' ||
             *p == ')' || *p == ';' || *p == '{' || *p == '}' || *p == ',' ||
-            *p == '&') {
+            *p == '&' || *p == '[' || *p == ']') {
             cur = new_token(TK_RESERVED, cur, p++, 1);
             continue;
         }
@@ -392,18 +392,8 @@ Node *unary(Env *env) {
     }
     if (consume("sizeof")) {
         Node *node = unary(env);
-        if (node->ty) {
-            int size;
-            switch (node->ty->ty) {
-            case INT:
-                size = 4;
-                break;
-            case PTR:
-                size = 8;
-                break;
-            }
-            return new_node_num(size);
-        }
+        if (node->ty)
+            return new_node_num(sizeof_ty(node->ty));
         error("Internal compile error: try to obtain the size of an unknown "
               "type");
     }
@@ -598,10 +588,18 @@ Node *stmt(Env *env) {
         }
     } else {
         Type *ty = type();
-        if (ty) {
+        if (ty) { // declare
             node = calloc(1, sizeof(Node));
             node->kind = ND_DECLARE;
             Token *tok = expect_ident();
+            if (consume("[")) {
+                Type *array_ty = calloc(1, sizeof(Type));
+                array_ty->ty = ARRAY;
+                array_ty->ptr_to = ty;
+                array_ty->array_size = expect_number();
+                ty = array_ty;
+                expect("]");
+            }
             declare_lvar(env, ty, tok);
             node->ident = tok->str;
             node->len = tok->len;

@@ -51,8 +51,9 @@ typedef enum {
 
 typedef struct Type Type;
 struct Type {
-    enum { INT, PTR } ty;
+    enum { INT, PTR, ARRAY } ty;
     Type *ptr_to;
+    size_t array_size;
 };
 
 typedef struct Node Node;
@@ -95,6 +96,8 @@ void error(char *fmt, ...);
 void error_at(char *loc, int len, char *fmt, ...);
 
 void tokenize(char *p);
+
+size_t sizeof_ty(Type *ty);
 
 LVar *get_lvar(Env *env, Token *tok);
 LVar *declare_lvar(Env *env, Type *ty, Token *tok);

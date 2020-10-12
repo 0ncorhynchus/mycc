@@ -68,6 +68,8 @@ assert_main 1 "int _; return _ = 1;"
 
 assert_main 1 "int foo; int bar; foo = bar = 1; return foo;"
 assert_main 1 "int foo; int bar; foo = bar = 1; return bar;"
+assert_main 1 "int foo; int bar; foo = 1; bar = 2; return foo;"
+assert_main 2 "int foo; int bar; foo = 1; bar = 2; return bar;"
 
 assert_main 1 "return 1; return 2;"
 
@@ -134,5 +136,8 @@ assert_main 8 'int *y; return sizeof(y + 3);'
 assert_main 4 'int *y; return sizeof(*y);'
 assert_expr 4 'sizeof(1)'
 assert_expr 4 'sizeof(sizeof(1))'
+
+assert_main 20 'int x[5]; return sizeof(x);'
+assert_main 4 'int x[5]; int y; y = 4; return y;'
 
 echo OK
