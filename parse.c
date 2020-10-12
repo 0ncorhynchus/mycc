@@ -26,8 +26,8 @@
 //  relational  =  add ("<" add | "<=" add | ">" add | ">=" add)*
 //  add         =  mul ("+" mul | "-" mul)*
 //  mul         =  unary ( "*" unary | "/" unary)*
-//  unary       =  ("+" | "-")? primary | ("*" | "&") unary
-//               | "sizeof" unary
+//  unary       =  ("+" | "-")? primary ("[" expr "]")?
+//               | ("*" | "&" | "sizeof") unary
 //  primary     =  num
 //               | ident ("(" (expr ("," expr)*)? ")")?
 //               | "(" expr ")"
@@ -390,11 +390,32 @@ Node *primary(Env *env) {
     return new_node_num(expect_number());
 }
 
+// parse primary ("[" expr "]")?
+Node *desugar_index(Env *env) {
+    Node *node = primary(env);
+    if (consume("[")) {
+        Node *index = expr(env);
+        expect("]");
+
+        Node *new = calloc(1, sizeof(Node));
+        new->kind = ND_DEREF;
+        new->lhs = new_node(ND_ADD, as_ptr(node), as_ptr(index));
+        if (new->lhs->ty && new->lhs->ty->ty == PTR) {
+            new->ty = new->lhs->ty->ptr_to;
+            return new;
+        }
+        error("Cannot deref: '%s'", type_to_str(new->lhs->ty));
+    }
+    return node;
+}
+
 Node *unary(Env *env) {
-    if (consume("+"))
-        return primary(env);
-    if (consume("-"))
-        return new_node(ND_SUB, new_node_num(0), primary(env));
+    if (consume("+")) {
+        return desugar_index(env);
+    }
+    if (consume("-")) {
+        return new_node(ND_SUB, new_node_num(0), desugar_index(env));
+    }
     if (consume("*")) {
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_DEREF;
@@ -430,7 +451,8 @@ Node *unary(Env *env) {
         error("Internal compile error: try to obtain the size of an unknown "
               "type");
     }
-    return primary(env);
+
+    return desugar_index(env);
 }
 
 Node *mul(Env *env) {

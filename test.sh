@@ -145,4 +145,11 @@ assert_main 2 'int a[2]; *(a + 1) = 2; return *(a + 1);'
 assert_main 0 'int a[2]; int *p; p = a; *p = 0; return *p;'
 assert_main 3 'int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *p + *(p + 1);'
 
+assert_main 1 'int a[2]; a[0] = 1; a[1] = 2; return a[0];'
+assert_main 2 'int a[2]; a[0] = 1; a[1] = 2; return a[1];'
+assert_main 2 'int a[2]; a[0] = 1; a[1] = 2; return a[1];'
+assert_main 2 'int a[2]; a[0] = 1; a[1] = 2; return +a[1];'
+assert_main 1 'int a[2]; a[0] = 1; a[1] = 2; return -a[1] + 3;'
+assert_main 4 'int a[2]; a[0] = 1; a[1] = 2; return sizeof(a[1]);'
+
 echo OK
