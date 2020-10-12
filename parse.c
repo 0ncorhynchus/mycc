@@ -245,7 +245,7 @@ Node *primary(Env *env) {
         // function call
         if (consume("(")) {
             node->kind = ND_CALL;
-            node->func = tok->str;
+            node->ident = tok->str;
             node->len = tok->len;
             if (consume(")"))
                 return node;
@@ -360,7 +360,7 @@ Node *function() {
     expect("int"); // type of return
 
     Token *tok = expect_ident();
-    node->func = tok->str;
+    node->ident = tok->str;
     node->len = tok->len;
 
     int argument_offset = 0;
@@ -371,7 +371,7 @@ Node *function() {
         declare_lvar(&env, tok);
         Node *new = calloc(1, sizeof(Node));
         new->kind = ND_FUNC_ARGS;
-        new->func = tok->str;
+        new->ident = tok->str;
         new->len = tok->len;
 
         node->lhs = new;
@@ -381,7 +381,7 @@ Node *function() {
             declare_lvar(&env, tok);
             new = calloc(1, sizeof(Node));
             new->kind = ND_FUNC_ARGS;
-            new->func = tok->str;
+            new->ident = tok->str;
             new->len = tok->len;
             new->lhs = node->lhs;
             node->lhs = new;
@@ -476,7 +476,7 @@ Node *stmt(Env *env) {
         node->kind = ND_DECLARE;
         Token *tok = expect_ident();
         declare_lvar(env, tok);
-        node->func = tok->str;
+        node->ident = tok->str;
         node->len = tok->len;
         expect(";");
     } else {

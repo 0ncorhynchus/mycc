@@ -55,9 +55,9 @@ struct Node {
     NodeKind kind;
     Node *lhs;
     Node *rhs;
-    int val;    // for ND_NUM
-    int offset; // for ND_LVAR
-    char *func; // for ND_CALL
+    int val;     // for ND_NUM
+    int offset;  // for ND_LVAR
+    char *ident; // for ND_CALL
     int len;
 };
 
