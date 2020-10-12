@@ -28,6 +28,9 @@
 //               | "(" expr ")"
 //
 
+char *user_input;
+Token *token;
+
 void error_at(char *loc, int len, char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
@@ -151,7 +154,7 @@ Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
     return tok;
 }
 
-Token *tokenize(char *p) {
+void tokenize(char *p) {
     Token head;
     head.next = NULL;
     Token *cur = &head;
@@ -245,7 +248,7 @@ Token *tokenize(char *p) {
     }
 
     new_token(TK_EOF, cur, p, 0);
-    return head.next;
+    token = head.next;
 }
 
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
@@ -510,7 +513,7 @@ Node *stmt(Env *env) {
     return node;
 }
 
-void program() {
+void program(Node *code[]) {
     int i = 0;
     while (!at_eof()) {
         code[i++] = function();

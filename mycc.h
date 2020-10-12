@@ -76,27 +76,17 @@ struct Env {
     int maximum_offset;
 };
 
-typedef struct FunList FunList;
-
-struct FunList {
-    Node *func;
-    FunList *next;
-};
-
 extern char *user_input;
 extern Token *token;
-extern Node *code[100];
 
 void error(char *fmt, ...);
 
-Token *tokenize(char *p);
+void tokenize(char *p);
 
 LVar *get_lvar(Env *env, Token *tok);
 
 Node *expr();
 void program();
-
-FunList *get_fun_list();
 
 void gen(Node *node);
 void gen_func(Node *node);
