@@ -166,6 +166,57 @@ void gen_func(Node *node) {
     printf("  ret\n");
 }
 
+void gen_add(Node *node, char *op) {
+    if (node->lhs->ty->ty == INT) {
+        if (node->rhs->ty->ty == INT) {
+            gen(node->lhs);
+            gen(node->rhs);
+            pop("rdi");
+            pop("rax");
+            printf("  %s rax, rdi\n", op);
+            push("rax");
+        } else { // node->rhs->ty->ty == PTR
+            int size;
+            if (node->rhs->ty->ptr_to->ty == INT) {
+                size = 4;
+            } else { // node->rhs->ty->ptr_to->ty == PTR
+                size = 8;
+            }
+            gen(node->lhs);
+            pop("rax");
+            printf("  mov rdi, %d\n", size);
+            printf("  imul rax, rdi\n");
+            push("rax");
+            gen(node->rhs);
+            pop("rdi");
+            pop("rax");
+            printf("  %s rax, rdi\n", op);
+            push("rax");
+        }
+    } else { // node->lhs->ty->ty == PTR
+        if (node->rhs->ty->ty == INT) {
+            int size;
+            if (node->lhs->ty->ptr_to->ty == INT) {
+                size = 4;
+            } else { // node->lhs->ty->ptr_to->ty == PTR
+                size = 8;
+            }
+            gen(node->lhs);
+            gen(node->rhs);
+            pop("rax");
+            printf("  mov rdi, %d\n", size);
+            printf("  imul rax, rdi\n");
+            push("rax");
+            pop("rdi");
+            pop("rax");
+            printf("  %s rax, rdi\n", op);
+            push("rax");
+        } else { // node->rhs->ty->ty == PTR
+            error("Invalid operands to binary '%s' between pointers", op);
+        }
+    }
+}
+
 void gen(Node *node) {
     switch (node->kind) {
     case ND_NUM:
@@ -227,21 +278,20 @@ void gen(Node *node) {
         return;
     case ND_DECLARE:
         return;
+    case ND_ADD:
+        gen_add(node, "add");
+        return;
+    case ND_SUB:
+        gen_add(node, "sub");
+        return;
     }
 
     gen(node->lhs);
     gen(node->rhs);
-
     pop("rdi");
     pop("rax");
 
     switch (node->kind) {
-    case ND_ADD:
-        printf("  add rax, rdi\n");
-        break;
-    case ND_SUB:
-        printf("  sub rax, rdi\n");
-        break;
     case ND_MUL:
         printf("  imul rax, rdi\n");
         break;

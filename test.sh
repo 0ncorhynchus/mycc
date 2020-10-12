@@ -110,8 +110,21 @@ assert 6 'int foo(int x, int y, int z, int p, int q, int r) { return r; } int ma
 # assert 6 'int foo(int x, int y, int z, int p, int q, int r, int m) { return r; } int main() { return foo(1, 2, 3, 4, 5, 6, 7); }'
 
 assert_main 3 "int x; int *y; x = 3; y = &x; return *y;"
-assert_main 3 "int x; int y; int *z; x = 3; y = 5; z = &y + 8; return *z;"
+assert_main 3 "int x; int y; int *z; x = 3; y = 5; z = &y + 2; return *z;" # implementation dependency
 
 assert_main 3 "int x; int *y; y = &x; *y = 3; return x;"
+
+compile tmp.o '#include <stdlib.h>
+int alloc4(int **p, int a, int b, int c, int d) {
+  *p = malloc(4 * sizeof(int));
+  (*p)[0] = a;
+  (*p)[1] = b;
+  (*p)[2] = c;
+  (*p)[3] = d;
+  return 0;
+}'
+assert_main 4 'int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 2; return *q;' tmp.o
+assert_main 8 'int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 3; return *q;' tmp.o
+assert_main 2 'int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 3; q = q - 2; return *q;' tmp.o
 
 echo OK
