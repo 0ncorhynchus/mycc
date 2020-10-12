@@ -16,9 +16,12 @@
 //               | "while" "(" expr ")" stmt
 //               | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //               | "return" expr ";"
-//  declare     =  "int" ident ";"
-//  function    =  "int" ident "(" ("int" ident ("," "int" ident)*)? ")" "{"
-//  stmt* "}" expr        =  assign assign      =  equality ("=" assign)?
+//  declare     =  type ident ";"
+//  function    =  type ident
+//                 "(" (type ident ("," type ident)*)? ")"
+//                 "{" stmt* "}"
+//  expr        =  assign
+//  assign      =  equality ("=" assign)?
 //  equality    =  relational ("==" relational | "!=" relational)*
 //  relational  =  add ("<" add | "<=" add | ">" add | ">=" add)*
 //  add         =  mul ("+" mul | "-" mul)*
@@ -27,6 +30,7 @@
 //  primary     =  num
 //               | ident ("(" (expr ("," expr)*)? ")")?
 //               | "(" expr ")"
+//  type        = "*" type | "int"
 //
 
 char *user_input;
@@ -215,6 +219,37 @@ void tokenize(char *p) {
     token = head.next;
 }
 
+void expect_type() {
+    Token *tok = token;
+    for (;;) {
+        if (is_reserved(tok, "*")) {
+            tok = tok->next;
+            continue;
+        } else if (is_reserved(tok, "int")) {
+            break;
+        }
+        int len = tok->len + tok->str - token->str;
+        error_at(token->str, len, "Unknown type");
+    }
+
+    token = tok->next;
+}
+
+bool type() {
+    Token *tok = token;
+    for (;;) {
+        if (is_reserved(tok, "*")) {
+            tok = tok->next;
+            continue;
+        } else if (is_reserved(tok, "int")) {
+            break;
+        }
+        return false;
+    }
+    token = tok->next;
+    return true;
+}
+
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = kind;
@@ -357,7 +392,7 @@ Node *function() {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_FUNC;
 
-    expect("int"); // type of return
+    expect_type(); // type of return
 
     Token *tok = expect_ident();
     node->ident = tok->str;
@@ -366,7 +401,7 @@ Node *function() {
     int argument_offset = 0;
     expect("(");
     if (!consume(")")) {
-        expect("int");
+        expect_type();
         tok = expect_ident();
         declare_lvar(&env, tok);
         Node *new = calloc(1, sizeof(Node));
@@ -376,7 +411,7 @@ Node *function() {
 
         node->lhs = new;
         while (consume(",")) {
-            expect("int");
+            expect_type();
             tok = expect_ident();
             declare_lvar(&env, tok);
             new = calloc(1, sizeof(Node));
@@ -471,7 +506,7 @@ Node *stmt(Env *env) {
             current = current->rhs;
             current->kind = ND_BLOCK;
         }
-    } else if (consume("int")) {
+    } else if (type()) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_DECLARE;
         Token *tok = expect_ident();
