@@ -17,9 +17,8 @@
 //               | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //               | "return" expr ";"
 //  declare     =  "int" ident ";"
-//  function    =  ident "(" (ident ("," ident)*)? ")" "{" stmt* "}"
-//  expr        =  assign
-//  assign      =  equality ("=" assign)?
+//  function    =  "int" ident "(" ("int" ident ("," "int" ident)*)? ")" "{"
+//  stmt* "}" expr        =  assign assign      =  equality ("=" assign)?
 //  equality    =  relational ("==" relational | "!=" relational)*
 //  relational  =  add ("<" add | "<=" add | ">" add | ">=" add)*
 //  add         =  mul ("+" mul | "-" mul)*
@@ -111,40 +110,6 @@ int expect_number() {
     int val = token->val;
     token = token->next;
     return val;
-}
-
-bool is_function() {
-    Token *next = token;
-    if (!is_ident(next))
-        return false;
-
-    next = next->next;
-    if (!is_reserved(next, "("))
-        return false;
-
-    next = next->next;
-    if (!is_reserved(next, ")")) {
-        if (!is_ident(next))
-            return false;
-
-        next = next->next;
-        while (is_reserved(next, ",")) {
-            next = next->next;
-            if (!is_ident(next))
-                return false;
-
-            next = next->next;
-        }
-
-        if (!is_reserved(next, ")"))
-            return false;
-    }
-
-    next = next->next;
-    if (!is_reserved(next, "{"))
-        return false;
-
-    return true;
 }
 
 bool at_eof() { return token->kind == TK_EOF; }
@@ -391,6 +356,9 @@ Node *function() {
     Env env = {NULL, 0};
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_FUNC;
+
+    expect("int"); // type of return
+
     Token *tok = expect_ident();
     node->func = tok->str;
     node->len = tok->len;
@@ -398,6 +366,7 @@ Node *function() {
     int argument_offset = 0;
     expect("(");
     if (!consume(")")) {
+        expect("int");
         tok = expect_ident();
         declare_lvar(&env, tok);
         Node *new = calloc(1, sizeof(Node));
@@ -407,6 +376,7 @@ Node *function() {
 
         node->lhs = new;
         while (consume(",")) {
+            expect("int");
             tok = expect_ident();
             declare_lvar(&env, tok);
             new = calloc(1, sizeof(Node));
@@ -509,9 +479,6 @@ Node *stmt(Env *env) {
         node->func = tok->str;
         node->len = tok->len;
         expect(";");
-    } else if (is_function()) {
-        return NULL;
-        /* node = function(); */
     } else {
         node = expr(env);
         expect(";");

@@ -34,7 +34,7 @@ assert_main() {
   expected="$1"
   input="$2"
   lib="$3" # optional
-  assert "$expected" "main() { $input }" $lib
+  assert "$expected" "int main() { $input }" $lib
 }
 
 assert_expr() {
@@ -102,12 +102,12 @@ assert_expr 57 'foo(54, 3)' tmp.o
 compile tmp.o 'int many(int x, int y, int z, int p, int q, int r, int m, int n) { return x + y + z + p + q + r + m + n; }'
 assert_expr 36 'many(1, 2, 3, 4, 5, 6, 7, 8)' tmp.o
 
-assert 0 'foo() { return 0; } main() { return foo(); }'
-assert 1 'foo(i) { return i; } main() { return foo(1); }'
-assert 1 'foo(i, j) { return i; } main() { return foo(1, 2); }'
-assert 2 'foo(i, j) { return j; } main() { return foo(1, 2); }'
-assert 6 'foo(x, y, z, p, q, r) { return r; } main() { return foo(1, 2, 3, 4, 5, 6); }'
-# assert 6 'foo(x, y, z, p, q, r, m) { return r; } main() { return foo(1, 2, 3, 4, 5, 6, 7); }'
+assert 0 'int foo() { return 0; } int main() { return foo(); }'
+assert 1 'int foo(int i) { return i; } int main() { return foo(1); }'
+assert 1 'int foo(int i, int j) { return i; } int main() { return foo(1, 2); }'
+assert 2 'int foo(int i, int j) { return j; } int main() { return foo(1, 2); }'
+assert 6 'int foo(int x, int y, int z, int p, int q, int r) { return r; } int main() { return foo(1, 2, 3, 4, 5, 6); }'
+# assert 6 'int foo(int x, int y, int z, int p, int q, int r, int m) { return r; } int main() { return foo(1, 2, 3, 4, 5, 6, 7); }'
 
 assert_main 3 "int x; int y; x = 3; y = &x; return *y;"
 assert_main 3 "int x; int y; int z; x = 3; y = 5; z = &y + 8; return *z;"
