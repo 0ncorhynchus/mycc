@@ -112,4 +112,6 @@ assert 6 'int foo(int x, int y, int z, int p, int q, int r) { return r; } int ma
 assert_main 3 "int x; int y; x = 3; y = &x; return *y;"
 assert_main 3 "int x; int y; int z; x = 3; y = 5; z = &y + 8; return *z;"
 
+assert_main 3 "int x; int *y; y = &x; *y = 3; return x;"
+
 echo OK

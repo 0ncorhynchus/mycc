@@ -30,7 +30,7 @@
 //  primary     =  num
 //               | ident ("(" (expr ("," expr)*)? ")")?
 //               | "(" expr ")"
-//  type        = "*" type | "int"
+//  type        = type "*" | "int"
 //
 
 char *user_input;
@@ -219,54 +219,32 @@ void tokenize(char *p) {
     token = head.next;
 }
 
-Type *expect_type() {
-    Type *ty = NULL;
+Type *type() {
+    if (!consume("int"))
+        return NULL;
+
+    Type *ty = calloc(1, sizeof(Type));
+    ty->ty = INT;
+
     Token *tok = token;
-    for (;;) {
-        if (is_reserved(tok, "*")) {
-            Type *new = calloc(1, sizeof(Type));
-            new->ty = PTR;
-            new->ptr_to = ty;
-            ty = new;
-            tok = tok->next;
-            continue;
-        } else if (is_reserved(tok, "int")) {
-            Type *new = calloc(1, sizeof(Type));
-            new->ty = INT;
-            new->ptr_to = ty;
-            ty = new;
-            break;
-        }
-        int len = tok->len + tok->str - token->str;
-        error_at(token->str, len, "Unknown type");
+    while (is_reserved(tok, "*")) {
+        tok = tok->next;
+
+        Type *new = calloc(1, sizeof(Type));
+        new->ty = PTR;
+        new->ptr_to = ty;
+        ty = new;
     }
 
-    token = tok->next;
+    token = tok;
     return ty;
 }
 
-Type *type() {
-    Type *ty = NULL;
-    Token *tok = token;
-    for (;;) {
-        if (is_reserved(tok, "*")) {
-            Type *new = calloc(1, sizeof(Type));
-            new->ty = PTR;
-            new->ptr_to = ty;
-            ty = new;
-            tok = tok->next;
-            continue;
-        } else if (is_reserved(tok, "int")) {
-            Type *new = calloc(1, sizeof(Type));
-            new->ty = INT;
-            new->ptr_to = ty;
-            ty = new;
-            break;
-        }
-        return NULL;
-    }
-    token = tok->next;
-    return ty;
+Type *expect_type() {
+    Type *ty = type();
+    if (ty)
+        return ty;
+    error_at(token->str, token->len, "Unknown type");
 }
 
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {

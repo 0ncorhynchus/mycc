@@ -22,12 +22,18 @@ void push_val(int val) { printf("  push %d\n", val); }
 void pop(char *arg) { printf("  pop %s\n", arg); }
 
 void gen_lval(Node *node) {
-    if (node->kind != ND_LVAR)
-        error("lvalue is not a varialbe");
-
-    printf("  mov rax, rbp\n");
-    printf("  sub rax, %d\n", node->offset);
-    push("rax");
+    switch (node->kind) {
+    case ND_LVAR:
+        printf("  mov rax, rbp\n");
+        printf("  sub rax, %d\n", node->offset);
+        push("rax");
+        break;
+    case ND_DEREF:
+        gen(node->lhs);
+        break;
+    default:
+        error("lvalue is not a varialbe or dereference");
+    }
 }
 
 void gen_if_body(Node *node, int l_index) {
