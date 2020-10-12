@@ -127,4 +127,12 @@ assert_main 4 'int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 2; return *q;' tm
 assert_main 8 'int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 3; return *q;' tmp.o
 assert_main 2 'int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 3; q = q - 2; return *q;' tmp.o
 
+assert_main 4 'int x; return sizeof(x);'
+assert_main 8 'int *y; return sizeof(y);'
+assert_main 4 'int x; return sizeof(x + 3);'
+assert_main 8 'int *y; return sizeof(y + 3);'
+assert_main 4 'int *y; return sizeof(*y);'
+assert_expr 4 'sizeof(1)'
+assert_expr 4 'sizeof(sizeof(1))'
+
 echo OK

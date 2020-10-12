@@ -27,6 +27,7 @@
 //  add         =  mul ("+" mul | "-" mul)*
 //  mul         =  unary ( "*" unary | "/" unary)*
 //  unary       =  ("+" | "-")? primary | ("*" | "&") unary
+//               | "sizeof" unary
 //  primary     =  num
 //               | ident ("(" (expr ("," expr)*)? ")")?
 //               | "(" expr ")"
@@ -36,7 +37,8 @@
 char *user_input;
 Token *token;
 
-char *reserved[] = {"if", "else", "while", "for", "return", "int", NULL};
+char *reserved[] = {"if",     "else", "while",  "for",
+                    "return", "int",  "sizeof", NULL};
 
 void error_at(char *loc, int len, char *fmt, ...) {
     va_list ap;
@@ -386,6 +388,23 @@ Node *unary(Env *env) {
             return node;
         }
         error("Internal compile error: try to obtain the address to an unknown "
+              "type");
+    }
+    if (consume("sizeof")) {
+        Node *node = unary(env);
+        if (node->ty) {
+            int size;
+            switch (node->ty->ty) {
+            case INT:
+                size = 4;
+                break;
+            case PTR:
+                size = 8;
+                break;
+            }
+            return new_node_num(size);
+        }
+        error("Internal compile error: try to obtain the size of an unknown "
               "type");
     }
     return primary(env);
