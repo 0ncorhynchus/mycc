@@ -10,11 +10,13 @@
 //
 //  program     =  stmt*
 //  stmt        =  expr ";"
+//               | function
 //               | "{" stmt* "}"
 //               | "if" "(" expr ")" stmt ("else" stmt)?
 //               | "while" "(" expr ")" stmt
 //               | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //               | "return" expr ";"
+//  function    =  ident "(" (ident ("," ident)*)? ")" "{" stmt* "}"
 //  expr        =  assign
 //  assign      =  equality ("=" assign)?
 //  equality    =  relational ("==" relational | "!=" relational)*
@@ -55,6 +57,13 @@ bool consume(char *op) {
     return true;
 }
 
+bool is_reserved(Token *token, char *op) {
+    if (token == NULL || token->kind != TK_RESERVED ||
+        strlen(op) != token->len || memcmp(token->str, op, token->len))
+        return false;
+    return true;
+}
+
 Token *consume_ident() {
     if (token->kind != TK_IDENT)
         return NULL;
@@ -62,6 +71,21 @@ Token *consume_ident() {
     token = token->next;
     return tok;
 }
+
+Token *expect_ident() {
+    if (token->kind != TK_IDENT) {
+        char *got = calloc(token->len + 1, sizeof(char));
+        memcpy(got, token->str, token->len);
+        error_at(token->str, token->len,
+                 "Unexpected token: an ident expected, but got '%s'", got);
+    }
+
+    Token *tok = token;
+    token = token->next;
+    return tok;
+}
+
+bool is_ident(Token *token) { return token && token->kind == TK_IDENT; }
 
 bool consume_if() {
     if (token->kind != TK_IF)
@@ -116,6 +140,40 @@ int expect_number() {
     int val = token->val;
     token = token->next;
     return val;
+}
+
+bool is_function() {
+    Token *next = token;
+    if (!is_ident(next))
+        return false;
+
+    next = next->next;
+    if (!is_reserved(next, "("))
+        return false;
+
+    next = next->next;
+    if (!is_reserved(next, ")")) {
+        if (!is_ident(next))
+            return false;
+
+        next = next->next;
+        while (is_reserved(next, ",")) {
+            next = next->next;
+            if (!is_ident(next))
+                return false;
+
+            next = next->next;
+        }
+
+        if (!is_reserved(next, ")"))
+            return false;
+    }
+
+    next = next->next;
+    if (!is_reserved(next, "{"))
+        return false;
+
+    return true;
 }
 
 bool at_eof() { return token->kind == TK_EOF; }
@@ -251,13 +309,12 @@ Node *primary() {
     if (tok) {
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_LVAR;
-        char *func = calloc(tok->len + 1, sizeof(char));
-        memcpy(func, tok->str, tok->len);
 
         // function call
         if (consume("(")) {
             node->kind = ND_CALL;
-            node->func = func;
+            node->func = tok->str;
+            node->len = tok->len;
             if (consume(")"))
                 return node;
 
@@ -369,6 +426,45 @@ Node *assign() {
 
 Node *expr() { return assign(); }
 
+Node *stmt();
+
+Node *function() {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_FUNC;
+    Token *tok = expect_ident();
+    node->func = tok->str;
+    node->len = tok->len;
+
+    expect("(");
+    tok = consume_ident();
+    if (tok) {
+        Node *args;
+        node->lhs = calloc(1, sizeof(Node));
+        node->lhs->kind = ND_FUNC_ARGS;
+        node->lhs->func = tok->str;
+        node->lhs->len = tok->len;
+        args = node->lhs;
+        while (consume(",")) {
+            tok = expect_ident();
+            args->lhs = calloc(1, sizeof(Node));
+            args->lhs->kind = ND_FUNC_ARGS;
+            args->lhs->func = tok->str;
+            args->lhs->len = tok->len;
+            args = args->lhs;
+        }
+    }
+    expect(")");
+    expect("{");
+    Node *body = node;
+    while (!consume("}")) {
+        body->rhs = calloc(1, sizeof(Node));
+        body->rhs->kind = ND_FUNC_BODY;
+        body->rhs->lhs = stmt();
+        body = body->rhs;
+    }
+    return node;
+}
+
 Node *stmt() {
     Node *node;
 
@@ -430,6 +526,8 @@ Node *stmt() {
             current = current->rhs;
             current->kind = ND_BLOCK;
         }
+    } else if (is_function()) {
+        node = function();
     } else {
         node = expr();
         expect(";");
