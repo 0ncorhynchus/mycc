@@ -61,10 +61,17 @@ struct Node {
     int len;
 };
 
+typedef struct Type Type;
+struct Type {
+    enum { INT, PTR } ty;
+    Type *ptr_to;
+};
+
 typedef struct LVar LVar;
 
 struct LVar {
     LVar *next;
+    Type *ty;
     char *name;
     int len;
     int offset;
@@ -86,7 +93,7 @@ void error_at(char *loc, int len, char *fmt, ...);
 void tokenize(char *p);
 
 LVar *get_lvar(Env *env, Token *tok);
-LVar *declare_lvar(Env *env, Token *tok);
+LVar *declare_lvar(Env *env, Type *ty, Token *tok);
 
 Node *expr();
 void program();

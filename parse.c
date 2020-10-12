@@ -219,13 +219,22 @@ void tokenize(char *p) {
     token = head.next;
 }
 
-void expect_type() {
+Type *expect_type() {
+    Type *ty = NULL;
     Token *tok = token;
     for (;;) {
         if (is_reserved(tok, "*")) {
+            Type *new = calloc(1, sizeof(Type));
+            new->ty = PTR;
+            new->ptr_to = ty;
+            ty = new;
             tok = tok->next;
             continue;
         } else if (is_reserved(tok, "int")) {
+            Type *new = calloc(1, sizeof(Type));
+            new->ty = INT;
+            new->ptr_to = ty;
+            ty = new;
             break;
         }
         int len = tok->len + tok->str - token->str;
@@ -233,21 +242,31 @@ void expect_type() {
     }
 
     token = tok->next;
+    return ty;
 }
 
-bool type() {
+Type *type() {
+    Type *ty = NULL;
     Token *tok = token;
     for (;;) {
         if (is_reserved(tok, "*")) {
+            Type *new = calloc(1, sizeof(Type));
+            new->ty = PTR;
+            new->ptr_to = ty;
+            ty = new;
             tok = tok->next;
             continue;
         } else if (is_reserved(tok, "int")) {
+            Type *new = calloc(1, sizeof(Type));
+            new->ty = INT;
+            new->ptr_to = ty;
+            ty = new;
             break;
         }
-        return false;
+        return NULL;
     }
     token = tok->next;
-    return true;
+    return ty;
 }
 
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
@@ -392,7 +411,7 @@ Node *function() {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_FUNC;
 
-    expect_type(); // type of return
+    Type *ty = expect_type(); // type of return
 
     Token *tok = expect_ident();
     node->ident = tok->str;
@@ -401,9 +420,9 @@ Node *function() {
     int argument_offset = 0;
     expect("(");
     if (!consume(")")) {
-        expect_type();
+        ty = expect_type();
         tok = expect_ident();
-        declare_lvar(&env, tok);
+        declare_lvar(&env, ty, tok);
         Node *new = calloc(1, sizeof(Node));
         new->kind = ND_FUNC_ARGS;
         new->ident = tok->str;
@@ -411,9 +430,9 @@ Node *function() {
 
         node->lhs = new;
         while (consume(",")) {
-            expect_type();
+            ty = expect_type();
             tok = expect_ident();
-            declare_lvar(&env, tok);
+            declare_lvar(&env, ty, tok);
             new = calloc(1, sizeof(Node));
             new->kind = ND_FUNC_ARGS;
             new->ident = tok->str;
@@ -506,17 +525,20 @@ Node *stmt(Env *env) {
             current = current->rhs;
             current->kind = ND_BLOCK;
         }
-    } else if (type()) {
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_DECLARE;
-        Token *tok = expect_ident();
-        declare_lvar(env, tok);
-        node->ident = tok->str;
-        node->len = tok->len;
-        expect(";");
     } else {
-        node = expr(env);
-        expect(";");
+        Type *ty = type();
+        if (ty) {
+            node = calloc(1, sizeof(Node));
+            node->kind = ND_DECLARE;
+            Token *tok = expect_ident();
+            declare_lvar(env, ty, tok);
+            node->ident = tok->str;
+            node->len = tok->len;
+            expect(";");
+        } else {
+            node = expr(env);
+            expect(";");
+        }
     }
 
     return node;

@@ -3,22 +3,29 @@
 #include <stdlib.h>
 #include <string.h>
 
-LVar *get_lvar(Env *env, Token *tok) {
+LVar *find_lvar(Env *env, Token *tok) {
     for (LVar *var = env->locals; var; var = var->next)
         if (var->len == tok->len && !memcmp(tok->str, var->name, var->len))
             return var;
-
-    error_at(tok->str, tok->len, "'%.*s' is undeclared", tok->len, tok->str);
+    return NULL;
 }
 
-LVar *declare_lvar(Env *env, Token *tok) {
-    for (LVar *var = env->locals; var; var = var->next)
-        if (var->len == tok->len && !memcmp(tok->str, var->name, var->len))
-            error_at(tok->str, tok->len, "'%.*s' is already declared", tok->len,
-                     tok->str);
+LVar *get_lvar(Env *env, Token *tok) {
+    LVar *retval = find_lvar(env, tok);
+    if (retval == NULL)
+        error_at(tok->str, tok->len, "'%.*s' is undeclared", tok->len,
+                 tok->str);
+    return retval;
+}
+
+LVar *declare_lvar(Env *env, Type *ty, Token *tok) {
+    if (find_lvar(env, tok))
+        error_at(tok->str, tok->len, "'%.*s' is already declared", tok->len,
+                 tok->str);
 
     LVar *new = calloc(1, sizeof(LVar));
     new->next = env->locals;
+    new->ty = ty;
     new->name = tok->str;
     new->len = tok->len;
 
