@@ -106,7 +106,7 @@ char *arg_registers[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 // TODO: alignment RSP
 void gen_call_args(Node *node) {
     int num_args = 0;
-    NodeList *args;
+    NodeList *args = NULL;
     while (node) {
         if (node->kind != ND_ARGS)
             error("Expected ND_ARGS");

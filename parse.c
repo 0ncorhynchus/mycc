@@ -438,12 +438,11 @@ Node *function() {
     expect("(");
     tok = consume_ident();
     if (tok) {
-        Node *args;
         node->lhs = calloc(1, sizeof(Node));
         node->lhs->kind = ND_FUNC_ARGS;
         node->lhs->func = tok->str;
         node->lhs->len = tok->len;
-        args = node->lhs;
+        Node *args = node->lhs;
         while (consume(",")) {
             tok = expect_ident();
             args->lhs = calloc(1, sizeof(Node));
@@ -466,7 +465,7 @@ Node *function() {
 }
 
 Node *stmt() {
-    Node *node;
+    Node *node = NULL;
 
     if (consume_if()) {
         node = calloc(1, sizeof(Node));
