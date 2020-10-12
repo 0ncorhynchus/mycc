@@ -31,6 +31,8 @@
 char *user_input;
 Token *token;
 
+char *reserved[] = {"if", "else", "while", "for", "return", "int", NULL};
+
 void error_at(char *loc, int len, char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
@@ -225,20 +227,15 @@ void tokenize(char *p) {
             }
 
             int len = p - first;
-            TokenKind kind;
+            TokenKind kind = TK_IDENT;
 
-            if (len == 2 && strncmp(first, "if", 2) == 0)
-                kind = TK_RESERVED;
-            else if (len == 4 && strncmp(first, "else", 4) == 0)
-                kind = TK_RESERVED;
-            else if (len == 5 && strncmp(first, "while", 4) == 0)
-                kind = TK_RESERVED;
-            else if (len == 3 && strncmp(first, "for", 3) == 0)
-                kind = TK_RESERVED;
-            else if (len == 6 && strncmp(first, "return", 6) == 0)
-                kind = TK_RESERVED;
-            else
-                kind = TK_IDENT;
+            for (int i = 0; reserved[i]; i++) {
+                if (len == strlen(reserved[i]) &&
+                    strncmp(first, reserved[i], len) == 0) {
+                    kind = TK_RESERVED;
+                    break;
+                }
+            }
 
             cur = new_token(kind, cur, first, len);
             continue;
