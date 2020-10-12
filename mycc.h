@@ -72,6 +72,13 @@ struct LVar {
     int offset;
 };
 
+typedef struct Env Env;
+
+struct Env {
+    LVar *locals;
+    int maximum_offset;
+};
+
 typedef struct FunList FunList;
 
 struct FunList {
@@ -82,14 +89,12 @@ struct FunList {
 extern char *user_input;
 extern Token *token;
 extern Node *code[100];
-extern LVar *locals;
-extern int maximum_offset;
 
 void error(char *fmt, ...);
 
 Token *tokenize(char *p);
 
-LVar *find_lvar(Token *tok);
+LVar *get_lvar(Env *env, Token *tok);
 
 Node *expr();
 void program();

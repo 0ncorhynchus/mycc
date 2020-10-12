@@ -298,9 +298,9 @@ Node *new_node_num(int val) {
     return node;
 }
 
-Node *primary() {
+Node *primary(Env *env) {
     if (consume("(")) {
-        Node *node = expr();
+        Node *node = expr(env);
         expect(")");
         return node;
     }
@@ -321,206 +321,211 @@ Node *primary() {
             node->lhs = calloc(1, sizeof(Node));
             Node *current = node->lhs;
             current->kind = ND_ARGS;
-            current->lhs = expr();
+            current->lhs = expr(env);
             while (!consume(")")) {
                 expect(",");
                 current->rhs = calloc(1, sizeof(Node));
                 current = current->rhs;
                 current->kind = ND_ARGS;
-                current->lhs = expr();
+                current->lhs = expr(env);
             }
             return node;
         }
 
-        LVar *lvar = find_lvar(tok);
-        if (lvar) {
-            node->offset = lvar->offset;
-        } else {
-            lvar = calloc(1, sizeof(LVar));
-            lvar->next = locals;
-            lvar->name = tok->str;
-            lvar->len = tok->len;
-            if (locals) {
-                lvar->offset = maximum_offset;
-                maximum_offset += 8;
-            }
-            node->offset = lvar->offset;
-            locals = lvar;
-        }
+        LVar *lvar = get_lvar(env, tok);
+        node->offset = lvar->offset;
+
         return node;
     }
 
     return new_node_num(expect_number());
 }
 
-Node *unary() {
+Node *unary(Env *env) {
     if (consume("+"))
-        return primary();
+        return primary(env);
     if (consume("-"))
-        return new_node(ND_SUB, new_node_num(0), primary());
-    return primary();
+        return new_node(ND_SUB, new_node_num(0), primary(env));
+    return primary(env);
 }
 
-Node *mul() {
-    Node *node = unary();
+Node *mul(Env *env) {
+    Node *node = unary(env);
 
     for (;;) {
         if (consume("*"))
-            node = new_node(ND_MUL, node, unary());
+            node = new_node(ND_MUL, node, unary(env));
         else if (consume("/"))
-            node = new_node(ND_DIV, node, unary());
+            node = new_node(ND_DIV, node, unary(env));
         else
             return node;
     }
 }
 
-Node *add() {
-    Node *node = mul();
+Node *add(Env *env) {
+    Node *node = mul(env);
 
     for (;;) {
         if (consume("+"))
-            node = new_node(ND_ADD, node, mul());
+            node = new_node(ND_ADD, node, mul(env));
         else if (consume("-"))
-            node = new_node(ND_SUB, node, mul());
+            node = new_node(ND_SUB, node, mul(env));
         else
             return node;
     }
 }
 
-Node *relational() {
-    Node *node = add();
+Node *relational(Env *env) {
+    Node *node = add(env);
 
     for (;;) {
         if (consume("<"))
-            node = new_node(ND_LT, node, add());
+            node = new_node(ND_LT, node, add(env));
         else if (consume("<="))
-            node = new_node(ND_LE, node, add());
+            node = new_node(ND_LE, node, add(env));
         else if (consume(">"))
-            node = new_node(ND_LT, add(), node);
+            node = new_node(ND_LT, add(env), node);
         else if (consume(">="))
-            node = new_node(ND_LE, add(), node);
+            node = new_node(ND_LE, add(env), node);
         else
             return node;
     }
 }
 
-Node *equality() {
-    Node *node = relational();
+Node *equality(Env *env) {
+    Node *node = relational(env);
 
     for (;;) {
         if (consume("=="))
-            node = new_node(ND_EQ, node, relational());
+            node = new_node(ND_EQ, node, relational(env));
         else if (consume("!="))
-            node = new_node(ND_NE, node, relational());
+            node = new_node(ND_NE, node, relational(env));
         else
             return node;
     }
 }
 
-Node *assign() {
-    Node *node = equality();
+Node *assign(Env *env) {
+    Node *node = equality(env);
     if (consume("="))
-        node = new_node(ND_ASSIGN, node, assign());
+        node = new_node(ND_ASSIGN, node, assign(env));
     return node;
 }
 
-Node *expr() { return assign(); }
+Node *expr(Env *env) { return assign(env); }
 
-Node *stmt();
+Node *stmt(Env *env);
 
 Node *function() {
+    Env env = {NULL, 0};
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_FUNC;
     Token *tok = expect_ident();
     node->func = tok->str;
     node->len = tok->len;
 
+    int argument_offset = 0;
     expect("(");
-    tok = consume_ident();
-    if (tok) {
-        node->lhs = calloc(1, sizeof(Node));
-        node->lhs->kind = ND_FUNC_ARGS;
-        node->lhs->func = tok->str;
-        node->lhs->len = tok->len;
-        Node *args = node->lhs;
+    if (!consume(")")) {
+        tok = expect_ident();
+        get_lvar(&env, tok);
+        Node *new = calloc(1, sizeof(Node));
+        new->kind = ND_FUNC_ARGS;
+        new->func = tok->str;
+        new->len = tok->len;
+
+        node->lhs = new;
         while (consume(",")) {
             tok = expect_ident();
-            args->lhs = calloc(1, sizeof(Node));
-            args->lhs->kind = ND_FUNC_ARGS;
-            args->lhs->func = tok->str;
-            args->lhs->len = tok->len;
-            args = args->lhs;
+            get_lvar(&env, tok);
+            new = calloc(1, sizeof(Node));
+            new->kind = ND_FUNC_ARGS;
+            new->func = tok->str;
+            new->len = tok->len;
+            new->lhs = node->lhs;
+            node->lhs = new;
         }
+        expect(")");
+
+        argument_offset = env.maximum_offset;
+        node->lhs->val = argument_offset / 8;
+        if (node->lhs->val > 6)
+            error("Not supported: more than 6 arguments.");
     }
-    expect(")");
+
     expect("{");
     Node *body = node;
     while (!consume("}")) {
         body->rhs = calloc(1, sizeof(Node));
         body->rhs->kind = ND_FUNC_BODY;
-        body->rhs->lhs = stmt();
+        body->rhs->lhs = stmt(&env);
         body = body->rhs;
     }
+    if (node->rhs) {
+        int variables_offset = env.maximum_offset - argument_offset;
+        node->rhs->val = variables_offset;
+    }
+
     return node;
 }
 
-Node *stmt() {
+Node *stmt(Env *env) {
     Node *node = NULL;
 
     if (consume_if()) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_IF_COND;
         expect("(");
-        node->lhs = expr();
+        node->lhs = expr(env);
         expect(")");
 
         node->rhs = calloc(1, sizeof(Node));
         node->rhs->kind = ND_IF_BODY;
-        node->rhs->lhs = stmt();
+        node->rhs->lhs = stmt(env);
         if (consume_else()) {
-            node->rhs->rhs = stmt();
+            node->rhs->rhs = stmt(env);
         }
     } else if (consume_while()) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_WHILE;
         expect("(");
-        node->lhs = expr();
+        node->lhs = expr(env);
         expect(")");
-        node->rhs = stmt();
+        node->rhs = stmt(env);
     } else if (consume_for()) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_FOR_INIT;
         expect("(");
         if (!consume(";")) {
-            node->lhs = expr();
+            node->lhs = expr(env);
             expect(";");
         }
 
         node->rhs = calloc(1, sizeof(Node));
         node->rhs->kind = ND_FOR_COND;
         if (!consume(";")) {
-            node->rhs->lhs = expr();
+            node->rhs->lhs = expr(env);
             expect(";");
         }
 
         node->rhs->rhs = calloc(1, sizeof(Node));
         node->rhs->rhs->kind = ND_FOR_BODY;
         if (!consume(")")) {
-            node->rhs->rhs->lhs = expr();
+            node->rhs->rhs->lhs = expr(env);
             expect(")");
         }
-        node->rhs->rhs->rhs = stmt();
+        node->rhs->rhs->rhs = stmt(env);
     } else if (consume_return()) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_RETURN;
-        node->lhs = expr();
+        node->lhs = expr(env);
         expect(";");
     } else if (consume("{")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_BLOCK;
         Node *current = node;
         while (!consume("}")) {
-            current->lhs = stmt();
+            current->lhs = stmt(env);
             current->rhs = calloc(1, sizeof(Node));
             current = current->rhs;
             current->kind = ND_BLOCK;
@@ -528,17 +533,18 @@ Node *stmt() {
     } else if (is_function()) {
         node = function();
     } else {
-        node = expr();
+        node = expr(env);
         expect(";");
     }
 
     return node;
 }
 
-void program() {
+// TODO
+void program(Env *env) {
     int i = 0;
     while (!at_eof()) {
-        code[i++] = stmt();
+        code[i++] = stmt(env);
         code[i] = NULL;
     }
 }

@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+char *arg_registers[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+
 int label_index;
 
 void error(char *fmt, ...) {
@@ -101,8 +103,6 @@ struct NodeList {
     NodeList *next;
 };
 
-char *arg_registers[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
-
 // TODO: alignment RSP
 void gen_call_args(Node *node) {
     int num_args = 0;
@@ -135,12 +135,19 @@ void gen_func(Node *node) {
     printf("%.*s:\n", node->len, node->func);
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
-    printf("  sub rsp, %d /* allocate for local variables */\n",
-           maximum_offset);
 
     Node *args = node->lhs;
-
     Node *body = node->rhs;
+
+    // TODO
+    int num_args = args ? args->val : 0;
+    for (int i = 0; i < num_args; ++i) {
+        push(arg_registers[i]);
+    }
+
+    int variables_offset = body ? body->val : 0;
+    printf("  sub rsp, %d /* allocate for local variables */\n",
+           variables_offset);
     while (body) {
         gen(body->lhs);
         body = body->rhs;

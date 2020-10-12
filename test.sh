@@ -82,4 +82,11 @@ assert 57 'foo(54, 3);' tmp.o
 compile tmp.o 'int many(int x, int y, int z, int p, int q, int r, int m, int n) { return x + y + z + p + q + r + m + n; }'
 assert 36 'many(1, 2, 3, 4, 5, 6, 7, 8);' tmp.o
 
+assert 0 'foo() { return 0; } foo();'
+assert 1 'foo(i) { return i; } foo(1);'
+assert 1 'foo(i, j) { return i; } foo(1, 2);'
+assert 2 'foo(i, j) { return j; } foo(1, 2);'
+assert 6 'foo(x, y, z, p, q, r) { return r; } foo(1, 2, 3, 4, 5, 6);'
+# assert 6 'foo(x, y, z, p, q, r, m) { return r; } foo(1, 2, 3, 4, 5, 6, 7);'
+
 echo OK

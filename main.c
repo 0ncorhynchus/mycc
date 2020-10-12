@@ -13,7 +13,10 @@ int main(int argc, char **argv) {
 
     user_input = argv[1];
     token = tokenize(user_input);
-    program();
+
+    Env env = {NULL, 0};
+    program(&env);
+
     FunList *fn = get_fun_list();
 
     printf(".intel_syntax noprefix\n");
@@ -32,7 +35,7 @@ int main(int argc, char **argv) {
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
     printf("  sub rsp, %d /* allocate for local variables */\n",
-           maximum_offset);
+           env.maximum_offset);
 
     for (int i = 0; code[i]; i++) {
         gen(code[i]);

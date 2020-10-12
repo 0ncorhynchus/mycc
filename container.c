@@ -3,14 +3,22 @@
 #include <stdlib.h>
 #include <string.h>
 
-LVar *locals;
-int maximum_offset = 8;
-
-LVar *find_lvar(Token *tok) {
-    for (LVar *var = locals; var; var = var->next)
+LVar *get_lvar(Env *env, Token *tok) {
+    for (LVar *var = env->locals; var; var = var->next)
         if (var->len == tok->len && !memcmp(tok->str, var->name, var->len))
             return var;
-    return NULL;
+
+    LVar *new = calloc(1, sizeof(LVar));
+    new->next = env->locals;
+    new->name = tok->str;
+    new->len = tok->len;
+
+    env->maximum_offset += 8;
+    new->offset = env->maximum_offset;
+
+    env->locals = new;
+
+    return new;
 }
 
 FunList *retrieve_function(Node *node, FunList *fn) {
