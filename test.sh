@@ -61,13 +61,13 @@ assert_expr 1 "1 < (1+1)"
 assert_expr 0 "1 >= (1+1)"
 assert_expr 0 "1 > (1+1)"
 
-assert_expr 1 "foo = 1"
-assert_expr 1 "f00 = 1"
-assert_expr 1 "FOO = 1"
-assert_expr 1 "_ = 1"
+assert_main 1 "int foo; return foo = 1;"
+assert_main 1 "int f00; return f00 = 1;"
+assert_main 1 "int FOO; return FOO = 1;"
+assert_main 1 "int _; return _ = 1;"
 
-assert_main 1 "foo = bar = 1; return foo;"
-assert_main 1 "foo = bar = 1; return bar;"
+assert_main 1 "int foo; int bar; foo = bar = 1; return foo;"
+assert_main 1 "int foo; int bar; foo = bar = 1; return bar;"
 
 assert_main 1 "return 1; return 2;"
 
@@ -77,17 +77,17 @@ assert_main 0 "if (0 == 1) return 18;"
 assert_main 1 "if (0 == 0) return 1; else return 0;"
 assert_main 0 "if (0 == 1) return 1; else return 0;"
 
-assert_main 55 "sum = 0; i = 0; while(i < 10) sum = sum + (i = i + 1); return sum;"
+assert_main 55 "int sum; int i; sum = 0; i = 0; while(i < 10) sum = sum + (i = i + 1); return sum;"
 
-assert_main 55 "sum = 0; for (i = 0; i < 10; i = i + 1) sum = sum + i + 1; return sum;"
-assert_main 10 "i = 0; for (;i < 10;) i = i + 1; return i;"
+assert_main 55 "int sum; int i; sum = 0; for (i = 0; i < 10; i = i + 1) sum = sum + i + 1; return sum;"
+assert_main 10 "int i; i = 0; for (;i < 10;) i = i + 1; return i;"
 
 assert_main 0 "{}"
 assert_main 0 "{1;}"
 assert_main 0 "{1;2;}"
 assert_main 3 "{1;2;return 3;}"
 
-assert_main 144 "i = 1; j = 1; while(i < 100) {tmp = i; i = i + j; j = tmp;} return i;"
+assert_main 144 "int i; int j; int tmp; i = 1; j = 1; while(i < 100) {tmp = i; i = i + j; j = tmp;} return i;"
 
 compile tmp.o 'int foo() { return 57; }'
 assert_expr 57 'foo()' tmp.o
@@ -109,7 +109,7 @@ assert 2 'foo(i, j) { return j; } main() { return foo(1, 2); }'
 assert 6 'foo(x, y, z, p, q, r) { return r; } main() { return foo(1, 2, 3, 4, 5, 6); }'
 # assert 6 'foo(x, y, z, p, q, r, m) { return r; } main() { return foo(1, 2, 3, 4, 5, 6, 7); }'
 
-assert_main 3 "x = 3; y = &x; return *y;"
-assert_main 3 "x = 3; y = 5; z = &y + 8; return *z;"
+assert_main 3 "int x; int y; x = 3; y = &x; return *y;"
+assert_main 3 "int x; int y; int z; x = 3; y = 5; z = &y + 8; return *z;"
 
 echo OK

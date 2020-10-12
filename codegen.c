@@ -219,6 +219,8 @@ void gen(Node *node) {
     case ND_ADDR:
         gen_lval(node->lhs);
         return;
+    case ND_DECLARE:
+        return;
     }
 
     gen(node->lhs);

@@ -46,6 +46,7 @@ typedef enum {
     ND_FUNC_BODY, // function body
     ND_ADDR,      // "&"
     ND_DEREF,     // "*"
+    ND_DECLARE,
 } NodeKind;
 
 typedef struct Node Node;
@@ -80,10 +81,12 @@ extern char *user_input;
 extern Token *token;
 
 void error(char *fmt, ...);
+void error_at(char *loc, int len, char *fmt, ...);
 
 void tokenize(char *p);
 
 LVar *get_lvar(Env *env, Token *tok);
+LVar *declare_lvar(Env *env, Token *tok);
 
 Node *expr();
 void program();

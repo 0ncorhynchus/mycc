@@ -10,11 +10,13 @@
 //
 //  program     =  function*
 //  stmt        =  expr ";"
+//               | declare
 //               | "{" stmt* "}"
 //               | "if" "(" expr ")" stmt ("else" stmt)?
 //               | "while" "(" expr ")" stmt
 //               | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //               | "return" expr ";"
+//  declare     =  "int" ident ";"
 //  function    =  ident "(" (ident ("," ident)*)? ")" "{" stmt* "}"
 //  expr        =  assign
 //  assign      =  equality ("=" assign)?
@@ -397,7 +399,7 @@ Node *function() {
     expect("(");
     if (!consume(")")) {
         tok = expect_ident();
-        get_lvar(&env, tok);
+        declare_lvar(&env, tok);
         Node *new = calloc(1, sizeof(Node));
         new->kind = ND_FUNC_ARGS;
         new->func = tok->str;
@@ -406,7 +408,7 @@ Node *function() {
         node->lhs = new;
         while (consume(",")) {
             tok = expect_ident();
-            get_lvar(&env, tok);
+            declare_lvar(&env, tok);
             new = calloc(1, sizeof(Node));
             new->kind = ND_FUNC_ARGS;
             new->func = tok->str;
@@ -499,6 +501,14 @@ Node *stmt(Env *env) {
             current = current->rhs;
             current->kind = ND_BLOCK;
         }
+    } else if (consume("int")) {
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_DECLARE;
+        Token *tok = expect_ident();
+        declare_lvar(env, tok);
+        node->func = tok->str;
+        node->len = tok->len;
+        expect(";");
     } else if (is_function()) {
         return NULL;
         /* node = function(); */
