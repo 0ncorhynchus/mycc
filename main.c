@@ -13,40 +13,18 @@ int main(int argc, char **argv) {
 
     user_input = argv[1];
     token = tokenize(user_input);
-
-    Env env = {NULL, 0};
-    program(&env);
-
-    FunList *fn = get_fun_list();
+    program();
 
     printf(".intel_syntax noprefix\n");
-    printf(".global main\n");
-
-    // generate functions
-    FunList *tmp = fn;
-    while (tmp) {
-        gen_func(tmp->func);
-        printf("\n");
-        tmp = tmp->next;
+    for (int i = 0; code[i]; i++) {
+        if (code[i]->kind != ND_FUNC)
+            continue;
+        printf(".global %.*s\n", code[i]->len, code[i]->func);
     }
-
-    printf("main:\n");
-    // prologue
-    printf("  push rbp\n");
-    printf("  mov rbp, rsp\n");
-    printf("  sub rsp, %d /* allocate for local variables */\n",
-           env.maximum_offset);
 
     for (int i = 0; code[i]; i++) {
-        gen(code[i]);
-        // return the last value in stack, which is the result of the previous
-        // code.
-        printf("  pop rax\n");
+        gen_func(code[i]);
     }
 
-    // epilogue
-    printf("  mov rsp, rbp\n");
-    printf("  pop rbp\n");
-    printf("  ret\n");
     return 0;
 }

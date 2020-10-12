@@ -8,9 +8,8 @@
 
 // # EBNF
 //
-//  program     =  stmt*
+//  program     =  function*
 //  stmt        =  expr ";"
-//               | function
 //               | "{" stmt* "}"
 //               | "if" "(" expr ")" stmt ("else" stmt)?
 //               | "while" "(" expr ")" stmt
@@ -531,7 +530,8 @@ Node *stmt(Env *env) {
             current->kind = ND_BLOCK;
         }
     } else if (is_function()) {
-        node = function();
+        return NULL;
+        /* node = function(); */
     } else {
         node = expr(env);
         expect(";");
@@ -540,11 +540,10 @@ Node *stmt(Env *env) {
     return node;
 }
 
-// TODO
-void program(Env *env) {
+void program() {
     int i = 0;
     while (!at_eof()) {
-        code[i++] = stmt(env);
+        code[i++] = function();
         code[i] = NULL;
     }
 }

@@ -154,6 +154,7 @@ void gen_func(Node *node) {
     }
 
     // epilogue
+    printf("  mov rax, 0\n");
     printf("  mov rsp, rbp\n");
     printf("  pop rbp\n");
     printf("  ret\n");
