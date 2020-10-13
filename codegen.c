@@ -1,5 +1,7 @@
 #include "mycc.h"
+#include <assert.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -43,11 +45,34 @@ void error(char *fmt, ...) {
     exit(1);
 }
 
-void push(char *arg) { printf("  push %s\n", arg); }
+int stack = 0;
+int num_args = 0;
+int num_lvars = 0;
 
-void push_val(int val) { printf("  push %d\n", val); }
+void push(char *arg) {
+    stack++;
+    printf("  push %s\n", arg);
+}
 
-void pop(char *arg) { printf("  pop %s\n", arg); }
+void push_val(int val) {
+    stack++;
+    printf("  push %d\n", val);
+}
+
+void pop(char *arg) {
+    stack--;
+    printf("  pop %s\n", arg);
+}
+
+void epilogue() {
+    printf("  mov rsp, rbp\n");
+    printf("  pop rbp\n");
+    printf("  ret\n");
+    assert(stack == num_args);
+    stack = 0;
+    num_args = 0;
+    num_lvars = 0;
+}
 
 void gen_lval(Node *node) {
     switch (node->kind) {
@@ -88,7 +113,6 @@ void gen_if_body(Node *node, int l_index) {
     }
 
     printf(".Lend%d:\n", l_index);
-    push_val(0); // if block returns zero.
 }
 
 void gen_while(Node *node, int l_index) {
@@ -100,12 +124,13 @@ void gen_while(Node *node, int l_index) {
     gen(node->rhs);
     printf("  jmp .Lbegin%d\n", l_index);
     printf(".Lend%d:\n", l_index);
-    push_val(0); // while loop returns zero.
 }
 
 void gen_for(Node *node, int l_index) {
-    if (node->lhs)
+    if (node->lhs) {
         gen(node->lhs);
+        pop("rax"); // consume the retval
+    }
     printf(".Lbegin%d:\n", l_index);
 
     node = node->rhs;
@@ -122,11 +147,12 @@ void gen_for(Node *node, int l_index) {
     if (node->kind != ND_FOR_BODY)
         error("Expected ND_FOR_BODY");
     gen(node->rhs);
-    if (node->lhs)
+    if (node->lhs) {
         gen(node->lhs);
+        pop("rax"); // consume the retval
+    }
     printf("  jmp .Lbegin%d\n", l_index);
     printf(".Lend%d:\n", l_index);
-    push_val(0); // for loop returns zero.
 }
 
 void gen_block(Node *node) {
@@ -136,7 +162,6 @@ void gen_block(Node *node) {
         if (!node || node->kind != ND_BLOCK)
             error("Expected ND_BLOCK");
     }
-    push_val(0); // block returns zero.
 }
 
 typedef struct NodeList NodeList;
@@ -145,20 +170,26 @@ struct NodeList {
     NodeList *next;
 };
 
-// TODO: alignment RSP
-void gen_call_args(Node *node) {
+void gen_call(Node *node) {
     int num_args = 0;
+    Node *arg = node->lhs;
     NodeList *args = NULL;
-    while (node) {
-        if (node->kind != ND_ARGS)
+    bool is_shifted = (stack + num_lvars) % 2 == 1;
+
+    if (is_shifted) {
+        push_val(0); // align stack
+    }
+
+    while (arg) {
+        if (arg->kind != ND_ARGS)
             error("Expected ND_ARGS");
 
         NodeList *tmp = calloc(1, sizeof(NodeList));
-        tmp->node = node->lhs;
+        tmp->node = arg->lhs;
         tmp->next = args;
 
         args = tmp;
-        node = node->rhs;
+        arg = arg->rhs;
 
         num_args++;
     }
@@ -171,6 +202,17 @@ void gen_call_args(Node *node) {
     for (int i = 0; i < num_args && i < 6; ++i) {
         pop(arg_registers[i]);
     }
+
+    printf("  call %.*s\n", node->ident.len, node->ident.ptr);
+
+    for (int i = 6; i < num_args; i++) {
+        pop("rdi"); // consume remained arguments
+    }
+    if (is_shifted) {
+        pop("rdi"); // restore shifted stack
+    }
+
+    push("rax");
 }
 
 void gen_func(Node *node) {
@@ -178,12 +220,13 @@ void gen_func(Node *node) {
     printf("%.*s:\n", node->ident.len, node->ident.ptr);
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
+    stack = 0;
 
     Node *args = node->lhs;
     Node *body = node->rhs;
 
     // TODO
-    int num_args = args ? args->val : 0;
+    num_args = args ? args->val : 0;
     for (int i = 0; i < num_args; ++i) {
         push(arg_registers[i]);
     }
@@ -191,17 +234,15 @@ void gen_func(Node *node) {
     int variables_offset = body ? body->val : 0;
     printf("  sub rsp, %d /* allocate for local variables */\n",
            variables_offset);
+    num_lvars = variables_offset / 8;
     while (body) {
         gen(body->lhs);
         body = body->rhs;
     }
 
     size_t return_size = sizeof_ty(node->ty);
-    // epilogue
     printf("  mov %s, 0\n", ax(return_size));
-    printf("  mov rsp, rbp\n");
-    printf("  pop rbp\n");
-    printf("  ret\n");
+    epilogue();
 }
 
 void gen_declare(Node *node) {
@@ -303,17 +344,13 @@ void gen(Node *node) {
     case ND_RETURN:
         gen(node->lhs);
         pop("rax");
-        printf("  mov rsp, rbp\n");
-        pop("rbp");
-        printf("  ret\n");
+        epilogue();
         return;
     case ND_BLOCK:
         gen_block(node);
         return;
     case ND_CALL:
-        gen_call_args(node->lhs);
-        printf("  call %.*s\n", node->ident.len, node->ident.ptr);
-        push("rax");
+        gen_call(node);
         return;
     case ND_FUNC:
         // skip
@@ -321,7 +358,17 @@ void gen(Node *node) {
     case ND_DEREF:
         gen(node->lhs);
         pop("rax");
-        printf("  mov rax, [rax]\n");
+        switch (sizeof_ty(node->lhs->ty)) {
+        case INT:
+            printf("  movsx rax, WORD PTR [rax]\n");
+            break;
+        case CHAR:
+            printf("  movzx rax, BYTE PTR [rax]\n");
+            break;
+        default:
+            printf("  mov rax, [rax]\n");
+            break;
+        }
         push("rax");
         return;
     case ND_ADDR:
@@ -338,6 +385,10 @@ void gen(Node *node) {
     case ND_STRING:
         printf("  lea rax, .LC%d[rip]\n", node->val);
         push("rax");
+        return;
+    case ND_SEMICOLON:
+        gen(node->lhs);
+        pop("rax");
         return;
     default:
         break;
@@ -388,10 +439,13 @@ void gen(Node *node) {
 void gen_strings(Env *env) {
     String *str = env->strings;
 
-    while (str) {
+    if (str) {
         printf("\n");
         printf(".text\n");
         printf(".section .rodata\n");
+    }
+
+    while (str) {
         printf(".LC%d:\n", str->index);
         printf("  .string \"%.*s\"\n", str->ident.len, str->ident.ptr);
 

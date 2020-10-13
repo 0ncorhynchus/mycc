@@ -66,6 +66,7 @@ typedef enum {
     ND_DEREF,     // "*"
     ND_DECLARE,
     ND_STRING,
+    ND_SEMICOLON,
 } NodeKind;
 
 typedef struct Node Node;

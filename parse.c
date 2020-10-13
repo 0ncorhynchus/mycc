@@ -813,7 +813,9 @@ Node *stmt(Env *env) {
         if (node) {
             node = declare(env, node);
         } else {
-            node = expr(env);
+            node = calloc(1, sizeof(Node));
+            node->kind = ND_SEMICOLON;
+            node->lhs = expr(env);
             expect(";");
         }
     }
