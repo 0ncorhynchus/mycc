@@ -26,7 +26,7 @@ struct Token {
 
 typedef struct Type Type;
 struct Type {
-    enum { INT, PTR, ARRAY } ty;
+    enum { INT, PTR, ARRAY, CHAR } ty;
     Type *ptr_to;
     size_t array_size;
 };
@@ -124,6 +124,7 @@ void error_at(const Span *span, char *fmt, ...);
 void tokenize(char *p);
 
 size_t sizeof_ty(Type *ty);
+char *type_to_str(Type *ty);
 
 const LVar *get_lvar(Env *env, const Span *ident);
 const LVar *declare_lvar(Env *env, Type *ty, const Span *ident);

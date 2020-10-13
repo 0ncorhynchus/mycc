@@ -31,14 +31,14 @@
 //  primary     =  num
 //               | ident ( "(" ( expr ( "," expr )* )? ")" )?
 //               | "(" expr ")"
-//  type        = type "*" | "int"
+//  type        = type "*" | "int" | "char"
 //
 
 char *user_input;
 Token *token;
 
-char *reserved[] = {"if",     "else", "while",  "for",
-                    "return", "int",  "sizeof", NULL};
+char *reserved[] = {"if",  "else",   "while", "for", "return",
+                    "int", "sizeof", "char",  NULL};
 
 void error_at(const Span *span, char *fmt, ...) {
     va_list ap;
@@ -222,11 +222,15 @@ void tokenize(char *p) {
 }
 
 Type *type() {
-    if (!consume("int"))
-        return NULL;
-
     Type *ty = calloc(1, sizeof(Type));
-    ty->ty = INT;
+    if (consume("int")) {
+        ty->ty = INT;
+    } else if (consume("char")) {
+        ty->ty = CHAR;
+    } else {
+        free(ty);
+        return NULL;
+    }
 
     Token *tok = token;
     while (is_reserved(tok, "*")) {
@@ -263,6 +267,11 @@ char *type_to_str(Type *ty) {
         case ARRAY:
             depth += snprintf(NULL, 0, "[%zu]", tmp->array_size);
             break;
+        case CHAR:
+            depth += 4; // length of "char"
+            break;
+        default:
+            error("Not implemented for this type: type_to_str()");
         }
     }
 
@@ -281,26 +290,52 @@ char *type_to_str(Type *ty) {
             depth -= snprintf(NULL, 0, "[%zu]", tmp->array_size);
             sprintf(buffer + depth, "[%zu]", tmp->array_size);
             break;
+        case CHAR:
+            depth -= 4; // length of "char"
+            memcpy(buffer + depth, "char", 4);
+            break;
+        default:
+            error("Not implemented for this type: type_to_str()");
         }
     }
 
     return buffer;
 }
 
+bool is_subtype(Type *base, Type *derived) {
+    if (base == NULL || derived == NULL) {
+        return false;
+    }
+
+    switch (base->ty) {
+    case INT:
+        return derived->ty == INT || derived->ty == CHAR;
+    case PTR:
+        if (derived->ty == PTR) {
+            return is_subtype(base->ptr_to, derived->ptr_to);
+        }
+        return derived->ty == INT || derived->ty == CHAR;
+    case ARRAY:
+        if (derived->ty == ARRAY && base->array_size == derived->array_size) {
+            return is_subtype(base->ptr_to, derived->ptr_to);
+        }
+        return false;
+    case CHAR:
+        return derived->ty == CHAR;
+    default:
+        return false;
+    }
+}
+
 Type *check_type(Type *lhs, Type *rhs) {
-    if (lhs == NULL || rhs == NULL)
-        return NULL;
-    if (rhs->ty == INT && lhs->ty == INT)
+    if (is_subtype(lhs, rhs)) {
         return lhs;
-    if (rhs->ty == INT && lhs->ty == PTR)
-        return lhs;
-    if (rhs->ty == PTR && lhs->ty == INT)
+    }
+
+    if (is_subtype(rhs, lhs)) {
         return rhs;
-    if (rhs->ty == PTR && lhs->ty == PTR)
-        return check_type(lhs->ptr_to, rhs->ptr_to);
-    if (rhs->ty == ARRAY && lhs->ty == ARRAY &&
-        rhs->array_size == lhs->array_size)
-        return check_type(lhs->ptr_to, rhs->ptr_to);
+    }
+
     return NULL;
 }
 

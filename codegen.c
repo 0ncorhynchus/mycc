@@ -197,44 +197,39 @@ void gen_top(Node *node) {
 }
 
 void gen_add(Node *node, char *op) {
-    if (node->lhs->ty->ty == INT) {
-        if (node->rhs->ty->ty == INT) {
+    if (node->lhs->ty->ty == PTR) {
+        if (node->rhs->ty->ty == PTR) {
+            error("Invalid operands to binary '%s' between pointers", op);
+        } else {
+            size_t size = sizeof_ty(node->lhs->ty->ptr_to);
             gen(node->lhs);
+
             gen(node->rhs);
-            pop("rdi");
             pop("rax");
-            printf("  %s rax, rdi\n", op);
+            printf("  mov rdi, %zu\n", size);
+            printf("  imul rax, rdi\n");
             push("rax");
-        } else { // node->rhs->ty->ty == PTR
+        }
+    } else {
+        if (node->rhs->ty->ty == PTR) {
             size_t size = sizeof_ty(node->rhs->ty->ptr_to);
             gen(node->lhs);
             pop("rax");
             printf("  mov rdi, %zu\n", size);
             printf("  imul rax, rdi\n");
             push("rax");
+
             gen(node->rhs);
-            pop("rdi");
-            pop("rax");
-            printf("  %s rax, rdi\n", op);
-            push("rax");
-        }
-    } else { // node->lhs->ty->ty == PTR
-        if (node->rhs->ty->ty == INT) {
-            size_t size = sizeof_ty(node->lhs->ty->ptr_to);
+        } else {
             gen(node->lhs);
             gen(node->rhs);
-            pop("rax");
-            printf("  mov rdi, %zu\n", size);
-            printf("  imul rax, rdi\n");
-            push("rax");
-            pop("rdi");
-            pop("rax");
-            printf("  %s rax, rdi\n", op);
-            push("rax");
-        } else { // node->rhs->ty->ty == PTR
-            error("Invalid operands to binary '%s' between pointers", op);
         }
     }
+
+    pop("rdi");
+    pop("rax");
+    printf("  %s rax, rdi\n", op);
+    push("rax");
 }
 
 void gen(Node *node) {

@@ -14,6 +14,10 @@ size_t sizeof_ty(Type *ty) {
         return 8;
     case ARRAY:
         return sizeof_ty(ty->ptr_to) * ty->array_size;
+    case CHAR:
+        return 1;
+    default:
+        error("The size of %s is unknown.", type_to_str(ty));
     }
 }
 

@@ -141,7 +141,8 @@ assert_main 20 'int x[5]; return sizeof(x);'
 assert_main 4 'int x[5]; int y; y = 4; return y;'
 assert_main 1 'int a[2]; *&a = 1; return *a;'
 assert_main 1 'int a[2]; *a = 1; return *a;'
-assert_main 2 'int a[2]; *(a + 1) = 2; return *(a + 1);'
+assert_main 2 'int a[2]; *(a + 1) = 2; return *(1 + a);'
+assert_main 2 'int a[2]; *(1 + a) = 2; return *(a + 1);'
 assert_main 0 'int a[2]; int *p; p = a; *p = 0; return *p;'
 assert_main 3 'int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *p + *(p + 1);'
 
@@ -156,5 +157,8 @@ assert 0 "int foo; int main() { return 0; }"
 assert 0 "int foo; int main() { return foo; }"
 assert 0 "int foo; int main() { foo = 1; return 0; }"
 assert 1 "int foo; int main() { foo = 1; return foo; }"
+
+assert 0 'char x[3]; int main() { return 0; }'
+assert_main 3 'char x[3]; x[0] = -1; x[1] = 2; int y; y = 4; return x[0] + y;'
 
 echo OK
