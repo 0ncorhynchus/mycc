@@ -521,36 +521,42 @@ Node *expr(Env *env) { return assign(env); }
 
 Node *stmt(Env *env);
 
+// try to parse a type and an ident.
+// For parse a function and a declare.
+Node *type_ident() {
+    Type *ty = type();
+    if (ty == NULL)
+        return NULL;
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_DECLARE;
+    node->ty = ty;
+    node->ident = expect_ident()->span;
+    return node;
+}
+
 Node *function() {
     Env env = {NULL, 0};
-    Node *node = calloc(1, sizeof(Node));
+    Node *node = type_ident();
+    if (node == NULL)
+        error("Expected function.");
     node->kind = ND_FUNC;
-
-    Type *ty = expect_type(); // type of return
-
-    Token *tok = expect_ident();
-    node->ident = tok->span;
 
     int argument_offset = 0;
     expect("(");
     if (!consume(")")) {
-        ty = expect_type();
-        tok = expect_ident();
-        declare_lvar(&env, ty, &tok->span);
-        Node *new = calloc(1, sizeof(Node));
-        new->kind = ND_FUNC_ARGS;
-        new->ident = tok->span;
+        Node *arg = type_ident();
+        arg->kind = ND_FUNC_ARGS;
+        node->lhs = arg;
 
-        node->lhs = new;
+        declare_lvar(&env, arg->ty, &arg->ident);
+
         while (consume(",")) {
-            ty = expect_type();
-            tok = expect_ident();
-            declare_lvar(&env, ty, &tok->span);
-            new = calloc(1, sizeof(Node));
-            new->kind = ND_FUNC_ARGS;
-            new->ident = tok->span;
-            new->lhs = node->lhs;
-            node->lhs = new;
+            arg = type_ident();
+            arg->kind = ND_FUNC_ARGS;
+            arg->lhs = node->lhs;
+            node->lhs = arg;
+
+            declare_lvar(&env, arg->ty, &arg->ident);
         }
         expect(")");
 
@@ -638,21 +644,19 @@ Node *stmt(Env *env) {
             current->kind = ND_BLOCK;
         }
     } else {
-        Type *ty = type();
-        if (ty) { // declare
-            node = calloc(1, sizeof(Node));
-            node->kind = ND_DECLARE;
-            Token *tok = expect_ident();
+        node = type_ident();
+        if (node) { // declare
             if (consume("[")) {
+                size_t array_size = expect_number();
+                expect("]");
+
                 Type *array_ty = calloc(1, sizeof(Type));
                 array_ty->ty = ARRAY;
-                array_ty->ptr_to = ty;
-                array_ty->array_size = expect_number();
-                ty = array_ty;
-                expect("]");
+                array_ty->ptr_to = node->ty;
+                array_ty->array_size = array_size;
+                node->ty = array_ty;
             }
-            declare_lvar(env, ty, &tok->span);
-            node->ident = tok->span;
+            declare_lvar(env, node->ty, &node->ident);
             expect(";");
         } else {
             node = expr(env);
