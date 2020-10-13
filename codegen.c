@@ -138,7 +138,7 @@ void gen_call_args(Node *node) {
 }
 
 void gen_func(Node *node) {
-    printf("%.*s:\n", node->len, node->ident);
+    printf("%.*s:\n", node->ident.len, node->ident.ptr);
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
 
@@ -251,7 +251,7 @@ void gen(Node *node) {
         return;
     case ND_CALL:
         gen_call_args(node->lhs);
-        printf("  call %.*s\n", node->len, node->ident);
+        printf("  call %.*s\n", node->ident.len, node->ident.ptr);
         push("rax");
         return;
     case ND_FUNC:

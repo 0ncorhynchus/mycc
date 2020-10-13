@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
     for (int i = 0; code[i]; i++) {
         if (code[i]->kind != ND_FUNC)
             continue;
-        printf(".global %.*s\n", code[i]->len, code[i]->ident);
+        printf(".global %.*s\n", code[i]->ident.len, code[i]->ident.ptr);
     }
 
     for (int i = 0; code[i]; i++) {

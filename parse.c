@@ -40,14 +40,14 @@ Token *token;
 char *reserved[] = {"if",     "else", "while",  "for",
                     "return", "int",  "sizeof", NULL};
 
-void error_at(char *loc, int len, char *fmt, ...) {
+void error_at(const Span *span, char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
 
-    int pos = loc - user_input;
+    int pos = span->ptr - user_input;
     fprintf(stderr, "%s\n", user_input);
     fprintf(stderr, "%*s", pos, "");
-    for (int i = 0; i < len; i++)
+    for (int i = 0; i < span->len; i++)
         fprintf(stderr, "^");
     fprintf(stderr, " ");
     vfprintf(stderr, fmt, ap);
@@ -61,8 +61,8 @@ int is_alnum(char c) {
 }
 
 bool consume(char *op) {
-    if (token->kind != TK_RESERVED || strlen(op) != token->len ||
-        memcmp(token->str, op, token->len))
+    if (token->kind != TK_RESERVED || strlen(op) != token->span.len ||
+        memcmp(token->span.ptr, op, token->span.len))
         return false;
     token = token->next;
     return true;
@@ -70,7 +70,8 @@ bool consume(char *op) {
 
 bool is_reserved(Token *token, char *op) {
     if (token == NULL || token->kind != TK_RESERVED ||
-        strlen(op) != token->len || memcmp(token->str, op, token->len))
+        strlen(op) != token->span.len ||
+        memcmp(token->span.ptr, op, token->span.len))
         return false;
     return true;
 }
@@ -85,10 +86,9 @@ Token *consume_ident() {
 
 Token *expect_ident() {
     if (token->kind != TK_IDENT) {
-        char *got = calloc(token->len + 1, sizeof(char));
-        memcpy(got, token->str, token->len);
-        error_at(token->str, token->len,
-                 "Unexpected token: an ident expected, but got '%s'", got);
+        error_at(&token->span,
+                 "Unexpected token: an ident expected, but got '%.*s'",
+                 token->span.len, token->span.ptr);
     }
 
     Token *tok = token;
@@ -99,20 +99,18 @@ Token *expect_ident() {
 bool is_ident(Token *token) { return token && token->kind == TK_IDENT; }
 
 void expect(char *op) {
-    if (token->kind != TK_RESERVED || strlen(op) != token->len ||
-        memcmp(token->str, op, token->len)) {
-        char *got = calloc(token->len + 1, sizeof(char));
-        memcpy(got, token->str, token->len);
-        error_at(token->str, token->len,
-                 "Unexpected token: '%s': expected, but got '%s'", op, got);
+    if (token->kind != TK_RESERVED || strlen(op) != token->span.len ||
+        memcmp(token->span.ptr, op, token->span.len)) {
+        error_at(&token->span,
+                 "Unexpected token: '%s': expected, but got '%.*s'", op,
+                 token->span.len, token->span.ptr);
     }
     token = token->next;
 }
 
 int expect_number() {
     if (token->kind != TK_NUM)
-        error_at(token->str, token->len,
-                 "Unexpected token: a number expected.");
+        error_at(&token->span, "Unexpected token: a number expected.");
     int val = token->val;
     token = token->next;
     return val;
@@ -123,8 +121,8 @@ bool at_eof() { return token->kind == TK_EOF; }
 Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
     Token *tok = calloc(1, sizeof(Token));
     tok->kind = kind;
-    tok->str = str;
-    tok->len = len;
+    tok->span.ptr = str;
+    tok->span.len = len;
     cur->next = tok;
     return tok;
 }
@@ -153,7 +151,8 @@ void tokenize(char *p) {
 
         if (*p == '!') {
             if (!*(p + 1) || *(p + 1) != '=') {
-                error_at(p, 1, "Failed to tokenize");
+                Span span = {p, 1};
+                error_at(&span, "Failed to tokenize");
             }
 
             cur = new_token(TK_RESERVED, cur, p, 2);
@@ -214,7 +213,8 @@ void tokenize(char *p) {
             continue;
         }
 
-        error_at(p, 1, "Failed to tokenize");
+        Span span = {p, 1};
+        error_at(&span, "Failed to tokenize");
     }
 
     new_token(TK_EOF, cur, p, 0);
@@ -246,7 +246,7 @@ Type *expect_type() {
     Type *ty = type();
     if (ty)
         return ty;
-    error_at(token->str, token->len, "Unknown type");
+    error_at(&token->span, "Unknown type");
 }
 
 char *type_to_str(Type *ty) {
@@ -361,8 +361,7 @@ Node *primary(Env *env) {
         // function call
         if (consume("(")) {
             node->kind = ND_CALL;
-            node->ident = tok->str;
-            node->len = tok->len;
+            node->ident = tok->span;
             if (consume(")"))
                 return node;
 
@@ -530,8 +529,7 @@ Node *function() {
     Type *ty = expect_type(); // type of return
 
     Token *tok = expect_ident();
-    node->ident = tok->str;
-    node->len = tok->len;
+    node->ident = tok->span;
 
     int argument_offset = 0;
     expect("(");
@@ -541,8 +539,7 @@ Node *function() {
         declare_lvar(&env, ty, tok);
         Node *new = calloc(1, sizeof(Node));
         new->kind = ND_FUNC_ARGS;
-        new->ident = tok->str;
-        new->len = tok->len;
+        new->ident = tok->span;
 
         node->lhs = new;
         while (consume(",")) {
@@ -551,8 +548,7 @@ Node *function() {
             declare_lvar(&env, ty, tok);
             new = calloc(1, sizeof(Node));
             new->kind = ND_FUNC_ARGS;
-            new->ident = tok->str;
-            new->len = tok->len;
+            new->ident = tok->span;
             new->lhs = node->lhs;
             node->lhs = new;
         }
@@ -656,8 +652,7 @@ Node *stmt(Env *env) {
                 expect("]");
             }
             declare_lvar(env, ty, tok);
-            node->ident = tok->str;
-            node->len = tok->len;
+            node->ident = tok->span;
             expect(";");
         } else {
             node = expr(env);

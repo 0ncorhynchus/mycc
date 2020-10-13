@@ -16,29 +16,28 @@ size_t sizeof_ty(Type *ty) {
 
 LVar *find_lvar(Env *env, Token *tok) {
     for (LVar *var = env->locals; var; var = var->next)
-        if (var->len == tok->len && !memcmp(tok->str, var->name, var->len))
+        if (var->ident.len == tok->span.len &&
+            !memcmp(tok->span.ptr, var->ident.ptr, var->ident.len))
             return var;
     return NULL;
 }
 
 LVar *get_lvar(Env *env, Token *tok) {
     LVar *retval = find_lvar(env, tok);
-    if (retval == NULL)
-        error_at(tok->str, tok->len, "'%.*s' is undeclared", tok->len,
-                 tok->str);
-    return retval;
+    if (retval)
+        return retval;
+    error_at(&tok->span, "'%.*s' is undeclared", tok->span.len, tok->span.ptr);
 }
 
 LVar *declare_lvar(Env *env, Type *ty, Token *tok) {
     if (find_lvar(env, tok))
-        error_at(tok->str, tok->len, "'%.*s' is already declared", tok->len,
-                 tok->str);
+        error_at(&tok->span, "'%.*s' is already declared", tok->span.len,
+                 tok->span.ptr);
 
     LVar *new = calloc(1, sizeof(LVar));
     new->next = env->locals;
     new->ty = ty;
-    new->name = tok->str;
-    new->len = tok->len;
+    new->ident = tok->span;
 
     size_t size = ((sizeof_ty(ty) - 1) / 8 + 1) * 8;
     env->maximum_offset += size;

@@ -2,6 +2,12 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+typedef struct Span Span;
+struct Span {
+    const char *ptr;
+    size_t len;
+};
+
 typedef enum {
     TK_RESERVED,
     TK_IDENT,
@@ -15,8 +21,7 @@ struct Token {
     TokenKind kind;
     Token *next;
     int val;
-    char *str;
-    int len;
+    Span span;
 };
 
 typedef enum {
@@ -62,14 +67,12 @@ struct Node {
     NodeKind kind;
     Node *lhs;
     Node *rhs;
-    int val; // for ND_NUM
+    int val;
 
-    // for ND_LVAR
     Type *ty;
     int offset;
 
-    char *ident; // for ND_CALL
-    int len;
+    Span ident;
 };
 
 typedef struct LVar LVar;
@@ -77,9 +80,9 @@ typedef struct LVar LVar;
 struct LVar {
     LVar *next;
     Type *ty;
-    char *name;
-    int len;
     int offset;
+
+    Span ident;
 };
 
 typedef struct Env Env;
@@ -93,7 +96,7 @@ extern char *user_input;
 extern Token *token;
 
 void error(char *fmt, ...);
-void error_at(char *loc, int len, char *fmt, ...);
+void error_at(const Span *span, char *fmt, ...);
 
 void tokenize(char *p);
 
