@@ -15,13 +15,8 @@ int main(int argc, char **argv) {
 
     printf(".intel_syntax noprefix\n");
     for (int i = 0; code[i]; i++) {
-        if (code[i]->kind != ND_FUNC)
-            continue;
-        printf(".global %.*s\n", code[i]->ident.len, code[i]->ident.ptr);
-    }
-
-    for (int i = 0; code[i]; i++) {
-        gen_func(code[i]);
+        printf("\n");
+        gen_top(code[i]);
     }
 
     return 0;

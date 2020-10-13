@@ -382,6 +382,8 @@ Node *primary(Env *env) {
         const LVar *lvar = get_lvar(env, &tok->span);
         node->ty = lvar->ty;
         node->offset = lvar->offset;
+        node->vkind = lvar->kind;
+        node->ident = lvar->ident;
 
         return node;
     }

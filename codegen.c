@@ -24,8 +24,15 @@ void pop(char *arg) { printf("  pop %s\n", arg); }
 void gen_lval(Node *node) {
     switch (node->kind) {
     case ND_LVAR:
-        printf("  mov rax, rbp\n");
-        printf("  sub rax, %d\n", node->offset);
+        switch (node->vkind) {
+        case VLOCAL:
+            printf("  mov rax, rbp\n");
+            printf("  sub rax, %d\n", node->offset);
+            break;
+        case VGLOBAL:
+            printf("  lea rax, %.*s[rip]\n", node->ident.len, node->ident.ptr);
+            break;
+        }
         push("rax");
         break;
     case ND_DEREF:
@@ -138,6 +145,7 @@ void gen_call_args(Node *node) {
 }
 
 void gen_func(Node *node) {
+    printf(".global %.*s\n", node->ident.len, node->ident.ptr);
     printf("%.*s:\n", node->ident.len, node->ident.ptr);
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
@@ -164,6 +172,28 @@ void gen_func(Node *node) {
     printf("  mov rsp, rbp\n");
     printf("  pop rbp\n");
     printf("  ret\n");
+}
+
+void gen_declare(Node *node) {
+    size_t size = sizeof_ty(node->ty);
+    printf(".global %.*s\n", node->ident.len, node->ident.ptr);
+    printf(".bss\n");
+    printf("%.*s:\n", node->ident.len, node->ident.ptr);
+    printf("  .zero %zu\n", size);
+}
+
+void gen_top(Node *node) {
+    printf(".text\n");
+    switch (node->kind) {
+    case ND_FUNC:
+        gen_func(node);
+        return;
+    case ND_DECLARE:
+        gen_declare(node);
+        return;
+    default:
+        error("Invalid top node");
+    }
 }
 
 void gen_add(Node *node, char *op) {

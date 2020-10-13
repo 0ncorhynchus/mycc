@@ -132,7 +132,7 @@ Node *expr();
 void program();
 
 void gen(Node *node);
-void gen_func(Node *node);
+void gen_top(Node *node);
 
 static void debug(char *fmt, ...) {
     fprintf(stderr, "[debug] ");
