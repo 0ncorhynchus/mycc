@@ -24,6 +24,13 @@ struct Token {
     Span span;
 };
 
+typedef struct Type Type;
+struct Type {
+    enum { INT, PTR, ARRAY } ty;
+    Type *ptr_to;
+    size_t array_size;
+};
+
 typedef enum {
     ND_ADD,       // "+"
     ND_SUB,       // "-"
@@ -54,29 +61,26 @@ typedef enum {
     ND_DECLARE,
 } NodeKind;
 
-typedef struct Type Type;
-struct Type {
-    enum { INT, PTR, ARRAY } ty;
-    Type *ptr_to;
-    size_t array_size;
-};
-
 typedef struct Node Node;
-
 struct Node {
     NodeKind kind;
-    Node *lhs;
-    Node *rhs;
+    Type *ty;
+
+    // For ND_NUM,
     int val;
 
-    Type *ty;
+    // For operators: ND_ADD, ND_SUB, ...
+    Node *lhs;
+    Node *rhs;
+
+    // For ND_LVAR
     int offset;
 
+    // For ND_LVAR, ND_FUNC, ND_CALL
     Span ident;
 };
 
 typedef struct LVar LVar;
-
 struct LVar {
     LVar *next;
     Type *ty;
@@ -86,7 +90,6 @@ struct LVar {
 };
 
 typedef struct Env Env;
-
 struct Env {
     LVar *locals;
     int maximum_offset;
