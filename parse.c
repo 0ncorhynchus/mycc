@@ -379,7 +379,7 @@ Node *primary(Env *env) {
             return node;
         }
 
-        LVar *lvar = get_lvar(env, tok);
+        const LVar *lvar = get_lvar(env, &tok->span);
         node->ty = lvar->ty;
         node->offset = lvar->offset;
 
@@ -536,7 +536,7 @@ Node *function() {
     if (!consume(")")) {
         ty = expect_type();
         tok = expect_ident();
-        declare_lvar(&env, ty, tok);
+        declare_lvar(&env, ty, &tok->span);
         Node *new = calloc(1, sizeof(Node));
         new->kind = ND_FUNC_ARGS;
         new->ident = tok->span;
@@ -545,7 +545,7 @@ Node *function() {
         while (consume(",")) {
             ty = expect_type();
             tok = expect_ident();
-            declare_lvar(&env, ty, tok);
+            declare_lvar(&env, ty, &tok->span);
             new = calloc(1, sizeof(Node));
             new->kind = ND_FUNC_ARGS;
             new->ident = tok->span;
@@ -651,7 +651,7 @@ Node *stmt(Env *env) {
                 ty = array_ty;
                 expect("]");
             }
-            declare_lvar(env, ty, tok);
+            declare_lvar(env, ty, &tok->span);
             node->ident = tok->span;
             expect(";");
         } else {

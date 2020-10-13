@@ -14,30 +14,29 @@ size_t sizeof_ty(Type *ty) {
     }
 }
 
-LVar *find_lvar(Env *env, Token *tok) {
+LVar *find_lvar(Env *env, const Span *ident) {
     for (LVar *var = env->locals; var; var = var->next)
-        if (var->ident.len == tok->span.len &&
-            !memcmp(tok->span.ptr, var->ident.ptr, var->ident.len))
+        if (var->ident.len == ident->len &&
+            !memcmp(ident->ptr, var->ident.ptr, var->ident.len))
             return var;
     return NULL;
 }
 
-LVar *get_lvar(Env *env, Token *tok) {
-    LVar *retval = find_lvar(env, tok);
+const LVar *get_lvar(Env *env, const Span *ident) {
+    LVar *retval = find_lvar(env, ident);
     if (retval)
         return retval;
-    error_at(&tok->span, "'%.*s' is undeclared", tok->span.len, tok->span.ptr);
+    error_at(ident, "'%.*s' is undeclared", ident->len, ident->ptr);
 }
 
-LVar *declare_lvar(Env *env, Type *ty, Token *tok) {
-    if (find_lvar(env, tok))
-        error_at(&tok->span, "'%.*s' is already declared", tok->span.len,
-                 tok->span.ptr);
+const LVar *declare_lvar(Env *env, Type *ty, const Span *ident) {
+    if (find_lvar(env, ident))
+        error_at(ident, "'%.*s' is already declared", ident->len, ident->ptr);
 
     LVar *new = calloc(1, sizeof(LVar));
     new->next = env->locals;
     new->ty = ty;
-    new->ident = tok->span;
+    new->ident = *ident;
 
     size_t size = ((sizeof_ty(ty) - 1) / 8 + 1) * 8;
     env->maximum_offset += size;

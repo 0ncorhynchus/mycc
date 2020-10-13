@@ -105,8 +105,8 @@ void tokenize(char *p);
 
 size_t sizeof_ty(Type *ty);
 
-LVar *get_lvar(Env *env, Token *tok);
-LVar *declare_lvar(Env *env, Type *ty, Token *tok);
+const LVar *get_lvar(Env *env, const Span *ident);
+const LVar *declare_lvar(Env *env, Type *ty, const Span *ident);
 
 Node *expr();
 void program();
