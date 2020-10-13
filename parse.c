@@ -8,7 +8,7 @@
 
 // # EBNF
 //
-//  program     =  function*
+//  program     =  ( function | declare )*
 //  stmt        =  expr ";"
 //               | declare
 //               | "{" stmt* "}"
@@ -534,15 +534,15 @@ Node *type_ident() {
     return node;
 }
 
-Node *function() {
+Node *function(Node *node) {
+    if (!consume("("))
+        return NULL;
+
     Env env = {NULL, 0};
-    Node *node = type_ident();
-    if (node == NULL)
-        error("Expected function.");
+    int argument_offset = 0;
+
     node->kind = ND_FUNC;
 
-    int argument_offset = 0;
-    expect("(");
     if (!consume(")")) {
         Node *arg = type_ident();
         arg->kind = ND_FUNC_ARGS;
@@ -578,6 +578,24 @@ Node *function() {
         int variables_offset = env.maximum_offset - argument_offset;
         node->rhs->val = variables_offset;
     }
+
+    return node;
+}
+
+Node *declare(Env *env, Node *node) {
+    if (consume("[")) {
+        size_t array_size = expect_number();
+        expect("]");
+
+        Type *array_ty = calloc(1, sizeof(Type));
+        array_ty->ty = ARRAY;
+        array_ty->ptr_to = node->ty;
+        array_ty->array_size = array_size;
+        node->ty = array_ty;
+    }
+
+    declare_lvar(env, node->ty, &node->ident);
+    expect(";");
 
     return node;
 }
@@ -645,19 +663,8 @@ Node *stmt(Env *env) {
         }
     } else {
         node = type_ident();
-        if (node) { // declare
-            if (consume("[")) {
-                size_t array_size = expect_number();
-                expect("]");
-
-                Type *array_ty = calloc(1, sizeof(Type));
-                array_ty->ty = ARRAY;
-                array_ty->ptr_to = node->ty;
-                array_ty->array_size = array_size;
-                node->ty = array_ty;
-            }
-            declare_lvar(env, node->ty, &node->ident);
-            expect(";");
+        if (node) {
+            node = declare(env, node);
         } else {
             node = expr(env);
             expect(";");
@@ -668,9 +675,18 @@ Node *stmt(Env *env) {
 }
 
 void program(Node *code[]) {
+    Env env = {NULL, 0};
     int i = 0;
     while (!at_eof()) {
-        code[i++] = function();
-        code[i] = NULL;
+        Node *node = type_ident();
+        if (node == NULL)
+            error("Cannot parse the program.");
+
+        Node *fn = function(node);
+        if (fn)
+            code[i++] = fn;
+        else
+            code[i++] = declare(&env, node);
     }
+    code[i] = NULL;
 }

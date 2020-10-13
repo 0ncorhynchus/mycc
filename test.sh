@@ -152,4 +152,7 @@ assert_main 2 'int a[2]; a[0] = 1; a[1] = 2; return +a[1];'
 assert_main 1 'int a[2]; a[0] = 1; a[1] = 2; return -a[1] + 3;'
 assert_main 4 'int a[2]; a[0] = 1; a[1] = 2; return sizeof(a[1]);'
 
+assert 0 "int foo; int main() { return 0; }"
+# assert 0 "int foo; int main() { foo = 1; return foo; }"
+
 echo OK
