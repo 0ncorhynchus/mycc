@@ -31,6 +31,7 @@
 //  primary     =  num
 //               | ident ( "(" ( expr ( "," expr )* )? ")" )?
 //               | "(" expr ")"
+//               | string
 //  type        = type "*" | "int" | "char"
 //
 
@@ -91,6 +92,15 @@ Token *expect_ident() {
                  token->span.len, token->span.ptr);
     }
 
+    Token *tok = token;
+    token = token->next;
+    return tok;
+}
+
+Token *consume_string() {
+    if (token->kind != TK_STRING) {
+        return NULL;
+    }
     Token *tok = token;
     token = token->next;
     return tok;
@@ -187,6 +197,20 @@ void tokenize(char *p) {
             int len = p - first;
             cur = new_token(TK_NUM, cur, first, len);
             cur->val = val;
+            continue;
+        }
+
+        if (*p == '"') {
+            char *first = p;
+
+            p++; // consume begining '"'
+            while (*p != '"') {
+                p++;
+            }
+            p++; // consume ending '"'
+
+            int len = p - first;
+            cur = new_token(TK_STRING, cur, first, len);
             continue;
         }
 
@@ -427,6 +451,14 @@ Node *primary(Env *env) {
         node->vkind = lvar->kind;
         node->ident = lvar->ident;
 
+        return node;
+    }
+
+    tok = consume_string();
+    if (tok) {
+        Node *node = calloc(1, sizeof(Node));
+        node->kind = ND_STRING;
+        node->ident = tok->span;
         return node;
     }
 

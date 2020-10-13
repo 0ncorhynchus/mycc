@@ -12,6 +12,7 @@ typedef enum {
     TK_RESERVED,
     TK_IDENT,
     TK_NUM,
+    TK_STRING,
     TK_EOF,
 } TokenKind;
 
@@ -64,6 +65,7 @@ typedef enum {
     ND_ADDR,      // "&"
     ND_DEREF,     // "*"
     ND_DECLARE,
+    ND_STRING,
 } NodeKind;
 
 typedef struct Node Node;

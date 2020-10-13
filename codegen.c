@@ -335,6 +335,9 @@ void gen(Node *node) {
     case ND_SUB:
         gen_add(node, "sub");
         return;
+    case ND_STRING:
+        // TODO
+        return;
     default:
         break;
     }
