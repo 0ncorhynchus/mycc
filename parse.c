@@ -169,6 +169,24 @@ void tokenize(char *p) {
             continue;
         }
 
+        if (strncmp(p, "//", 2) == 0) {
+            p += 2;
+            while (*p != '\n') {
+                p++;
+            }
+            continue;
+        }
+
+        if (strncmp(p, "/*", 2) == 0) {
+            char *q = strstr(p + 2, "*/");
+            if (!q) {
+                const Span span = {p, 1};
+                error_at(&span, "Unclosed comment");
+            }
+            p = q + 2;
+            continue;
+        }
+
         if (*p == '=') {
             int len;
             if (*(p + 1) && *(p + 1) == '=')
