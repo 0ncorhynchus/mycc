@@ -5,6 +5,34 @@
 
 char *arg_registers[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
+const char *ax(size_t size) {
+    switch (size) {
+    case 1:
+        return "al";
+    case 4:
+        return "eax";
+    case 8:
+        return "rax";
+    default:
+        error("Not supported register size.");
+        return NULL;
+    }
+}
+
+const char *di(size_t size) {
+    switch (size) {
+    case 1:
+        return "dil";
+    case 4:
+        return "edi";
+    case 8:
+        return "rdi";
+    default:
+        error("Not supported register size.");
+        return NULL;
+    }
+}
+
 int label_index;
 
 void error(char *fmt, ...) {
@@ -27,7 +55,8 @@ void gen_lval(Node *node) {
         switch (node->vkind) {
         case VLOCAL:
             printf("  mov rax, rbp\n");
-            printf("  sub rax, %d\n", node->offset);
+            printf("  sub rax, %d /* %.*s */\n", node->offset, node->ident.len,
+                   node->ident.ptr);
             break;
         case VGLOBAL:
             printf("  lea rax, %.*s[rip]\n", node->ident.len, node->ident.ptr);
@@ -167,8 +196,9 @@ void gen_func(Node *node) {
         body = body->rhs;
     }
 
+    size_t return_size = sizeof_ty(node->ty);
     // epilogue
-    printf("  mov rax, 0\n");
+    printf("  mov %s, 0\n", ax(return_size));
     printf("  mov rsp, rbp\n");
     printf("  pop rbp\n");
     printf("  ret\n");
@@ -206,6 +236,9 @@ void gen_add(Node *node, char *op) {
 
             gen(node->rhs);
             pop("rax");
+            if (node->rhs->ty->ty == INT) {
+                printf("  movsx rax, eax\n");
+            }
             printf("  mov rdi, %zu\n", size);
             printf("  imul rax, rdi\n");
             push("rax");
@@ -215,6 +248,9 @@ void gen_add(Node *node, char *op) {
             size_t size = sizeof_ty(node->rhs->ty->ptr_to);
             gen(node->lhs);
             pop("rax");
+            if (node->lhs->ty->ty == INT) {
+                printf("  movsx rax, eax\n");
+            }
             printf("  mov rdi, %zu\n", size);
             printf("  imul rax, rdi\n");
             push("rax");
@@ -249,7 +285,7 @@ void gen(Node *node) {
 
         pop("rdi");
         pop("rax");
-        printf("  mov [rax], rdi\n");
+        printf("  mov [rax], %s\n", di(sizeof_ty(node->lhs->ty)));
         push("rdi");
         return;
     case ND_IF_COND:
@@ -308,6 +344,8 @@ void gen(Node *node) {
     pop("rdi");
     pop("rax");
 
+    size_t size = sizeof_ty(node->lhs->ty);
+
     switch (node->kind) {
     case ND_MUL:
         printf("  imul rax, rdi\n");
@@ -317,22 +355,22 @@ void gen(Node *node) {
         printf("  idiv rdi\n");
         break;
     case ND_LT:
-        printf("  cmp rax, rdi\n");
+        printf("  cmp %s, %s\n", ax(size), di(size));
         printf("  setl al\n");
         printf("  movzb rax, al\n");
         break;
     case ND_LE:
-        printf("  cmp rax, rdi\n");
+        printf("  cmp %s, %s\n", ax(size), di(size));
         printf("  setle al\n");
         printf("  movzb rax, al\n");
         break;
     case ND_EQ:
-        printf("  cmp rax, rdi\n");
+        printf("  cmp %s, %s\n", ax(size), di(size));
         printf("  sete al\n");
         printf("  movzb rax, al\n");
         break;
     case ND_NE:
-        printf("  cmp rax, rdi\n");
+        printf("  cmp %s, %s\n", ax(size), di(size));
         printf("  setne al\n");
         printf("  movzb rax, al\n");
         break;

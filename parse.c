@@ -329,6 +329,10 @@ bool is_subtype(Type *base, Type *derived) {
     }
 }
 
+bool is_same_type(Type *lhs, Type *rhs) {
+    return is_subtype(lhs, rhs) && is_subtype(rhs, lhs);
+}
+
 Type *check_type(Type *lhs, Type *rhs) {
     if (is_subtype(lhs, rhs)) {
         return lhs;
@@ -524,16 +528,32 @@ Node *relational(Env *env) {
     Node *node = add(env);
 
     for (;;) {
-        if (consume("<"))
-            node = new_node(ND_LT, node, add(env));
-        else if (consume("<="))
-            node = new_node(ND_LE, node, add(env));
-        else if (consume(">"))
-            node = new_node(ND_LT, add(env), node);
-        else if (consume(">="))
-            node = new_node(ND_LE, add(env), node);
-        else
+        if (consume("<")) {
+            Node *rhs = add(env);
+            if (!is_same_type(node->ty, rhs->ty))
+                error("Not supported: compare between different types");
+            node = new_node(ND_LT, node, rhs);
+        } else if (consume("<=")) {
+            Node *rhs = add(env);
+            if (!is_same_type(node->ty, rhs->ty))
+                error("Not supported: compare between different types");
+            node = new_node(ND_LE, node, rhs);
+        } else if (consume(">")) {
+            Node *lhs = add(env);
+            if (!is_same_type(node->ty, lhs->ty))
+                error("Not supported: compare between different types");
+            node = new_node(ND_LT, lhs, node);
+        } else if (consume(">=")) {
+            Node *lhs = add(env);
+            if (!is_same_type(node->ty, lhs->ty))
+                error("Not supported: compare between different types");
+            node = new_node(ND_LE, lhs, node);
+        } else {
             return node;
+        }
+
+        node->ty = calloc(1, sizeof(Type));
+        node->ty->ty = INT;
     }
 }
 
@@ -552,8 +572,11 @@ Node *equality(Env *env) {
 
 Node *assign(Env *env) {
     Node *node = equality(env);
-    if (consume("="))
+    if (consume("=")) {
+        Type *ty = node->ty;
         node = new_node(ND_ASSIGN, node, as_ptr(assign(env)));
+        node->ty = ty;
+    }
     return node;
 }
 

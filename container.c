@@ -7,6 +7,11 @@
 bool is_global(const Env *env) { return env->parent == NULL; }
 
 size_t sizeof_ty(Type *ty) {
+    if (ty == NULL) {
+        error(
+            "Internal compile error: try to obtain the size of unknown type.");
+    }
+
     switch (ty->ty) {
     case INT:
         return 4;
