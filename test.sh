@@ -160,5 +160,11 @@ assert 1 "int foo; int main() { foo = 1; return foo; }"
 
 assert 0 'char x[3]; int main() { return 0; }'
 assert_main 3 'char x[3]; x[0] = -1; x[1] = 2; int y; y = 4; return x[0] + y;'
+for i in $(seq 0 15); do
+  assert_main $i "char x[16]; int i; for (i = 0; i < 16; i = i + 1) { x[i]= i; } return x[$i];"
+done
+# for i in $(seq 0 1); do
+#   assert_main $i "char x[2]; int i; for (i = 1; i >= 0; i = i - 1) { x[i]= i; } return x[$i];"
+# done
 
 echo OK

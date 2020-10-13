@@ -299,6 +299,8 @@ void gen(Node *node) {
     case ND_SUB:
         gen_add(node, "sub");
         return;
+    default:
+        break;
     }
 
     gen(node->lhs);
@@ -333,6 +335,8 @@ void gen(Node *node) {
         printf("  cmp rax, rdi\n");
         printf("  setne al\n");
         printf("  movzb rax, al\n");
+        break;
+    default:
         break;
     }
 

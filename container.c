@@ -18,6 +18,7 @@ size_t sizeof_ty(Type *ty) {
         return 1;
     default:
         error("The size of %s is unknown.", type_to_str(ty));
+        return 0;
     }
 }
 
@@ -36,7 +37,10 @@ const LVar *get_lvar(Env *env, const Span *ident) {
             return retval;
         env = env->parent;
     }
+
     error_at(ident, "'%.*s' is undeclared", ident->len, ident->ptr);
+
+    return NULL;
 }
 
 const LVar *declare_lvar(Env *env, Type *ty, const Span *ident) {

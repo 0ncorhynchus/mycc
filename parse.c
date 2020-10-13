@@ -190,7 +190,7 @@ void tokenize(char *p) {
             continue;
         }
 
-        if ('a' <= *p && *p <= 'z' || 'A' <= *p && *p <= 'Z' || *p == '_') {
+        if (('a' <= *p && *p <= 'z') || ('A' <= *p && *p <= 'Z') || *p == '_') {
             char *first = p;
 
             p++;
@@ -248,9 +248,11 @@ Type *type() {
 
 Type *expect_type() {
     Type *ty = type();
-    if (ty)
-        return ty;
-    error_at(&token->span, "Unknown type");
+    if (ty == NULL) {
+        error_at(&token->span, "Unknown type");
+    }
+
+    return ty;
 }
 
 char *type_to_str(Type *ty) {
@@ -343,10 +345,11 @@ Type *get_type(Node *lhs, Node *rhs) {
     if (lhs == NULL || rhs == NULL)
         return NULL;
     Type *ty = check_type(lhs->ty, rhs->ty);
-    if (ty)
-        return ty;
-    error("Type Mismatched: '%s' and '%s'", type_to_str(lhs->ty),
-          type_to_str(rhs->ty));
+    if (ty == NULL) {
+        error("Type Mismatched: '%s' and '%s'", type_to_str(lhs->ty),
+              type_to_str(rhs->ty));
+    }
+    return ty;
 }
 
 // Implicit converter from array T[] to pointer T*

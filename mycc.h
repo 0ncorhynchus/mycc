@@ -5,7 +5,7 @@
 typedef struct Span Span;
 struct Span {
     const char *ptr;
-    size_t len;
+    int len;
 };
 
 typedef enum {
@@ -105,12 +105,12 @@ struct Env {
     int maximum_offset;
 };
 
-static Env init_env() {
+static inline Env init_env() {
     Env env = {NULL, NULL, 0};
     return env;
 }
 
-static Env make_scope(Env *parent) {
+static inline Env make_scope(Env *parent) {
     Env env = {parent, NULL, 0};
     return env;
 }
@@ -135,7 +135,7 @@ void program();
 void gen(Node *node);
 void gen_top(Node *node);
 
-static void debug(char *fmt, ...) {
+static inline void debug(char *fmt, ...) {
     fprintf(stderr, "[debug] ");
     va_list ap;
     va_start(ap, fmt);
