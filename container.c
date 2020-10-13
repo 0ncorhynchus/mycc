@@ -1,7 +1,10 @@
 #include "mycc.h"
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+
+bool is_global(const Env *env) { return env->parent == NULL; }
 
 size_t sizeof_ty(Type *ty) {
     switch (ty->ty) {
@@ -23,9 +26,12 @@ LVar *find_lvar(Env *env, const Span *ident) {
 }
 
 const LVar *get_lvar(Env *env, const Span *ident) {
-    LVar *retval = find_lvar(env, ident);
-    if (retval)
-        return retval;
+    while (env) {
+        LVar *retval = find_lvar(env, ident);
+        if (retval)
+            return retval;
+        env = env->parent;
+    }
     error_at(ident, "'%.*s' is undeclared", ident->len, ident->ptr);
 }
 
@@ -38,9 +44,14 @@ const LVar *declare_lvar(Env *env, Type *ty, const Span *ident) {
     new->ty = ty;
     new->ident = *ident;
 
-    size_t size = ((sizeof_ty(ty) - 1) / 8 + 1) * 8;
-    env->maximum_offset += size;
-    new->offset = env->maximum_offset;
+    if (is_global(env)) {
+        new->kind = VGLOBAL;
+    } else {
+        new->kind = VLOCAL;
+        size_t size = ((sizeof_ty(ty) - 1) / 8 + 1) * 8;
+        env->maximum_offset += size;
+        new->offset = env->maximum_offset;
+    }
 
     env->locals = new;
 

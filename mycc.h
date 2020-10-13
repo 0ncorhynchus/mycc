@@ -32,6 +32,11 @@ struct Type {
 };
 
 typedef enum {
+    VLOCAL,
+    VGLOBAL,
+} VarKind;
+
+typedef enum {
     ND_ADD,       // "+"
     ND_SUB,       // "-"
     ND_MUL,       // "*"
@@ -78,10 +83,14 @@ struct Node {
 
     // For ND_LVAR, ND_FUNC, ND_CALL
     Span ident;
+
+    // For ND_DECLARE
+    VarKind vkind;
 };
 
 typedef struct LVar LVar;
 struct LVar {
+    VarKind kind;
     LVar *next;
     Type *ty;
     int offset;
@@ -91,9 +100,20 @@ struct LVar {
 
 typedef struct Env Env;
 struct Env {
+    Env *parent;
     LVar *locals;
     int maximum_offset;
 };
+
+static Env init_env() {
+    Env env = {NULL, NULL, 0};
+    return env;
+}
+
+static Env make_scope(Env *parent) {
+    Env env = {parent, NULL, 0};
+    return env;
+}
 
 extern char *user_input;
 extern Token *token;

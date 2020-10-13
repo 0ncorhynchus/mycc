@@ -528,17 +528,16 @@ Node *type_ident() {
     if (ty == NULL)
         return NULL;
     Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_DECLARE;
     node->ty = ty;
     node->ident = expect_ident()->span;
     return node;
 }
 
-Node *function(Node *node) {
+Node *function(Env *parent, Node *node) {
     if (!consume("("))
         return NULL;
 
-    Env env = {NULL, 0};
+    Env env = make_scope(parent);
     int argument_offset = 0;
 
     node->kind = ND_FUNC;
@@ -583,6 +582,8 @@ Node *function(Node *node) {
 }
 
 Node *declare(Env *env, Node *node) {
+    node->kind = ND_DECLARE;
+
     if (consume("[")) {
         size_t array_size = expect_number();
         expect("]");
@@ -594,7 +595,8 @@ Node *declare(Env *env, Node *node) {
         node->ty = array_ty;
     }
 
-    declare_lvar(env, node->ty, &node->ident);
+    const LVar *var = declare_lvar(env, node->ty, &node->ident);
+    node->vkind = var->kind;
     expect(";");
 
     return node;
@@ -675,14 +677,14 @@ Node *stmt(Env *env) {
 }
 
 void program(Node *code[]) {
-    Env env = {NULL, 0};
+    Env env = init_env();
     int i = 0;
     while (!at_eof()) {
         Node *node = type_ident();
         if (node == NULL)
             error("Cannot parse the program.");
 
-        Node *fn = function(node);
+        Node *fn = function(&env, node);
         if (fn)
             code[i++] = fn;
         else
