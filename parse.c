@@ -459,6 +459,17 @@ Node *primary(Env *env) {
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_STRING;
         node->ident = tok->span;
+        node->ty = calloc(1, sizeof(Type));
+        node->ty->ty = PTR;
+        node->ty->ptr_to = calloc(1, sizeof(Type));
+        node->ty->ptr_to->ty = CHAR;
+
+        Span span = tok->span;
+        span.ptr++;
+        span.len -= 2;
+        const String *string = push_string(env, &span);
+        node->val = string->index;
+
         return node;
     }
 
@@ -771,19 +782,18 @@ Node *stmt(Env *env) {
     return node;
 }
 
-void program(Node *code[]) {
-    Env env = init_env();
+void program(Env *env, Node *code[]) {
     int i = 0;
     while (!at_eof()) {
         Node *node = type_ident();
         if (node == NULL)
             error("Cannot parse the program.");
 
-        Node *fn = function(&env, node);
+        Node *fn = function(env, node);
         if (fn)
             code[i++] = fn;
         else
-            code[i++] = declare(&env, node);
+            code[i++] = declare(env, node);
     }
     code[i] = NULL;
 }

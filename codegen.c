@@ -336,7 +336,8 @@ void gen(Node *node) {
         gen_add(node, "sub");
         return;
     case ND_STRING:
-        // TODO
+        printf("  lea rax, .LC%d[rip]\n", node->val);
+        push("rax");
         return;
     default:
         break;
@@ -382,4 +383,18 @@ void gen(Node *node) {
     }
 
     push("rax");
+}
+
+void gen_strings(Env *env) {
+    String *str = env->strings;
+
+    while (str) {
+        printf("\n");
+        printf(".text\n");
+        printf(".section .rodata\n");
+        printf(".LC%d:\n", str->index);
+        printf("  .string \"%.*s\"\n", str->ident.len, str->ident.ptr);
+
+        str = str->next;
+    }
 }

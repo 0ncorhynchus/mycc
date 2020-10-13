@@ -100,20 +100,29 @@ struct LVar {
     Span ident;
 };
 
+typedef struct String String;
+struct String {
+    String *next;
+    int index;
+    Span ident;
+};
+
 typedef struct Env Env;
 struct Env {
     Env *parent;
     LVar *locals;
+    String *strings;
     int maximum_offset;
+    int maximum_strings;
 };
 
 static inline Env init_env() {
-    Env env = {NULL, NULL, 0};
+    Env env = {NULL, NULL, NULL, 0, 0};
     return env;
 }
 
 static inline Env make_scope(Env *parent) {
-    Env env = {parent, NULL, 0};
+    Env env = {parent, NULL, NULL, 0, 0};
     return env;
 }
 
@@ -130,12 +139,14 @@ char *type_to_str(Type *ty);
 
 const LVar *get_lvar(Env *env, const Span *ident);
 const LVar *declare_lvar(Env *env, Type *ty, const Span *ident);
+const String *push_string(Env *env, const Span *ident);
 
 Node *expr();
-void program();
+void program(Env *env, Node *code[]);
 
 void gen(Node *node);
 void gen_top(Node *node);
+void gen_strings(Env *env);
 
 static inline void debug(char *fmt, ...) {
     fprintf(stderr, "[debug] ");

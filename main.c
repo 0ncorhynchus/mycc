@@ -11,9 +11,12 @@ int main(int argc, char **argv) {
 
     user_input = argv[1];
     tokenize(user_input);
-    program(code);
+
+    Env global = init_env();
+    program(&global, code);
 
     printf(".intel_syntax noprefix\n");
+    gen_strings(&global);
     for (int i = 0; code[i]; i++) {
         printf("\n");
         gen_top(code[i]);

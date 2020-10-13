@@ -70,3 +70,24 @@ const LVar *declare_lvar(Env *env, Type *ty, const Span *ident) {
 
     return new;
 }
+
+Env *get_global(Env *env) {
+    while (!is_global(env)) {
+        env = env->parent;
+    }
+    return env;
+}
+
+const String *push_string(Env *env, const Span *ident) {
+    Env *global = get_global(env);
+
+    String *str = calloc(1, sizeof(String));
+    str->next = global->strings;
+    str->index = global->maximum_strings;
+    str->ident = *ident;
+    global->maximum_strings++;
+
+    global->strings = str;
+
+    return str;
+}

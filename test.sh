@@ -167,6 +167,6 @@ for i in $(seq 0 1); do
   assert_main $i "char x[2]; int i; for (i = 1; i >= 0; i = i - 1) { x[i]= i; } return x[$i];"
 done
 
-assert_main 0 '"string";'
+assert_main 97 'char *x; x = "abc"; return x[0];'
 
 echo OK
