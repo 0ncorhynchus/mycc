@@ -35,6 +35,7 @@
 //  type        = type "*" | "int" | "char"
 //
 
+char *filename;
 char *user_input;
 Token *token;
 
@@ -42,17 +43,37 @@ char *reserved[] = {"if",  "else",   "while", "for", "return",
                     "int", "sizeof", "char",  NULL};
 
 void error_at(const Span *span, char *fmt, ...) {
-    va_list ap;
-    va_start(ap, fmt);
+    const char *line = span->ptr;
+    while (user_input < line && line[-1] != '\n') {
+        line--;
+    }
 
-    int pos = span->ptr - user_input;
-    fprintf(stderr, "%s\n", user_input);
+    const char *end = span->ptr;
+    while (*end != '\n') {
+        end++;
+    }
+
+    int line_num = 1;
+    for (char *p = user_input; p < line; p++) {
+        if (*p == '\n') {
+            line_num++;
+        }
+    }
+
+    int indent = fprintf(stderr, "%s:%d: ", filename, line_num);
+    fprintf(stderr, "%.*s\n", (int)(end - line), line);
+
+    int pos = span->ptr - line + indent;
     fprintf(stderr, "%*s", pos, "");
     for (int i = 0; i < span->len; i++)
         fprintf(stderr, "^");
     fprintf(stderr, " ");
+
+    va_list ap;
+    va_start(ap, fmt);
     vfprintf(stderr, fmt, ap);
     fprintf(stderr, "\n");
+
     exit(1);
 }
 

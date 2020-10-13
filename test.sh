@@ -12,7 +12,8 @@ assert() {
   input="$2"
   lib="$3" # optional
 
-  ./mycc "$input" > tmp.s && cc -o tmp tmp.s $lib
+  echo "$input" > tmp.c
+  ./mycc tmp.c > tmp.s && cc -o tmp tmp.s $lib
   if [ "$?" -ne 0 ]; then
     echo >&2 "Failed to compile:"
     echo >&2 "    $input"

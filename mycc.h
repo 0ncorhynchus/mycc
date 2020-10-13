@@ -126,6 +126,7 @@ static inline Env make_scope(Env *parent) {
     return env;
 }
 
+extern char *filename;
 extern char *user_input;
 extern Token *token;
 
