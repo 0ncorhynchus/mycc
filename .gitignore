@@ -1,7 +1,7 @@
 *~
 *.o
 *.s
-*-test
+*.out
 tmp*
 a.out
 mycc
