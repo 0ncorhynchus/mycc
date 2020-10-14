@@ -281,6 +281,25 @@ int test_string() {
     return 0;
 }
 
+int test_add() {
+    int x;
+    char y;
+    char *z;
+
+    x = 0;
+    y = 0;
+    z = "abc";
+
+    assert_int(0, x + y);
+    assert_int(0, y + x);
+    assert_int(0, x - y);
+    assert_int(0, y - x);
+
+    assert_int(97, z[0]);
+    assert_int(97, z[x]);
+    assert_int(97, z[y]);
+}
+
 int summary() {
     printf("SUMMARY:\n");
     printf("    %d tests passed.\n", num_passed);
@@ -343,6 +362,8 @@ int main() {
     test_global_var();
     test_char();
     test_string();
+
+    test_add();
 
     return summary();
 }

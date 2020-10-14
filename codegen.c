@@ -277,8 +277,15 @@ void gen_add(Node *node, char *op) {
 
             gen(node->rhs);
             pop("rax");
-            if (node->rhs->ty->ty == INT) {
+            switch (node->rhs->ty->ty) {
+            case (INT):
                 printf("  movsx rax, eax\n");
+                break;
+            case (CHAR):
+                printf("  movsx rax, al\n");
+                break;
+            default:
+                break;
             }
             printf("  mov rdi, %zu\n", size);
             printf("  imul rax, rdi\n");
@@ -289,8 +296,15 @@ void gen_add(Node *node, char *op) {
             size_t size = sizeof_ty(node->rhs->ty->ptr_to);
             gen(node->lhs);
             pop("rax");
-            if (node->lhs->ty->ty == INT) {
+            switch (node->lhs->ty->ty) {
+            case (INT):
                 printf("  movsx rax, eax\n");
+                break;
+            case (CHAR):
+                printf("  movsx rax, al\n");
+                break;
+            default:
+                break;
             }
             printf("  mov rdi, %zu\n", size);
             printf("  imul rax, rdi\n");
@@ -299,7 +313,32 @@ void gen_add(Node *node, char *op) {
             gen(node->rhs);
         } else {
             gen(node->lhs);
+            pop("rax");
+            switch (node->lhs->ty->ty) {
+            case (INT):
+                printf("  movsx rax, eax\n");
+                break;
+            case (CHAR):
+                printf("  movsx rax, al\n");
+                break;
+            default:
+                break;
+            }
+            push("rax");
+
             gen(node->rhs);
+            pop("rax");
+            switch (node->rhs->ty->ty) {
+            case (INT):
+                printf("  movsx rax, eax\n");
+                break;
+            case (CHAR):
+                printf("  movsx rax, al\n");
+                break;
+            default:
+                break;
+            }
+            push("rax");
         }
     }
 
