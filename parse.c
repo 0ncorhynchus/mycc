@@ -343,15 +343,6 @@ Type *type() {
     return ty;
 }
 
-Type *expect_type() {
-    Type *ty = type();
-    if (ty == NULL) {
-        error_at(&token->span, "Unknown type");
-    }
-
-    return ty;
-}
-
 char *type_to_str(Type *ty) {
     int depth = 0;
     Type *tmp;
