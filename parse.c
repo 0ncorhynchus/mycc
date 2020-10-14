@@ -38,10 +38,10 @@
 
 static const char *filename;
 static const char *user_input;
-static Token *token;
+static const Token *token;
 
-char *reserved[] = {"if",  "else",   "while", "for", "return",
-                    "int", "sizeof", "char",  NULL};
+const char *reserved[] = {"if",  "else",   "while", "for", "return",
+                          "int", "sizeof", "char",  NULL};
 
 char *read_file(const char *path) {
     FILE *fp = fopen(path, "r");
@@ -118,7 +118,7 @@ bool consume(char *op) {
     return true;
 }
 
-bool is_reserved(Token *token, char *op) {
+bool is_reserved(const Token *token, char *op) {
     if (token == NULL || token->kind != TK_RESERVED ||
         strlen(op) != token->span.len ||
         memcmp(token->span.ptr, op, token->span.len))
@@ -126,36 +126,36 @@ bool is_reserved(Token *token, char *op) {
     return true;
 }
 
-Token *consume_ident() {
+const Token *consume_ident() {
     if (token->kind != TK_IDENT)
         return NULL;
-    Token *tok = token;
+    const Token *tok = token;
     token = token->next;
     return tok;
 }
 
-Token *expect_ident() {
+const Token *expect_ident() {
     if (token->kind != TK_IDENT) {
         error_at(&token->span,
                  "Unexpected token: an ident expected, but got '%.*s'",
                  token->span.len, token->span.ptr);
     }
 
-    Token *tok = token;
+    const Token *tok = token;
     token = token->next;
     return tok;
 }
 
-Token *consume_string() {
+const Token *consume_string() {
     if (token->kind != TK_STRING) {
         return NULL;
     }
-    Token *tok = token;
+    const Token *tok = token;
     token = token->next;
     return tok;
 }
 
-bool is_ident(Token *token) { return token && token->kind == TK_IDENT; }
+bool is_ident(const Token *token) { return token && token->kind == TK_IDENT; }
 
 void expect(char *op) {
     if (token->kind != TK_RESERVED || strlen(op) != token->span.len ||
@@ -329,7 +329,7 @@ Type *type() {
         return NULL;
     }
 
-    Token *tok = token;
+    const Token *tok = token;
     while (is_reserved(tok, "*")) {
         tok = tok->next;
 
@@ -492,7 +492,7 @@ Node *primary(Env *env) {
         return node;
     }
 
-    Token *tok = consume_ident();
+    const Token *tok = consume_ident();
     if (tok) {
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_LVAR;
