@@ -1,5 +1,6 @@
 #include "mycc.h"
 #include <ctype.h>
+#include <errno.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -35,12 +36,39 @@
 //  type        = type "*" | "int" | "char"
 //
 
-char *filename;
-char *user_input;
-Token *token;
+static const char *filename;
+static const char *user_input;
+static Token *token;
 
 char *reserved[] = {"if",  "else",   "while", "for", "return",
                     "int", "sizeof", "char",  NULL};
+
+char *read_file(const char *path) {
+    FILE *fp = fopen(path, "r");
+    if (!fp) {
+        error("cannot open %s: %s", path, strerror(errno));
+    }
+
+    if (fseek(fp, 0, SEEK_END) == -1) {
+        error("%s: fseek: %s", path, strerror(errno));
+    }
+
+    size_t size = ftell(fp);
+    if (fseek(fp, 0, SEEK_SET) == -1) {
+        error("%s: fseek: %s", path, strerror(errno));
+    }
+
+    char *buf = calloc(1, size + 2);
+    fread(buf, size, 1, fp);
+
+    if (size == 0 || buf[size - 1] != '\n') {
+        buf[size++] = '\n';
+    }
+
+    buf[size] = '\0';
+    fclose(fp);
+    return buf;
+}
 
 void error_at(const Span *span, char *fmt, ...) {
     const char *line = span->ptr;
@@ -54,7 +82,7 @@ void error_at(const Span *span, char *fmt, ...) {
     }
 
     int line_num = 1;
-    for (char *p = user_input; p < line; p++) {
+    for (const char *p = user_input; p < line; p++) {
         if (*p == '\n') {
             line_num++;
         }
@@ -149,7 +177,7 @@ int expect_number() {
 
 bool at_eof() { return token->kind == TK_EOF; }
 
-Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
+Token *new_token(TokenKind kind, Token *cur, const char *str, int len) {
     Token *tok = calloc(1, sizeof(Token));
     tok->kind = kind;
     tok->span.ptr = str;
@@ -158,7 +186,11 @@ Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
     return tok;
 }
 
-void tokenize(char *p) {
+void tokenize(const char *path) {
+    filename = path;
+    user_input = read_file(filename);
+    const char *p = user_input;
+
     Token head;
     head.next = NULL;
     Token *cur = &head;
@@ -231,8 +263,10 @@ void tokenize(char *p) {
         }
 
         if (isdigit(*p)) {
-            char *first = p;
-            int val = strtol(p, &p, 10);
+            const char *first = p;
+            char *endptr;
+            int val = strtol(p, &endptr, 10);
+            p = endptr;
             int len = p - first;
             cur = new_token(TK_NUM, cur, first, len);
             cur->val = val;
@@ -240,7 +274,7 @@ void tokenize(char *p) {
         }
 
         if (*p == '"') {
-            char *first = p;
+            const char *first = p;
 
             p++; // consume begining '"'
             while (*p != '"') {
@@ -254,7 +288,7 @@ void tokenize(char *p) {
         }
 
         if (('a' <= *p && *p <= 'z') || ('A' <= *p && *p <= 'Z') || *p == '_') {
-            char *first = p;
+            const char *first = p;
 
             p++;
             while (is_alnum(*p)) {

@@ -127,14 +127,10 @@ static inline Env make_scope(Env *parent) {
     return env;
 }
 
-extern char *filename;
-extern char *user_input;
-extern Token *token;
-
 void error(char *fmt, ...);
 void error_at(const Span *span, char *fmt, ...);
 
-void tokenize(char *p);
+void tokenize(const char *path);
 
 size_t sizeof_ty(Type *ty);
 char *type_to_str(Type *ty);
