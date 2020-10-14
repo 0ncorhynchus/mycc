@@ -358,12 +358,12 @@ void gen(Node *node) {
     case ND_DEREF:
         gen(node->lhs);
         pop("rax");
-        switch (sizeof_ty(node->lhs->ty)) {
+        switch (node->lhs->ty->ptr_to->ty) {
         case INT:
             printf("  movsx rax, WORD PTR [rax]\n");
             break;
         case CHAR:
-            printf("  movzx rax, BYTE PTR [rax]\n");
+            printf("  movsx rax, BYTE PTR [rax]\n");
             break;
         default:
             printf("  mov rax, [rax]\n");
