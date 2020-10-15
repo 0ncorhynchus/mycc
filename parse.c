@@ -322,8 +322,8 @@ void tokenize(const char *path) {
     token = head.next;
 }
 
-Type *type() {
-    Type *ty = NULL;
+const Type *type() {
+    const Type *ty = NULL;
     if (consume("int")) {
         ty = &INT_T;
     } else if (consume("char")) {
@@ -348,7 +348,7 @@ Type *type() {
     return ty;
 }
 
-bool is_subtype(Type *base, Type *derived) {
+bool is_subtype(const Type *base, const Type *derived) {
     if (base == NULL || derived == NULL) {
         return false;
     }
@@ -373,11 +373,11 @@ bool is_subtype(Type *base, Type *derived) {
     }
 }
 
-bool is_same_type(Type *lhs, Type *rhs) {
+bool is_same_type(const Type *lhs, const Type *rhs) {
     return is_subtype(lhs, rhs) && is_subtype(rhs, lhs);
 }
 
-Type *check_type(Type *lhs, Type *rhs) {
+const Type *check_type(const Type *lhs, const Type *rhs) {
     if (is_subtype(lhs, rhs)) {
         return lhs;
     }
@@ -389,10 +389,10 @@ Type *check_type(Type *lhs, Type *rhs) {
     return NULL;
 }
 
-Type *get_type(Node *lhs, Node *rhs) {
+const Type *get_type(const Node *lhs, const Node *rhs) {
     if (lhs == NULL || rhs == NULL)
         return NULL;
-    Type *ty = check_type(lhs->ty, rhs->ty);
+    const Type *ty = check_type(lhs->ty, rhs->ty);
     if (ty == NULL) {
         error("Type Mismatched: '%s' and '%s'", type_to_str(lhs->ty),
               type_to_str(rhs->ty));
@@ -640,7 +640,7 @@ Node *equality(Env *env) {
 Node *assign(Env *env) {
     Node *node = equality(env);
     if (consume("=")) {
-        Type *ty = node->ty;
+        const Type *ty = node->ty;
         node = new_node(ND_ASSIGN, node, as_ptr(assign(env)));
         node->ty = ty;
     }
@@ -654,7 +654,7 @@ Node *stmt(Env *env);
 // try to parse a type and an ident.
 // For parse a function and a declare.
 Node *type_ident() {
-    Type *ty = type();
+    const Type *ty = type();
     if (ty == NULL)
         return NULL;
     Node *node = calloc(1, sizeof(Node));

@@ -147,11 +147,11 @@ void error_at(const Span *span, char *fmt, ...);
 
 void tokenize(const char *path);
 
-size_t sizeof_ty(Type *ty);
-char *type_to_str(Type *ty);
+size_t sizeof_ty(const Type *ty);
+char *type_to_str(const Type *ty);
 
 const Var *get_var(Env *env, const Span *ident);
-const Var *declare_var(Env *env, Type *ty, const Span *ident);
+const Var *declare_var(Env *env, const Type *ty, const Span *ident);
 const String *push_string(Env *env, const Span *ident);
 
 Node *expr();

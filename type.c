@@ -6,7 +6,7 @@ Type INT_T = {INT, NULL, 0};
 Type CHAR_T = {CHAR, NULL, 0};
 Type VOID_T = {VOID, NULL, 0};
 
-size_t sizeof_ty(Type *ty) {
+size_t sizeof_ty(const Type *ty) {
     if (ty == NULL) {
         error(
             "Internal compile error: try to obtain the size of unknown type.");
@@ -30,9 +30,9 @@ size_t sizeof_ty(Type *ty) {
     }
 }
 
-char *type_to_str(Type *ty) {
+char *type_to_str(const Type *ty) {
     int depth = 0;
-    Type *tmp;
+    const Type *tmp;
     for (tmp = ty; tmp; tmp = tmp->ptr_to) {
         switch (tmp->ty) {
         case INT:

@@ -29,7 +29,7 @@ const Var *get_var(Env *env, const Span *ident) {
     return NULL;
 }
 
-const Var *declare_var(Env *env, Type *ty, const Span *ident) {
+const Var *declare_var(Env *env, const Type *ty, const Span *ident) {
     if (find_var(env, ident))
         error_at(ident, "'%.*s' is already declared", ident->len, ident->ptr);
 
