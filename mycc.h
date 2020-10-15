@@ -1,6 +1,7 @@
 #pragma once
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 typedef struct Span Span;
 struct Span {
@@ -140,6 +141,7 @@ static inline Env make_scope(Env *parent) {
     return env;
 }
 
+void debug(char *fmt, ...);
 void error(char *fmt, ...);
 void error_at(const Span *span, char *fmt, ...);
 
@@ -164,10 +166,3 @@ void gen(Node *node);
 void gen_top(Node *node);
 void gen_strings(Env *env);
 
-static inline void debug(char *fmt, ...) {
-    fprintf(stderr, "[debug] ");
-    va_list ap;
-    va_start(ap, fmt);
-    vfprintf(stderr, fmt, ap);
-    fprintf(stderr, "\n");
-}

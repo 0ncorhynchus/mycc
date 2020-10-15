@@ -37,14 +37,6 @@ const char *di(size_t size) {
 
 static int label_index;
 
-void error(char *fmt, ...) {
-    va_list ap;
-    va_start(ap, fmt);
-    vfprintf(stderr, fmt, ap);
-    fprintf(stderr, "\n");
-    exit(1);
-}
-
 static int stack = 0;
 static int num_args = 0;
 static int num_vars = 0;
