@@ -169,4 +169,3 @@ Node *deref_offset_ptr(Node *ptr, Node *index);
 void gen(Node *node);
 void gen_top(Node *node);
 void gen_strings(Env *env);
-
