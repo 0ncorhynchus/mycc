@@ -315,13 +315,22 @@ int test_initialize_global() {
 
 int test_initialize() {
     int x = 1;
+    assert_int(1, x);
+
     int y[] = {1, 2, 3};
 
-    assert_int(1, x);
     assert_int(12, sizeof(y));
     assert_int(1, y[0]);
     assert_int(2, y[1]);
     assert_int(3, y[2]);
+
+    int z[5] = {1, 2, 3};
+    assert_int(20, sizeof(z));
+    assert_int(1, z[0]);
+    assert_int(2, z[1]);
+    assert_int(3, z[2]);
+    assert_int(0, z[3]);
+    assert_int(0, z[4]);
 }
 
 int summary() {

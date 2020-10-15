@@ -541,16 +541,19 @@ void gen(Node *node) {
             if (node->ty->ty == ARRAY) {
                 var = as_ptr(var);
                 Node *init = node->init->next;
-                int index = 0;
                 switch (node->init->kind) {
                 case (ND_INIT):
-                    while (init) {
+                    for (int index = 0; index < node->ty->array_size; index++) {
                         Node *idx = new_node_num(index);
                         Node *lhs = deref_offset_ptr(var, idx);
-                        gen(new_assign(lhs, init));
-                        pop("rax");
-                        init = init->next;
-                        index++;
+                        if (init) {
+                            gen(new_assign(lhs, init));
+                            pop("rax");
+                            init = init->next;
+                        } else {
+                            gen(new_assign(lhs, new_node_num(0)));
+                            pop("rax");
+                        }
                     }
                     return;
                 case (ND_STRING):

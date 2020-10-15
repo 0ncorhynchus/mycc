@@ -794,7 +794,7 @@ Node *declare(Env *env, Node *node) {
 
     if (consume("[")) {
         is_array = true;
-        int array_size = 0;
+        int array_size = -1;
         is_known_size = number(&array_size);
         expect("]");
 
@@ -804,10 +804,6 @@ Node *declare(Env *env, Node *node) {
         array_ty->array_size = array_size;
         node->ty = array_ty;
     }
-
-    const LVar *var = declare_lvar(env, node->ty, &node->ident);
-    node->vkind = var->kind;
-    node->offset = var->offset;
 
     if (consume("=")) {
         node->init = init(env);
@@ -825,6 +821,10 @@ Node *declare(Env *env, Node *node) {
             }
         }
     }
+
+    const LVar *var = declare_lvar(env, node->ty, &node->ident);
+    node->vkind = var->kind;
+    node->offset = var->offset;
 
     expect(";");
 
