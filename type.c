@@ -73,7 +73,7 @@ char *type_to_str(const Type *ty) {
     }
 
     int len = strlen(buffer);
-    char *retval = calloc(len, 1);
+    char *retval = calloc(len + 1, 1);
     for (int i = 0; i < len; i++) {
         retval[i] = buffer[len - i - 1];
     }
