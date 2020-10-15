@@ -16,7 +16,7 @@
 //               | "if" "(" expr ")" stmt ( "else" stmt )?
 //               | "while" "(" expr ")" stmt
 //               | "for" "(" expr? ";" expr? ";" expr? ")" stmt
-//               | "return" expr ";"
+//               | "return" expr? ";"
 //  declare     =  type ident ( "[" num "]" )? ( "=" init )? ";"
 //  init        =  expr | "{" init ( "," init )* "}"
 //  function    =  type ident
@@ -177,14 +177,6 @@ bool number(int *val) {
     token = token->next;
 
     return true;
-}
-
-int expect_number() {
-    int val;
-    if (!number(&val)) {
-        error_at(&token->span, "Unexpected token: a number expected.");
-    }
-    return val;
 }
 
 bool at_eof() { return token->kind == TK_EOF; }
@@ -499,7 +491,11 @@ Node *primary(Env *env) {
         return node;
     }
 
-    return new_node_num(expect_number());
+    int val;
+    if (number(&val)) {
+        return new_node_num(val);
+    }
+    return NULL;
 }
 
 Node *deref_offset_ptr(Node *ptr, Node *index) {

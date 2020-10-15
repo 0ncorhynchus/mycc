@@ -64,7 +64,13 @@ void pop(char *arg) {
     printf("  pop %s\n", arg);
 }
 
-static void epilogue() {
+static void epilogue(Node *node) {
+    if (node) {
+        gen(node);
+        pop("rax");
+    } else {
+        printf("  mov rax, 0\n");
+    }
     printf("  mov rsp, rbp\n");
     printf("  pop rbp\n");
     printf("  ret\n");
@@ -240,8 +246,7 @@ void gen_func(Node *node) {
         body = body->rhs;
     }
 
-    printf("  mov rax, 0\n");
-    epilogue();
+    epilogue(NULL);
 }
 
 bool eval_constexpr(const Node *node, int *val) {
@@ -496,9 +501,7 @@ void gen(Node *node) {
         gen_for(node, label_index++);
         return;
     case ND_RETURN:
-        gen(node->lhs);
-        pop("rax");
-        epilogue();
+        epilogue(node->lhs);
         return;
     case ND_BLOCK:
         gen_block(node);
