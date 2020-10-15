@@ -337,11 +337,7 @@ const Type *type() {
     const Token *tok = token;
     while (is_reserved(tok, "*")) {
         tok = tok->next;
-
-        Type *new = calloc(1, sizeof(Type));
-        new->ty = PTR;
-        new->ptr_to = ty;
-        ty = new;
+        ty = mk_ptr(ty);
     }
 
     token = tok;
@@ -405,14 +401,10 @@ Node *as_ptr(Node *array) {
     if (array == NULL || array->ty == NULL || array->ty->ty != ARRAY)
         return array;
 
-    Type *ty = calloc(1, sizeof(Type));
-    ty->ty = PTR;
-    ty->ptr_to = array->ty->ptr_to;
-
     Node *ptr = calloc(1, sizeof(Node));
     ptr->kind = ND_ADDR;
     ptr->lhs = array;
-    ptr->ty = ty;
+    ptr->ty = mk_ptr(array->ty->ptr_to);
 
     return ptr;
 }
@@ -478,16 +470,12 @@ Node *primary(Env *env) {
 
     tok = consume_string();
     if (tok) {
-        Type *ty = calloc(1, sizeof(Type));
-        ty->ty = PTR;
-        ty->ptr_to = &CHAR_T;
-
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_STRING;
         node->ident = tok->span;
         node->ident.ptr++;
         node->ident.len -= 2;
-        node->ty = ty;
+        node->ty = mk_ptr(&CHAR_T);
 
         const String *string = push_string(env, &node->ident);
         node->val = string->index;
@@ -547,14 +535,11 @@ Node *unary(Env *env) {
         node->kind = ND_ADDR;
         node->lhs = unary(env);
         if (node->lhs && node->lhs->ty) {
-            Type *ty = calloc(1, sizeof(Type));
-            ty->ty = PTR;
             if (node->lhs->ty->ty == ARRAY) {
-                ty->ptr_to = node->lhs->ty->ptr_to;
+                node->ty = mk_ptr(node->lhs->ty->ptr_to);
             } else {
-                ty->ptr_to = node->lhs->ty;
+                node->ty = mk_ptr(node->lhs->ty);
             }
-            node->ty = ty;
             return node;
         }
         error("Internal compile error: try to obtain the address to an unknown "

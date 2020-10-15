@@ -36,6 +36,8 @@ extern const Type INT_T;
 extern const Type CHAR_T;
 extern const Type VOID_T;
 
+const Type *mk_ptr(const Type *base);
+
 typedef enum {
     VLOCAL,
     VGLOBAL,

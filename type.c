@@ -6,6 +6,13 @@ const Type INT_T = {INT, NULL, 0};
 const Type CHAR_T = {CHAR, NULL, 0};
 const Type VOID_T = {VOID, NULL, 0};
 
+const Type *mk_ptr(const Type *base) {
+    Type *ptr = calloc(1, sizeof(Type));
+    ptr->ty = PTR;
+    ptr->ptr_to = base;
+    return ptr;
+}
+
 size_t sizeof_ty(const Type *ty) {
     if (ty == NULL) {
         error(
