@@ -757,7 +757,7 @@ Node *declare(Env *env, Node *node) {
                 node->ty->array_size = node->init->num_initializers;
                 break;
             case (ND_STRING):
-                node->ty->array_size = node->init->ident.len;
+                node->ty->array_size = node->init->ident.len + 1;
                 break;
             default:
                 error("array must be initialized with a brace-enclosed "

@@ -24,6 +24,7 @@ int main() {
     assert_int(97, w[0]);
     assert_int(98, w[1]);
     assert_int(99, w[2]);
+    assert_int(0, w[3]);
 
     return summary();
 }
