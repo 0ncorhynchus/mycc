@@ -5,14 +5,25 @@ OBJS=$(SRCS:.c=.o)
 
 TEST_SRCS=$(filter-out tests/utils.c, $(wildcard tests/*.c))
 TESTS=$(TEST_SRCS:.c=.out)
+VTESTS=$(TEST_SRCS:.c=.exe)
 
 mycc: $(OBJS)
 	$(CC) -o $@ $(OBJS) $(LDFLAGS)
 
 $(OBJS): mycc.h
 
+.PHONY: test clean fmt validate_tests
+clean:
+	rm -f mycc $(OBJS) $(TESTS) $(VTESTS)
+
+fmt:
+	clang-format -i mycc.h $(SRCS)
+
+#
+# Tests
+#
 test: $(TESTS)
-	for t in $^; do echo $$t; ./$$t || exit 1; done
+	for t in $^; do echo; echo $$t; ./$$t || exit 1; done
 
 tests/%.out: tests/%.s tests/utils.o
 	$(CC) -o $@ $^
@@ -20,10 +31,11 @@ tests/%.out: tests/%.s tests/utils.o
 tests/%.s: tests/%.c mycc
 	./mycc $< > $@ || exit 1
 
-clean:
-	rm -f mycc $(OBJS) $(TESTS)
+#
+# Validation tests with cc
+#
+validate_tests: $(VTESTS)
+	for t in $^; do echo; echo $$t; ./$$t || exit 1; done
 
-fmt:
-	clang-format -i mycc.h $(SRCS)
-
-.PHONY: test clean fmt
+tests/%.exe: tests/%.c tests/utils.o
+	$(CC) -o $@ $^

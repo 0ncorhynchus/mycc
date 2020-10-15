@@ -2,6 +2,7 @@
 *.o
 *.s
 *.out
+*.exe
 tmp*
 a.out
 mycc
