@@ -405,12 +405,15 @@ Node *as_ptr(Node *array) {
     if (array == NULL || array->ty == NULL || array->ty->ty != ARRAY)
         return array;
 
+    Type *ty = calloc(1, sizeof(Type));
+    ty->ty = PTR;
+    ty->ptr_to = array->ty->ptr_to;
+
     Node *ptr = calloc(1, sizeof(Node));
     ptr->kind = ND_ADDR;
     ptr->lhs = array;
-    ptr->ty = calloc(1, sizeof(Type));
-    ptr->ty->ty = PTR;
-    ptr->ty->ptr_to = array->ty->ptr_to;
+    ptr->ty = ty;
+
     return ptr;
 }
 
@@ -475,15 +478,16 @@ Node *primary(Env *env) {
 
     tok = consume_string();
     if (tok) {
+        Type *ty = calloc(1, sizeof(Type));
+        ty->ty = PTR;
+        ty->ptr_to = &CHAR_T;
+
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_STRING;
         node->ident = tok->span;
         node->ident.ptr++;
         node->ident.len -= 2;
-        node->ty = calloc(1, sizeof(Type));
-        node->ty->ty = PTR;
-        node->ty->ptr_to = calloc(1, sizeof(Type));
-        node->ty->ptr_to->ty = CHAR;
+        node->ty = ty;
 
         const String *string = push_string(env, &node->ident);
         node->val = string->index;
@@ -543,13 +547,14 @@ Node *unary(Env *env) {
         node->kind = ND_ADDR;
         node->lhs = unary(env);
         if (node->lhs && node->lhs->ty) {
-            node->ty = calloc(1, sizeof(Type));
-            node->ty->ty = PTR;
+            Type *ty = calloc(1, sizeof(Type));
+            ty->ty = PTR;
             if (node->lhs->ty->ty == ARRAY) {
-                node->ty->ptr_to = node->lhs->ty->ptr_to;
+                ty->ptr_to = node->lhs->ty->ptr_to;
             } else {
-                node->ty->ptr_to = node->lhs->ty;
+                ty->ptr_to = node->lhs->ty;
             }
+            node->ty = ty;
             return node;
         }
         error("Internal compile error: try to obtain the address to an unknown "
@@ -734,17 +739,18 @@ Node *declare(Env *env, Node *node) {
     bool is_array = false;
     bool is_known_size = false;
 
+    Type *array_ty = NULL;
+
     if (consume("[")) {
         is_array = true;
         int array_size = -1;
         is_known_size = number(&array_size);
         expect("]");
 
-        Type *array_ty = calloc(1, sizeof(Type));
+        array_ty = calloc(1, sizeof(Type));
         array_ty->ty = ARRAY;
         array_ty->ptr_to = node->ty;
         array_ty->array_size = array_size;
-        node->ty = array_ty;
     }
 
     if (consume("=")) {
@@ -752,16 +758,20 @@ Node *declare(Env *env, Node *node) {
         if (is_array && !is_known_size) {
             switch (node->init->kind) {
             case (ND_INIT):
-                node->ty->array_size = node->init->num_initializers;
+                array_ty->array_size = node->init->num_initializers;
                 break;
             case (ND_STRING):
-                node->ty->array_size = node->init->ident.len + 1;
+                array_ty->array_size = node->init->ident.len + 1;
                 break;
             default:
                 error("array must be initialized with a brace-enclosed "
                       "initializer");
             }
         }
+    }
+
+    if (array_ty) {
+        node->ty = array_ty;
     }
 
     const Var *var = declare_var(env, node->ty, &node->ident);

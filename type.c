@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-Type INT_T = {INT, NULL, 0};
-Type CHAR_T = {CHAR, NULL, 0};
-Type VOID_T = {VOID, NULL, 0};
+const Type INT_T = {INT, NULL, 0};
+const Type CHAR_T = {CHAR, NULL, 0};
+const Type VOID_T = {VOID, NULL, 0};
 
 size_t sizeof_ty(const Type *ty) {
     if (ty == NULL) {

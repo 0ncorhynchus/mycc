@@ -455,7 +455,7 @@ void gen_add(Node *node, char *op) {
 }
 
 Node *new_assign(Node *lhs, Node *rhs) {
-    Type *ty = lhs->ty;
+    const Type *ty = lhs->ty;
     Node *node = new_node(ND_ASSIGN, lhs, rhs);
     node->ty = ty;
     return node;

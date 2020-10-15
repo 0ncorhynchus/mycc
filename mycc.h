@@ -28,13 +28,13 @@ struct Token {
 typedef struct Type Type;
 struct Type {
     enum { INT, PTR, ARRAY, CHAR, VOID } ty;
-    Type *ptr_to;
+    const Type *ptr_to;
     int array_size;
 };
 
-extern Type INT_T;
-extern Type CHAR_T;
-extern Type VOID_T;
+extern const Type INT_T;
+extern const Type CHAR_T;
+extern const Type VOID_T;
 
 typedef enum {
     VLOCAL,
@@ -77,7 +77,7 @@ typedef enum {
 typedef struct Node Node;
 struct Node {
     NodeKind kind;
-    Type *ty;
+    const Type *ty;
 
     // For ND_NUM,
     int val;
@@ -103,7 +103,7 @@ struct Node {
 typedef struct Var Var;
 struct Var {
     VarKind kind;
-    Type *ty;
+    const Type *ty;
     int offset;
     Span ident;
 };
