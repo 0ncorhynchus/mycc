@@ -106,7 +106,7 @@ struct Var {
     VarKind kind;
     const Type *ty;
     int offset;
-    Span ident;
+    const char *ident;
 };
 
 // Linked list for variables

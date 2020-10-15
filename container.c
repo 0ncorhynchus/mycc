@@ -8,8 +8,8 @@ bool is_global(const Env *env) { return env->parent == NULL; }
 
 Var *find_var(Env *env, const Span *ident) {
     for (VarList *next = env->vars; next; next = next->next) {
-        if (next->var.ident.len == ident->len &&
-            !memcmp(ident->ptr, next->var.ident.ptr, ident->len)) {
+        if (strlen(next->var.ident) == ident->len &&
+            !memcmp(ident->ptr, next->var.ident, ident->len)) {
             return &next->var;
         }
     }
@@ -36,7 +36,9 @@ const Var *declare_var(Env *env, const Type *ty, const Span *ident) {
     VarList *new = calloc(1, sizeof(VarList));
     new->next = env->vars;
     new->var.ty = ty;
-    new->var.ident = *ident;
+    char *id = calloc(ident->len + 1, 1);
+    memcpy(id, ident->ptr, ident->len);
+    new->var.ident = id;
 
     if (is_global(env)) {
         new->var.kind = VGLOBAL;

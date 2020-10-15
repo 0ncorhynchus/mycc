@@ -385,11 +385,11 @@ Node *primary(Env *env) {
     if (tok) {
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_LVAR;
+        node->ident = tok->span;
 
         // function call
         if (consume("(")) {
             node->kind = ND_CALL;
-            node->ident = tok->span;
             if (consume(")"))
                 return node;
 
@@ -411,7 +411,6 @@ Node *primary(Env *env) {
         node->ty = var->ty;
         node->offset = var->offset;
         node->vkind = var->kind;
-        node->ident = var->ident;
 
         return node;
     }
