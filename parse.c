@@ -18,7 +18,7 @@
 //               | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //               | "return" expr ";"
 //  declare     =  type ident ( "[" num "]" )? ( "=" init )? ";"
-//  init        =  expr
+//  init        =  expr | "{" init ( "," init )* "}"
 //  function    =  type ident
 //                 "(" (type ident ("," type ident)*)? ")"
 //                 "{" stmt* "}"
@@ -555,21 +555,24 @@ Node *primary(Env *env) {
     return new_node_num(expect_number());
 }
 
+Node *deref_offset_ptr(Node *ptr, Node *index) {
+    Node *new = calloc(1, sizeof(Node));
+    new->kind = ND_DEREF;
+    new->lhs = new_node(ND_ADD, ptr, index);
+    if (new->lhs->ty == NULL || new->lhs->ty->ty != PTR) {
+        error("Cannot deref: '%s'", type_to_str(new->lhs->ty));
+    }
+    new->ty = new->lhs->ty->ptr_to;
+    return new;
+}
+
 // parse primary ("[" expr "]")?
 Node *desugar_index(Env *env) {
     Node *node = primary(env);
     if (consume("[")) {
         Node *index = expr(env);
         expect("]");
-
-        Node *new = calloc(1, sizeof(Node));
-        new->kind = ND_DEREF;
-        new->lhs = new_node(ND_ADD, as_ptr(node), as_ptr(index));
-        if (new->lhs->ty && new->lhs->ty->ty == PTR) {
-            new->ty = new->lhs->ty->ptr_to;
-            return new;
-        }
-        error("Cannot deref: '%s'", type_to_str(new->lhs->ty));
+        return deref_offset_ptr(as_ptr(node), index);
     }
     return node;
 }
@@ -766,14 +769,33 @@ Node *function(Env *parent, Node *node) {
     return node;
 }
 
-Node *init(Env *env) { return expr(env); }
+Node *init(Env *env) {
+    if (consume("{")) {
+        Node *node = calloc(1, sizeof(Node));
+        node->kind = ND_INIT;
+        node->next = init(env);
+        node->num_initializers = 1;
+        Node *n = node->next;
+        while (consume(",")) {
+            n->next = init(env);
+            n = n->next;
+            node->num_initializers++;
+        }
+        expect("}");
+        return node;
+    }
+    return expr(env);
+}
 
 Node *declare(Env *env, Node *node) {
     node->kind = ND_DECLARE;
+    bool is_array = false;
+    bool is_known_size = false;
 
     if (consume("[")) {
-        int array_size = -1;
-        number(&array_size);
+        is_array = true;
+        int array_size = 0;
+        is_known_size = number(&array_size);
         expect("]");
 
         Type *array_ty = calloc(1, sizeof(Type));
@@ -785,9 +807,23 @@ Node *declare(Env *env, Node *node) {
 
     const LVar *var = declare_lvar(env, node->ty, &node->ident);
     node->vkind = var->kind;
+    node->offset = var->offset;
 
     if (consume("=")) {
         node->init = init(env);
+        if (is_array && !is_known_size) {
+            switch (node->init->kind) {
+            case (ND_INIT):
+                node->ty->array_size = node->init->num_initializers;
+                break;
+            case (ND_STRING):
+                node->ty->array_size = node->init->ident.len;
+                break;
+            default:
+                error("array must be initialized with a brace-enclosed "
+                      "initializer");
+            }
+        }
     }
 
     expect(";");

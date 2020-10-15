@@ -7,7 +7,6 @@ struct Span {
     const char *ptr;
     int len;
 };
-
 typedef enum {
     TK_RESERVED,
     TK_IDENT,
@@ -67,6 +66,7 @@ typedef enum {
     ND_DECLARE,
     ND_STRING,
     ND_SEMICOLON,
+    ND_INIT,
 } NodeKind;
 
 typedef struct Node Node;
@@ -90,6 +90,9 @@ struct Node {
     // For ND_DECLARE
     VarKind vkind;
     Node *init; // initial value
+
+    Node *next;
+    int num_initializers;
 };
 
 typedef struct LVar LVar;
@@ -142,6 +145,11 @@ const String *push_string(Env *env, const Span *ident);
 
 Node *expr();
 void program(Env *env, Node *code[]);
+
+Node *as_ptr(Node *array);
+Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
+Node *new_node_num(int val);
+Node *deref_offset_ptr(Node *ptr, Node *index);
 
 void gen(Node *node);
 void gen_top(Node *node);

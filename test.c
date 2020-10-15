@@ -308,8 +308,20 @@ char *d = b + 3;
 int test_initialize_global() {
     assert_int(3, a);
     assert_int(3, *c);
+    assert_int(6, sizeof(b));
     assert_int(102, b[0]);
     assert_int(98, *d);
+}
+
+int test_initialize() {
+    int x = 1;
+    int y[] = {1, 2, 3};
+
+    assert_int(1, x);
+    assert_int(12, sizeof(y));
+    assert_int(1, y[0]);
+    assert_int(2, y[1]);
+    assert_int(3, y[2]);
 }
 
 int summary() {
@@ -378,6 +390,7 @@ int main() {
     test_add();
 
     test_initialize_global();
+    test_initialize();
 
     return summary();
 }

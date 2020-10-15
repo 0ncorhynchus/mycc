@@ -457,6 +457,13 @@ void gen_add(Node *node, char *op) {
     push("rax");
 }
 
+Node *new_assign(Node *lhs, Node *rhs) {
+    Type *ty = lhs->ty;
+    Node *node = new_node(ND_ASSIGN, lhs, rhs);
+    node->ty = ty;
+    return node;
+}
+
 void gen(Node *node) {
     switch (node->kind) {
     case ND_NUM:
@@ -523,6 +530,42 @@ void gen(Node *node) {
         gen_lval(node->lhs);
         return;
     case ND_DECLARE:
+        if (node->vkind == VLOCAL && node->init != NULL) {
+            Node *var = calloc(1, sizeof(Node));
+            var->kind = ND_LVAR;
+            var->ty = node->ty;
+            var->offset = node->offset;
+            var->vkind = node->vkind;
+            var->ident = node->ident;
+
+            if (node->ty->ty == ARRAY) {
+                var = as_ptr(var);
+                Node *init = node->init->next;
+                int index = 0;
+                switch (node->init->kind) {
+                case (ND_INIT):
+                    while (init) {
+                        Node *idx = new_node_num(index);
+                        Node *lhs = deref_offset_ptr(var, idx);
+                        gen(new_assign(lhs, init));
+                        pop("rax");
+                        init = init->next;
+                        index++;
+                    }
+                    return;
+                case (ND_STRING):
+                    return;
+                default:
+                    error("Internal compiler error: unreachable at %s:%d",
+                          __FILE__, __LINE__);
+                }
+            }
+
+            gen(new_assign(var, node->init));
+            pop("rax");
+
+            return;
+        }
         return;
     case ND_ADD:
         gen_add(node, "add");
