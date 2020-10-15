@@ -1,21 +1,3 @@
-int test_no;
-int num_passed;
-int num_failed;
-
-int assert_int(int expected, int actual) {
-    test_no = test_no + 1;
-    if (expected == actual) {
-        num_passed = num_passed + 1;
-    } else {
-        num_failed = num_failed + 1;
-        printf("%03d: ", test_no);
-        printf("Failed. %d expected, but got %d\n", expected, actual);
-        printf("     expected: 0x%08X\n", expected);
-        printf("     actual:   0x%08X\n", actual);
-    }
-    return 0;
-}
-
 int test_vars() {
     int foo;
     assert_int(1, foo = 1);
@@ -339,18 +321,7 @@ int test_initialize() {
     assert_int(99, w[2]);
 }
 
-int summary() {
-    printf("SUMMARY:\n");
-    printf("    %d tests passed.\n", num_passed);
-    printf("    %d tests failed.\n", num_failed);
-    return num_failed > 0;
-}
-
 int main() {
-    test_no = 0;
-    num_passed = 0;
-    num_failed = 0;
-
     assert_int(0, 0);
     assert_int(42, 42);
     assert_int(21, 5 + 20 - 4);
