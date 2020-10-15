@@ -17,9 +17,7 @@ int main() {
     *(1 + a) = 2;
     assert_int(2, *(a + 1));
 
-    // int *p = a; TODO
-    int *p;
-    p = a;
+    int *p = a;
     *p = 0;
     assert_int(0, *p);
 

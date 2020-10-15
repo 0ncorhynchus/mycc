@@ -735,7 +735,7 @@ Node *declare(Env *env, Node *node) {
     }
 
     if (consume("=")) {
-        node->init = init(env);
+        node->init = as_ptr(init(env));
         if (is_array && !is_known_size) {
             switch (node->init->kind) {
             case (ND_INIT):
