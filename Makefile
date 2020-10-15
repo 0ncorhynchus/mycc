@@ -10,8 +10,8 @@ $(OBJS): mycc.h
 test: mycc test.out
 	./test.out
 
-test.out: test.s test_utils.c
-	cc -o $@ $^
+test.out: test.s test_utils.o
+	$(CC) -o $@ $^
 
 test.s: test.c mycc
 	$(eval tmp := $(shell mktemp))
