@@ -34,15 +34,15 @@
 //               | ident ( "(" ( expr ( "," expr )* )? ")" )?
 //               | "(" expr ")"
 //               | string
-//  type        = type "*" | "int" | "char"
+//  type        = type "*" | "int" | "char" | "void"
 //
 
 static const char *filename;
 static const char *user_input;
 static const Token *token;
 
-const char *reserved[] = {"if",  "else",   "while", "for", "return",
-                          "int", "sizeof", "char",  NULL};
+const char *reserved[] = {"if",  "else",   "while", "for",  "return",
+                          "int", "sizeof", "char",  "void", NULL};
 
 char *read_file(const char *path) {
     FILE *fp = fopen(path, "r");
@@ -336,6 +336,8 @@ Type *type() {
         ty = &INT_T;
     } else if (consume("char")) {
         ty = &CHAR_T;
+    } else if (consume("void")) {
+        ty = &VOID_T;
     } else {
         return NULL;
     }

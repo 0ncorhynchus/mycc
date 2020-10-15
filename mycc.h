@@ -26,13 +26,14 @@ struct Token {
 
 typedef struct Type Type;
 struct Type {
-    enum { INT, PTR, ARRAY, CHAR } ty;
+    enum { INT, PTR, ARRAY, CHAR, VOID } ty;
     Type *ptr_to;
     int array_size;
 };
 
 extern Type INT_T;
 extern Type CHAR_T;
+extern Type VOID_T;
 
 typedef enum {
     VLOCAL,

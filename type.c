@@ -4,6 +4,7 @@
 
 Type INT_T = {INT, NULL, 0};
 Type CHAR_T = {CHAR, NULL, 0};
+Type VOID_T = {VOID, NULL, 0};
 
 size_t sizeof_ty(Type *ty) {
     if (ty == NULL) {
@@ -20,6 +21,9 @@ size_t sizeof_ty(Type *ty) {
         return sizeof_ty(ty->ptr_to) * ty->array_size;
     case CHAR:
         return 1;
+    case VOID:
+        // error("sizeof(void) is not allowed.");
+        return 1; // GNU compatible.
     default:
         error("The size of %s is unknown.", type_to_str(ty));
         return 0;
@@ -44,6 +48,9 @@ char *type_to_str(Type *ty) {
             break;
         case CHAR:
             depth += 4; // length of "char"
+            break;
+        case VOID:
+            depth += 4; // length of "void"
             break;
         default:
             error("Not implemented for this type: type_to_str()");
@@ -70,6 +77,10 @@ char *type_to_str(Type *ty) {
         case CHAR:
             depth -= 4; // length of "char"
             memcpy(buffer + depth, "char", 4);
+            break;
+        case VOID:
+            depth -= 4;
+            memcpy(buffer + depth, "void", 4);
             break;
         default:
             error("Not implemented for this type: type_to_str()");

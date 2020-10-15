@@ -11,6 +11,8 @@ int fibo(int index) {
     return a;
 }
 
+void foo() {}
+
 int args6(int x, int y, int z, int p, int q, int r) { return r; }
 // int args7(int x, int y, int z, int p, int q, int r, int m) { return r; }
 
