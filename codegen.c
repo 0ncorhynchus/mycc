@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-char *arg_registers[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+static const char *arg_registers[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 const char *ax(size_t size) {
     switch (size) {
@@ -35,7 +35,7 @@ const char *di(size_t size) {
     }
 }
 
-int label_index;
+static int label_index;
 
 void error(char *fmt, ...) {
     va_list ap;
@@ -45,11 +45,11 @@ void error(char *fmt, ...) {
     exit(1);
 }
 
-int stack = 0;
-int num_args = 0;
-int num_vars = 0;
+static int stack = 0;
+static int num_args = 0;
+static int num_vars = 0;
 
-void push(char *arg) {
+void push(const char *arg) {
     stack++;
     printf("  push %s\n", arg);
 }
@@ -59,7 +59,7 @@ void push_val(int val) {
     printf("  push %d\n", val);
 }
 
-void pop(char *arg) {
+void pop(const char *arg) {
     stack--;
     printf("  pop %s\n", arg);
 }
@@ -74,6 +74,7 @@ static void epilogue(Node *node) {
     printf("  mov rsp, rbp\n");
     printf("  pop rbp\n");
     printf("  ret\n");
+
     assert(stack == num_args);
     stack = 0;
     num_args = 0;
