@@ -64,7 +64,7 @@ void pop(char *arg) {
     printf("  pop %s\n", arg);
 }
 
-void epilogue() {
+static void epilogue() {
     printf("  mov rsp, rbp\n");
     printf("  pop rbp\n");
     printf("  ret\n");
@@ -240,8 +240,7 @@ void gen_func(Node *node) {
         body = body->rhs;
     }
 
-    size_t return_size = sizeof_ty(node->ty);
-    printf("  mov %s, 0\n", ax(return_size));
+    printf("  mov rax, 0\n");
     epilogue();
 }
 

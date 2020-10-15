@@ -22,7 +22,7 @@ size_t sizeof_ty(Type *ty) {
     case CHAR:
         return 1;
     case VOID:
-        // error("sizeof(void) is not allowed.");
+        error("sizeof(void) is not allowed.");
         return 1; // GNU compatible.
     default:
         error("The size of %s is unknown.", type_to_str(ty));
