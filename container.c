@@ -28,10 +28,12 @@ size_t sizeof_ty(Type *ty) {
 }
 
 Var *find_var(Env *env, const Span *ident) {
-    for (Var *var = env->locals; var; var = var->next)
-        if (var->ident.len == ident->len &&
-            !memcmp(ident->ptr, var->ident.ptr, var->ident.len))
-            return var;
+    for (VarList *next = env->vars; next; next = next->next) {
+        if (next->var.ident.len == ident->len &&
+            !memcmp(ident->ptr, next->var.ident.ptr, ident->len)) {
+            return &next->var;
+        }
+    }
     return NULL;
 }
 
@@ -52,23 +54,23 @@ const Var *declare_var(Env *env, Type *ty, const Span *ident) {
     if (find_var(env, ident))
         error_at(ident, "'%.*s' is already declared", ident->len, ident->ptr);
 
-    Var *new = calloc(1, sizeof(Var));
-    new->next = env->locals;
-    new->ty = ty;
-    new->ident = *ident;
+    VarList *new = calloc(1, sizeof(VarList));
+    new->next = env->vars;
+    new->var.ty = ty;
+    new->var.ident = *ident;
 
     if (is_global(env)) {
-        new->kind = VGLOBAL;
+        new->var.kind = VGLOBAL;
     } else {
-        new->kind = VLOCAL;
+        new->var.kind = VLOCAL;
         size_t size = ((sizeof_ty(ty) - 1) / 8 + 1) * 8;
         env->maximum_offset += size;
-        new->offset = env->maximum_offset;
+        new->var.offset = env->maximum_offset;
     }
 
-    env->locals = new;
+    env->vars = new;
 
-    return new;
+    return &new->var;
 }
 
 Env *get_global(Env *env) {

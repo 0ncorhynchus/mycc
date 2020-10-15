@@ -101,11 +101,16 @@ struct Node {
 typedef struct Var Var;
 struct Var {
     VarKind kind;
-    Var *next;
     Type *ty;
     int offset;
-
     Span ident;
+};
+
+// Linked list for variables
+typedef struct VarList VarList;
+struct VarList {
+    VarList *next;
+    Var var;
 };
 
 typedef struct String String;
@@ -118,7 +123,7 @@ struct String {
 typedef struct Env Env;
 struct Env {
     Env *parent;
-    Var *locals;
+    VarList *vars;
     String *strings;
     int maximum_offset;
     int maximum_strings;
