@@ -31,6 +31,9 @@ struct Type {
     int array_size;
 };
 
+extern Type INT_T;
+extern Type CHAR_T;
+
 typedef enum {
     VLOCAL,
     VGLOBAL,

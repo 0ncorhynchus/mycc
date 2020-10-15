@@ -331,13 +331,12 @@ void tokenize(const char *path) {
 }
 
 Type *type() {
-    Type *ty = calloc(1, sizeof(Type));
+    Type *ty = NULL;
     if (consume("int")) {
-        ty->ty = INT;
+        ty = &INT_T;
     } else if (consume("char")) {
-        ty->ty = CHAR;
+        ty = &CHAR_T;
     } else {
-        free(ty);
         return NULL;
     }
 
@@ -486,8 +485,7 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
 Node *new_node_num(int val) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_NUM;
-    node->ty = calloc(1, sizeof(Type));
-    node->ty->ty = INT;
+    node->ty = &INT_T;
     node->val = val;
     return node;
 }
@@ -677,8 +675,7 @@ Node *relational(Env *env) {
             return node;
         }
 
-        node->ty = calloc(1, sizeof(Type));
-        node->ty->ty = INT;
+        node->ty = &INT_T;
     }
 }
 
