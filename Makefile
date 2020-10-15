@@ -1,25 +1,27 @@
 CFLAGS=-std=c11 -g -static -Wall
+
 SRCS=$(wildcard *.c)
-OBJS=$(filter-out test%.o, $(SRCS:.c=.o))
+OBJS=$(SRCS:.c=.o)
+
+TEST_SRCS=$(filter-out tests/utils.c, $(wildcard tests/*.c))
+TESTS=$(TEST_SRCS:.c=.out)
 
 mycc: $(OBJS)
 	$(CC) -o $@ $(OBJS) $(LDFLAGS)
 
 $(OBJS): mycc.h
 
-test: mycc test.out
-	./test.out
+test: $(TESTS)
+	for t in $^; do echo $$t; ./$$t || exit 1; done
 
-test.out: test.s test_utils.o
+tests/%.out: tests/%.s tests/utils.o
 	$(CC) -o $@ $^
 
-test.s: test.c mycc
-	$(eval tmp := $(shell mktemp))
-	./mycc $< > $(tmp)
-	mv $(tmp) $@
+tests/%.s: tests/%.c mycc
+	./mycc $< > $@ || exit 1
 
 clean:
-	rm -f mycc *.s *.o *.out tmp*
+	rm -f mycc $(OBJS) $(TESTS)
 
 fmt:
 	clang-format -i mycc.h $(SRCS)
