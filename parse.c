@@ -535,11 +535,7 @@ Node *unary(Env *env) {
         node->kind = ND_ADDR;
         node->lhs = unary(env);
         if (node->lhs && node->lhs->ty) {
-            if (node->lhs->ty->ty == ARRAY) {
-                node->ty = mk_ptr(node->lhs->ty->ptr_to);
-            } else {
-                node->ty = mk_ptr(node->lhs->ty);
-            }
+            node->ty = mk_ptr(node->lhs->ty);
             return node;
         }
         error("Internal compile error: try to obtain the address to an unknown "

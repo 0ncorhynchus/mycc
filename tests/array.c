@@ -8,7 +8,6 @@ int main() {
     assert_int(1, -a[1] + 3);
     assert_int(4, sizeof(a[1]));
 
-    /* *&a = 1; // This operation is not allowd in gcc. */
     *a = 1;
     assert_int(1, *a);
 
