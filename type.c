@@ -38,63 +38,48 @@ size_t sizeof_ty(const Type *ty) {
 }
 
 char *type_to_str(const Type *ty) {
-    int depth = 0;
+    char *buffer = calloc(256, 1);
+
     const Type *tmp;
     for (tmp = ty; tmp; tmp = tmp->ptr_to) {
         switch (tmp->ty) {
         case INT:
-            depth += 3; // length of "int"
+            strcat(buffer, "tni");
             break;
         case PTR:
-            depth += 1; // length of "*"
+            strcat(buffer, "*");
             break;
         case ARRAY:
-            if (tmp->array_size >= 0) {
-                depth += snprintf(NULL, 0, "[%d]", tmp->array_size);
+            strcat(buffer, "]");
+            if (tmp->array_size == 0) {
+                strcat(buffer, "0");
+            } else {
+                for (int i = tmp->array_size; i > 0; i /= 10) {
+                    char c = '0' + (i % 10);
+                    strncat(buffer, &c, 1);
+                }
             }
+            strcat(buffer, "[");
             break;
         case CHAR:
-            depth += 4; // length of "char"
+            strcat(buffer, "rahc");
             break;
         case VOID:
-            depth += 4; // length of "void"
+            strcat(buffer, "doiv");
             break;
         default:
             error("Not implemented for this type: type_to_str()");
         }
     }
 
-    char *buffer = calloc(depth + 1, sizeof(char));
-    for (tmp = ty; tmp; tmp = tmp->ptr_to) {
-        switch (tmp->ty) {
-        case INT:
-            depth -= 3; // length of "int"
-            memcpy(buffer + depth, "int", 3);
-            break;
-        case PTR:
-            depth -= 1; // length of "*"
-            memcpy(buffer + depth, "*", 2);
-            break;
-        case ARRAY:
-            if (tmp->array_size >= 0) {
-                depth -= snprintf(NULL, 0, "[%d]", tmp->array_size);
-                sprintf(buffer + depth, "[%d]", tmp->array_size);
-            }
-            break;
-        case CHAR:
-            depth -= 4; // length of "char"
-            memcpy(buffer + depth, "char", 4);
-            break;
-        case VOID:
-            depth -= 4;
-            memcpy(buffer + depth, "void", 4);
-            break;
-        default:
-            error("Not implemented for this type: type_to_str()");
-        }
+    int len = strlen(buffer);
+    char *retval = calloc(len, 1);
+    for (int i = 0; i < len; i++) {
+        retval[i] = buffer[len - i - 1];
     }
+    free(buffer);
 
-    return buffer;
+    return retval;
 }
 
 static bool is_subtype(const Type *base, const Type *derived) {
