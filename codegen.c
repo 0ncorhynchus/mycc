@@ -47,7 +47,7 @@ void error(char *fmt, ...) {
 
 int stack = 0;
 int num_args = 0;
-int num_lvars = 0;
+int num_vars = 0;
 
 void push(char *arg) {
     stack++;
@@ -71,7 +71,7 @@ void epilogue() {
     assert(stack == num_args);
     stack = 0;
     num_args = 0;
-    num_lvars = 0;
+    num_vars = 0;
 }
 
 void gen_lval(Node *node) {
@@ -174,7 +174,7 @@ void gen_call(Node *node) {
     int num_args = 0;
     Node *arg = node->lhs;
     NodeList *args = NULL;
-    bool is_shifted = (stack + num_lvars) % 2 == 1;
+    bool is_shifted = (stack + num_vars) % 2 == 1;
 
     if (is_shifted) {
         push_val(0); // align stack
@@ -234,7 +234,7 @@ void gen_func(Node *node) {
     int variables_offset = body ? body->val : 0;
     printf("  sub rsp, %d /* allocate for local variables */\n",
            variables_offset);
-    num_lvars = variables_offset / 8;
+    num_vars = variables_offset / 8;
     while (body) {
         gen(body->lhs);
         body = body->rhs;

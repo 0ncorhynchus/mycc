@@ -523,11 +523,11 @@ Node *primary(Env *env) {
             return node;
         }
 
-        const LVar *lvar = get_lvar(env, &tok->span);
-        node->ty = lvar->ty;
-        node->offset = lvar->offset;
-        node->vkind = lvar->kind;
-        node->ident = lvar->ident;
+        const Var *var = get_var(env, &tok->span);
+        node->ty = var->ty;
+        node->offset = var->offset;
+        node->vkind = var->kind;
+        node->ident = var->ident;
 
         return node;
     }
@@ -732,7 +732,7 @@ Node *function(Env *parent, Node *node) {
         arg->kind = ND_FUNC_ARGS;
         node->lhs = arg;
 
-        declare_lvar(&env, arg->ty, &arg->ident);
+        declare_var(&env, arg->ty, &arg->ident);
 
         while (consume(",")) {
             arg = type_ident();
@@ -740,7 +740,7 @@ Node *function(Env *parent, Node *node) {
             arg->lhs = node->lhs;
             node->lhs = arg;
 
-            declare_lvar(&env, arg->ty, &arg->ident);
+            declare_var(&env, arg->ty, &arg->ident);
         }
         expect(")");
 
@@ -819,7 +819,7 @@ Node *declare(Env *env, Node *node) {
         }
     }
 
-    const LVar *var = declare_lvar(env, node->ty, &node->ident);
+    const Var *var = declare_var(env, node->ty, &node->ident);
     node->vkind = var->kind;
     node->offset = var->offset;
 

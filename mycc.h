@@ -98,10 +98,10 @@ struct Node {
     int num_initializers;
 };
 
-typedef struct LVar LVar;
-struct LVar {
+typedef struct Var Var;
+struct Var {
     VarKind kind;
-    LVar *next;
+    Var *next;
     Type *ty;
     int offset;
 
@@ -118,7 +118,7 @@ struct String {
 typedef struct Env Env;
 struct Env {
     Env *parent;
-    LVar *locals;
+    Var *locals;
     String *strings;
     int maximum_offset;
     int maximum_strings;
@@ -142,8 +142,8 @@ void tokenize(const char *path);
 size_t sizeof_ty(Type *ty);
 char *type_to_str(Type *ty);
 
-const LVar *get_lvar(Env *env, const Span *ident);
-const LVar *declare_lvar(Env *env, Type *ty, const Span *ident);
+const Var *get_var(Env *env, const Span *ident);
+const Var *declare_var(Env *env, Type *ty, const Span *ident);
 const String *push_string(Env *env, const Span *ident);
 
 Node *expr();

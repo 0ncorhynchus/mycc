@@ -27,17 +27,17 @@ size_t sizeof_ty(Type *ty) {
     }
 }
 
-LVar *find_lvar(Env *env, const Span *ident) {
-    for (LVar *var = env->locals; var; var = var->next)
+Var *find_var(Env *env, const Span *ident) {
+    for (Var *var = env->locals; var; var = var->next)
         if (var->ident.len == ident->len &&
             !memcmp(ident->ptr, var->ident.ptr, var->ident.len))
             return var;
     return NULL;
 }
 
-const LVar *get_lvar(Env *env, const Span *ident) {
+const Var *get_var(Env *env, const Span *ident) {
     while (env) {
-        LVar *retval = find_lvar(env, ident);
+        Var *retval = find_var(env, ident);
         if (retval)
             return retval;
         env = env->parent;
@@ -48,11 +48,11 @@ const LVar *get_lvar(Env *env, const Span *ident) {
     return NULL;
 }
 
-const LVar *declare_lvar(Env *env, Type *ty, const Span *ident) {
-    if (find_lvar(env, ident))
+const Var *declare_var(Env *env, Type *ty, const Span *ident) {
+    if (find_var(env, ident))
         error_at(ident, "'%.*s' is already declared", ident->len, ident->ptr);
 
-    LVar *new = calloc(1, sizeof(LVar));
+    Var *new = calloc(1, sizeof(Var));
     new->next = env->locals;
     new->ty = ty;
     new->ident = *ident;
