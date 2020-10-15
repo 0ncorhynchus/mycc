@@ -300,6 +300,18 @@ int test_add() {
     assert_int(97, z[y]);
 }
 
+int a = 3;
+char b[] = "foobar";
+int *c = &a;
+char *d = b + 3;
+
+int test_initialize_global() {
+    assert_int(3, a);
+    assert_int(3, *c);
+    assert_int(102, b[0]);
+    assert_int(98, *d);
+}
+
 int summary() {
     printf("SUMMARY:\n");
     printf("    %d tests passed.\n", num_passed);
@@ -364,6 +376,8 @@ int main() {
     test_string();
 
     test_add();
+
+    test_initialize_global();
 
     return summary();
 }

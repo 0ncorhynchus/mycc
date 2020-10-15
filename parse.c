@@ -17,7 +17,8 @@
 //               | "while" "(" expr ")" stmt
 //               | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //               | "return" expr ";"
-//  declare     =  type ident ( "[" num "]" )? ";"
+//  declare     =  type ident ( "[" num "]" )? ( "=" init )? ";"
+//  init        =  expr
 //  function    =  type ident
 //                 "(" (type ident ("," type ident)*)? ")"
 //                 "{" stmt* "}"
@@ -167,11 +168,22 @@ void expect(char *op) {
     token = token->next;
 }
 
-int expect_number() {
-    if (token->kind != TK_NUM)
-        error_at(&token->span, "Unexpected token: a number expected.");
-    int val = token->val;
+bool number(int *val) {
+    if (token->kind != TK_NUM) {
+        return false;
+    }
+
+    *val = token->val;
     token = token->next;
+
+    return true;
+}
+
+int expect_number() {
+    int val;
+    if (!number(&val)) {
+        error_at(&token->span, "Unexpected token: a number expected.");
+    }
     return val;
 }
 
@@ -355,7 +367,9 @@ char *type_to_str(Type *ty) {
             depth += 1; // length of "*"
             break;
         case ARRAY:
-            depth += snprintf(NULL, 0, "[%zu]", tmp->array_size);
+            if (tmp->array_size >= 0) {
+                depth += snprintf(NULL, 0, "[%d]", tmp->array_size);
+            }
             break;
         case CHAR:
             depth += 4; // length of "char"
@@ -377,8 +391,10 @@ char *type_to_str(Type *ty) {
             memcpy(buffer + depth, "*", 2);
             break;
         case ARRAY:
-            depth -= snprintf(NULL, 0, "[%zu]", tmp->array_size);
-            sprintf(buffer + depth, "[%zu]", tmp->array_size);
+            if (tmp->array_size >= 0) {
+                depth -= snprintf(NULL, 0, "[%d]", tmp->array_size);
+                sprintf(buffer + depth, "[%d]", tmp->array_size);
+            }
             break;
         case CHAR:
             depth -= 4; // length of "char"
@@ -523,15 +539,14 @@ Node *primary(Env *env) {
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_STRING;
         node->ident = tok->span;
+        node->ident.ptr++;
+        node->ident.len -= 2;
         node->ty = calloc(1, sizeof(Type));
         node->ty->ty = PTR;
         node->ty->ptr_to = calloc(1, sizeof(Type));
         node->ty->ptr_to->ty = CHAR;
 
-        Span span = tok->span;
-        span.ptr++;
-        span.len -= 2;
-        const String *string = push_string(env, &span);
+        const String *string = push_string(env, &node->ident);
         node->val = string->index;
 
         return node;
@@ -751,11 +766,14 @@ Node *function(Env *parent, Node *node) {
     return node;
 }
 
+Node *init(Env *env) { return expr(env); }
+
 Node *declare(Env *env, Node *node) {
     node->kind = ND_DECLARE;
 
     if (consume("[")) {
-        size_t array_size = expect_number();
+        int array_size = -1;
+        number(&array_size);
         expect("]");
 
         Type *array_ty = calloc(1, sizeof(Type));
@@ -767,6 +785,11 @@ Node *declare(Env *env, Node *node) {
 
     const LVar *var = declare_lvar(env, node->ty, &node->ident);
     node->vkind = var->kind;
+
+    if (consume("=")) {
+        node->init = init(env);
+    }
+
     expect(";");
 
     return node;

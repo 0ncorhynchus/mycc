@@ -29,7 +29,7 @@ typedef struct Type Type;
 struct Type {
     enum { INT, PTR, ARRAY, CHAR } ty;
     Type *ptr_to;
-    size_t array_size;
+    int array_size;
 };
 
 typedef enum {
@@ -89,6 +89,7 @@ struct Node {
 
     // For ND_DECLARE
     VarKind vkind;
+    Node *init; // initial value
 };
 
 typedef struct LVar LVar;

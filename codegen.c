@@ -245,12 +245,121 @@ void gen_func(Node *node) {
     epilogue();
 }
 
+bool eval_constexpr(const Node *node, int *val) {
+    int lhs, rhs;
+    switch (node->kind) {
+    case (ND_NUM):
+        *val = node->val;
+        return true;
+    case (ND_ADD):
+        if (eval_constexpr(node->lhs, &lhs) &&
+            eval_constexpr(node->rhs, &rhs)) {
+            *val = lhs + rhs;
+            return true;
+        }
+        return false;
+    case (ND_SUB):
+        if (eval_constexpr(node->lhs, &lhs) &&
+            eval_constexpr(node->rhs, &rhs)) {
+            *val = lhs - rhs;
+            return true;
+        }
+        return false;
+    case (ND_MUL):
+        if (eval_constexpr(node->lhs, &lhs) &&
+            eval_constexpr(node->rhs, &rhs)) {
+            *val = lhs * rhs;
+            return true;
+        }
+        return false;
+    case (ND_DIV):
+        if (eval_constexpr(node->lhs, &lhs) &&
+            eval_constexpr(node->rhs, &rhs)) {
+            *val = lhs / rhs;
+            return true;
+        }
+        return false;
+    case (ND_LT):
+        if (eval_constexpr(node->lhs, &lhs) &&
+            eval_constexpr(node->rhs, &rhs)) {
+            *val = lhs < rhs;
+            return true;
+        }
+        return false;
+    case (ND_LE):
+        if (eval_constexpr(node->lhs, &lhs) &&
+            eval_constexpr(node->rhs, &rhs)) {
+            *val = lhs <= rhs;
+            return true;
+        }
+        return false;
+    case (ND_EQ):
+        if (eval_constexpr(node->lhs, &lhs) &&
+            eval_constexpr(node->rhs, &rhs)) {
+            *val = lhs == rhs;
+            return true;
+        }
+        return false;
+    case (ND_NE):
+        if (eval_constexpr(node->lhs, &lhs) &&
+            eval_constexpr(node->rhs, &rhs)) {
+            *val = lhs != rhs;
+            return true;
+        }
+        return false;
+    case (ND_STRING):
+    default:
+        return false;
+    }
+}
+
 void gen_declare(Node *node) {
     size_t size = sizeof_ty(node->ty);
     printf(".global %.*s\n", node->ident.len, node->ident.ptr);
-    printf(".bss\n");
+    if (node->init == NULL) {
+        printf(".bss\n");
+    } else {
+        printf(".data\n");
+    }
+
     printf("%.*s:\n", node->ident.len, node->ident.ptr);
-    printf("  .zero %zu\n", size);
+
+    if (node->init == NULL) {
+        printf("  .zero %zu\n", size);
+        return;
+    }
+
+    int val;
+    if (eval_constexpr(node->init, &val)) {
+        printf("  .long %d\n", val);
+        return;
+    }
+
+    switch (node->init->kind) {
+    case (ND_STRING):
+        printf("  .ascii \"%.*s\\0\"\n", node->init->ident.len,
+               node->init->ident.ptr);
+        return;
+    case (ND_ADDR):
+        if (node->init->lhs->kind == ND_LVAR &&
+            node->init->lhs->vkind == VGLOBAL) {
+            printf("  .quad %.*s\n", node->init->lhs->ident.len,
+                   node->init->lhs->ident.ptr);
+            return;
+        }
+    case (ND_ADD):
+        if (node->init->lhs->kind == ND_ADDR &&
+            node->init->lhs->lhs->kind == ND_LVAR &&
+            node->init->lhs->lhs->vkind == VGLOBAL &&
+            node->init->rhs->kind == ND_NUM) {
+            printf("  .quad %.*s + %d\n", node->init->lhs->lhs->ident.len,
+                   node->init->lhs->lhs->ident.ptr, node->init->rhs->val);
+            return;
+        }
+    default:
+        break;
+    }
+    error("Invalid initializer for a global variable");
 }
 
 void gen_top(Node *node) {
