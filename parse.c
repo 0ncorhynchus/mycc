@@ -354,59 +354,6 @@ Type *type() {
     return ty;
 }
 
-char *type_to_str(Type *ty) {
-    int depth = 0;
-    Type *tmp;
-    for (tmp = ty; tmp; tmp = tmp->ptr_to) {
-        switch (tmp->ty) {
-        case INT:
-            depth += 3; // length of "int"
-            break;
-        case PTR:
-            depth += 1; // length of "*"
-            break;
-        case ARRAY:
-            if (tmp->array_size >= 0) {
-                depth += snprintf(NULL, 0, "[%d]", tmp->array_size);
-            }
-            break;
-        case CHAR:
-            depth += 4; // length of "char"
-            break;
-        default:
-            error("Not implemented for this type: type_to_str()");
-        }
-    }
-
-    char *buffer = calloc(depth + 1, sizeof(char));
-    for (tmp = ty; tmp; tmp = tmp->ptr_to) {
-        switch (tmp->ty) {
-        case INT:
-            depth -= 3; // length of "int"
-            memcpy(buffer + depth, "int", 3);
-            break;
-        case PTR:
-            depth -= 1; // length of "*"
-            memcpy(buffer + depth, "*", 2);
-            break;
-        case ARRAY:
-            if (tmp->array_size >= 0) {
-                depth -= snprintf(NULL, 0, "[%d]", tmp->array_size);
-                sprintf(buffer + depth, "[%d]", tmp->array_size);
-            }
-            break;
-        case CHAR:
-            depth -= 4; // length of "char"
-            memcpy(buffer + depth, "char", 4);
-            break;
-        default:
-            error("Not implemented for this type: type_to_str()");
-        }
-    }
-
-    return buffer;
-}
-
 bool is_subtype(Type *base, Type *derived) {
     if (base == NULL || derived == NULL) {
         return false;

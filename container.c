@@ -6,27 +6,6 @@
 
 bool is_global(const Env *env) { return env->parent == NULL; }
 
-size_t sizeof_ty(Type *ty) {
-    if (ty == NULL) {
-        error(
-            "Internal compile error: try to obtain the size of unknown type.");
-    }
-
-    switch (ty->ty) {
-    case INT:
-        return 4;
-    case PTR:
-        return 8;
-    case ARRAY:
-        return sizeof_ty(ty->ptr_to) * ty->array_size;
-    case CHAR:
-        return 1;
-    default:
-        error("The size of %s is unknown.", type_to_str(ty));
-        return 0;
-    }
-}
-
 Var *find_var(Env *env, const Span *ident) {
     for (VarList *next = env->vars; next; next = next->next) {
         if (next->var.ident.len == ident->len &&
