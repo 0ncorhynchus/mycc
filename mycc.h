@@ -1,5 +1,6 @@
 #pragma once
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -35,8 +36,6 @@ struct Type {
 extern const Type INT_T;
 extern const Type CHAR_T;
 extern const Type VOID_T;
-
-const Type *mk_ptr(const Type *base);
 
 typedef enum {
     VLOCAL,
@@ -149,8 +148,11 @@ void error_at(const Span *span, char *fmt, ...);
 
 void tokenize(const char *path);
 
+const Type *mk_ptr(const Type *base);
 size_t sizeof_ty(const Type *ty);
 char *type_to_str(const Type *ty);
+bool is_same_type(const Type *lhs, const Type *rhs);
+const Type *get_type(const Node *lhs, const Node *rhs);
 
 const Var *get_var(Env *env, const Span *ident);
 const Var *declare_var(Env *env, const Type *ty, const Span *ident);

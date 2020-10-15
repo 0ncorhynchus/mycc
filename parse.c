@@ -344,58 +344,6 @@ const Type *type() {
     return ty;
 }
 
-bool is_subtype(const Type *base, const Type *derived) {
-    if (base == NULL || derived == NULL) {
-        return false;
-    }
-
-    switch (base->ty) {
-    case INT:
-        return derived->ty == INT || derived->ty == CHAR;
-    case PTR:
-        if (derived->ty == PTR) {
-            return is_subtype(base->ptr_to, derived->ptr_to);
-        }
-        return derived->ty == INT || derived->ty == CHAR;
-    case ARRAY:
-        if (derived->ty == ARRAY && base->array_size == derived->array_size) {
-            return is_subtype(base->ptr_to, derived->ptr_to);
-        }
-        return false;
-    case CHAR:
-        return derived->ty == CHAR;
-    default:
-        return false;
-    }
-}
-
-bool is_same_type(const Type *lhs, const Type *rhs) {
-    return is_subtype(lhs, rhs) && is_subtype(rhs, lhs);
-}
-
-const Type *check_type(const Type *lhs, const Type *rhs) {
-    if (is_subtype(lhs, rhs)) {
-        return lhs;
-    }
-
-    if (is_subtype(rhs, lhs)) {
-        return rhs;
-    }
-
-    return NULL;
-}
-
-const Type *get_type(const Node *lhs, const Node *rhs) {
-    if (lhs == NULL || rhs == NULL)
-        return NULL;
-    const Type *ty = check_type(lhs->ty, rhs->ty);
-    if (ty == NULL) {
-        error("Type Mismatched: '%s' and '%s'", type_to_str(lhs->ty),
-              type_to_str(rhs->ty));
-    }
-    return ty;
-}
-
 // Implicit converter from array T[] to pointer T*
 Node *as_ptr(Node *array) {
     if (array == NULL || array->ty == NULL || array->ty->ty != ARRAY)
