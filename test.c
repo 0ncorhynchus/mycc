@@ -331,6 +331,12 @@ int test_initialize() {
     assert_int(3, z[2]);
     assert_int(0, z[3]);
     assert_int(0, z[4]);
+
+    char w[] = "abc";
+    assert_int(3, sizeof(w));
+    assert_int(97, w[0]);
+    assert_int(98, w[1]);
+    assert_int(99, w[2]);
 }
 
 int summary() {

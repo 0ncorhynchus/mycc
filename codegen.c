@@ -548,15 +548,21 @@ void gen(Node *node) {
                         Node *lhs = deref_offset_ptr(var, idx);
                         if (init) {
                             gen(new_assign(lhs, init));
-                            pop("rax");
                             init = init->next;
                         } else {
                             gen(new_assign(lhs, new_node_num(0)));
-                            pop("rax");
                         }
+                        pop("rax");
                     }
                     return;
                 case (ND_STRING):
+                    for (int index = 0; index < node->ty->array_size; index++) {
+                        Node *idx = new_node_num(index);
+                        Node *lhs = deref_offset_ptr(var, idx);
+                        Node *rhs = deref_offset_ptr(node->init, idx);
+                        gen(new_assign(lhs, rhs));
+                        pop("rax");
+                    }
                     return;
                 default:
                     error("Internal compiler error: unreachable at %s:%d",
