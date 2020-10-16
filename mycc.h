@@ -143,6 +143,8 @@ static inline Env make_scope(Env *parent) {
 typedef struct Function Function;
 struct Function {
     const char *ident;
+    unsigned int num_args;
+    int lvar_offset;
     Node *args;
     Node *body;
 };

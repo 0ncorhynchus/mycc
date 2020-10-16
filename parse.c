@@ -459,7 +459,6 @@ static Function *function(const Token **rest, const Token *tok, Env *parent,
     fn->ident = ident;
 
     Env env = make_scope(parent);
-    int argument_offset = 0;
 
     if (!consume(&tok, tok, ")")) {
         Node *arg = type_ident(&tok, tok);
@@ -467,6 +466,7 @@ static Function *function(const Token **rest, const Token *tok, Env *parent,
         fn->args = arg;
 
         declare_var(&env, arg->ty, &arg->ident);
+        fn->num_args++;
 
         while (consume(&tok, tok, ",")) {
             arg = type_ident(&tok, tok);
@@ -475,14 +475,16 @@ static Function *function(const Token **rest, const Token *tok, Env *parent,
             fn->args = arg;
 
             declare_var(&env, arg->ty, &arg->ident);
+            fn->num_args++;
         }
         expect(&tok, tok, ")");
 
-        argument_offset = env.maximum_offset;
-        fn->args->val = argument_offset / 8;
-        if (fn->args->val > 6)
+        if (fn->num_args > 6) {
             error("Not supported: more than 6 arguments.");
+        }
     }
+
+    int argument_offset = env.maximum_offset;
 
     expect(&tok, tok, "{");
     Node *body = NULL;
@@ -498,10 +500,7 @@ static Function *function(const Token **rest, const Token *tok, Env *parent,
             body = fn->body;
         }
     }
-    if (fn->body) {
-        int variables_offset = env.maximum_offset - argument_offset;
-        fn->body->val = variables_offset;
-    }
+    fn->lvar_offset = env.maximum_offset - argument_offset;
 
     *rest = tok;
 
