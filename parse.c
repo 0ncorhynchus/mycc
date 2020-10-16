@@ -643,7 +643,7 @@ static Node *expr(const Token **rest, const Token *tok, Env *env) {
     return assign(rest, tok, env);
 }
 
-Node *stmt(Env *env);
+static Node *stmt(const Token **rest, const Token *tok, Env *env);
 
 // try to parse a type and an ident.
 // For parse a function and a declare.
@@ -672,7 +672,7 @@ static Node *type_ident(const Token **rest, const Token *tok) {
 //             "(" (type ident ("," type ident)*)? ")"
 //             "{" stmt* "}"
 //
-Node *function(Env *parent, Node *node) {
+static Node *function(Env *parent, Node *node) {
     if (!consume(&token, token, "("))
         return NULL;
 
@@ -709,7 +709,7 @@ Node *function(Env *parent, Node *node) {
     while (!consume(&token, token, "}")) {
         body->rhs = calloc(1, sizeof(Node));
         body->rhs->kind = ND_FUNC_BODY;
-        body->rhs->lhs = stmt(&env);
+        body->rhs->lhs = stmt(&token, token, &env);
         body = body->rhs;
     }
     if (node->rhs) {
@@ -807,78 +807,80 @@ static Node *declare(const Token **rest, const Token *tok, Env *env,
 //       | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //       | "return" expr? ";"
 //
-Node *stmt(Env *env) {
+static Node *stmt(const Token **rest, const Token *tok, Env *env) {
     Node *node = NULL;
 
-    if (consume(&token, token, "if")) {
+    if (consume(&tok, tok, "if")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_IF_COND;
-        expect(&token, token, "(");
-        node->lhs = expr(&token, token, env);
-        expect(&token, token, ")");
+        expect(&tok, tok, "(");
+        node->lhs = expr(&tok, tok, env);
+        expect(&tok, tok, ")");
 
         node->rhs = calloc(1, sizeof(Node));
         node->rhs->kind = ND_IF_BODY;
-        node->rhs->lhs = stmt(env);
-        if (consume(&token, token, "else")) {
-            node->rhs->rhs = stmt(env);
+        node->rhs->lhs = stmt(&tok, tok, env);
+        if (consume(&tok, tok, "else")) {
+            node->rhs->rhs = stmt(&tok, tok, env);
         }
-    } else if (consume(&token, token, "while")) {
+    } else if (consume(&tok, tok, "while")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_WHILE;
-        expect(&token, token, "(");
-        node->lhs = expr(&token, token, env);
-        expect(&token, token, ")");
-        node->rhs = stmt(env);
-    } else if (consume(&token, token, "for")) {
+        expect(&tok, tok, "(");
+        node->lhs = expr(&tok, tok, env);
+        expect(&tok, tok, ")");
+        node->rhs = stmt(&tok, tok, env);
+    } else if (consume(&tok, tok, "for")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_FOR_INIT;
-        expect(&token, token, "(");
-        if (!consume(&token, token, ";")) {
-            node->lhs = expr(&token, token, env);
-            expect(&token, token, ";");
+        expect(&tok, tok, "(");
+        if (!consume(&tok, tok, ";")) {
+            node->lhs = expr(&tok, tok, env);
+            expect(&tok, tok, ";");
         }
 
         node->rhs = calloc(1, sizeof(Node));
         node->rhs->kind = ND_FOR_COND;
-        if (!consume(&token, token, ";")) {
-            node->rhs->lhs = expr(&token, token, env);
-            expect(&token, token, ";");
+        if (!consume(&tok, tok, ";")) {
+            node->rhs->lhs = expr(&tok, tok, env);
+            expect(&tok, tok, ";");
         }
 
         node->rhs->rhs = calloc(1, sizeof(Node));
         node->rhs->rhs->kind = ND_FOR_BODY;
-        if (!consume(&token, token, ")")) {
-            node->rhs->rhs->lhs = expr(&token, token, env);
-            expect(&token, token, ")");
+        if (!consume(&tok, tok, ")")) {
+            node->rhs->rhs->lhs = expr(&tok, tok, env);
+            expect(&tok, tok, ")");
         }
-        node->rhs->rhs->rhs = stmt(env);
-    } else if (consume(&token, token, "return")) {
+        node->rhs->rhs->rhs = stmt(&tok, tok, env);
+    } else if (consume(&tok, tok, "return")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_RETURN;
-        node->lhs = as_ptr(expr(&token, token, env));
-        expect(&token, token, ";");
-    } else if (consume(&token, token, "{")) {
+        node->lhs = as_ptr(expr(&tok, tok, env));
+        expect(&tok, tok, ";");
+    } else if (consume(&tok, tok, "{")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_BLOCK;
         Node *current = node;
-        while (!consume(&token, token, "}")) {
-            current->lhs = stmt(env);
+        while (!consume(&tok, tok, "}")) {
+            current->lhs = stmt(&tok, tok, env);
             current->rhs = calloc(1, sizeof(Node));
             current = current->rhs;
             current->kind = ND_BLOCK;
         }
     } else {
-        node = type_ident(&token, token);
+        node = type_ident(&tok, tok);
         if (node) {
-            node = declare(&token, token, env, node);
+            node = declare(&tok, tok, env, node);
         } else {
             node = calloc(1, sizeof(Node));
             node->kind = ND_SEMICOLON;
-            node->lhs = expr(&token, token, env);
-            expect(&token, token, ";");
+            node->lhs = expr(&tok, tok, env);
+            expect(&tok, tok, ";");
         }
     }
+
+    *rest = tok;
 
     return node;
 }
