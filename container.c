@@ -6,7 +6,7 @@
 
 bool is_global(const Env *env) { return env->parent == NULL; }
 
-Var *find_var(Env *env, const Span *ident) {
+static Var *find_var(Env *env, const Span *ident) {
     for (VarList *next = env->vars; next; next = next->next) {
         if (strlen(next->var.ident) == ident->len &&
             !memcmp(ident->ptr, next->var.ident, ident->len)) {

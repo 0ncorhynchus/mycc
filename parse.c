@@ -30,11 +30,13 @@
 //  mul         =  unary ( "*" unary | "/" unary )*
 //  unary       =  ( "+" | "-" )? primary ( "[" expr "]" )?
 //               | ( "*" | "&" | "sizeof" ) unary
+//               | "sizeof" "(" type ")"
 //  primary     =  num
 //               | ident ( "(" ( expr ( "," expr )* )? ")" )?
 //               | "(" expr ")"
 //               | string
 //  type        = type "*" | "int" | "char" | "void"
+//  typename    = ( "int" | "char" | "void" ) ( "*"* | "[" num "]" )
 //
 
 static const char *filename;
@@ -322,15 +324,22 @@ void tokenize(const char *path) {
     token = head.next;
 }
 
-const Type *type() {
-    const Type *ty = NULL;
+const Type *type_specifier() {
     if (consume("int")) {
-        ty = &INT_T;
-    } else if (consume("char")) {
-        ty = &CHAR_T;
-    } else if (consume("void")) {
-        ty = &VOID_T;
-    } else {
+        return &INT_T;
+    }
+    if (consume("char")) {
+        return &CHAR_T;
+    }
+    if (consume("void")) {
+        return &VOID_T;
+    }
+    return NULL;
+}
+
+const Type *type() {
+    const Type *ty = type_specifier();
+    if (ty == NULL) {
         return NULL;
     }
 
@@ -341,6 +350,34 @@ const Type *type() {
     }
 
     token = tok;
+    return ty;
+}
+
+const Type *typename() {
+    const Type *ty = type_specifier();
+    if (ty == NULL) {
+        return NULL;
+    }
+
+    if (consume("*")) {
+        ty = mk_ptr(ty);
+        while (consume("*")) {
+            ty = mk_ptr(ty);
+        }
+    } else if (consume("[")) {
+        int size;
+        if (!number(&size)) {
+            error("Expect a number.");
+        }
+        expect("]");
+
+        Type *array_ty = calloc(1, sizeof(Type));
+        array_ty->ty = ARRAY;
+        array_ty->ptr_to = ty;
+        array_ty->array_size = size;
+        ty = array_ty;
+    }
+
     return ty;
 }
 
@@ -489,9 +526,25 @@ Node *unary(Env *env) {
               "type");
     }
     if (consume("sizeof")) {
-        Node *node = unary(env);
-        if (node->ty)
-            return new_node_num(sizeof_ty(node->ty));
+        if (consume("(")) {
+            const Type *ty = typename();
+            if (ty == NULL) {
+                Node *node = expr(env);
+                if (node) {
+                    ty = node->ty;
+                }
+            }
+            expect(")");
+
+            if (ty) {
+                return new_node_num(sizeof_ty(ty));
+            }
+        } else {
+            Node *node = unary(env);
+            if (node->ty) {
+                return new_node_num(sizeof_ty(node->ty));
+            }
+        }
         error("Internal compile error: try to obtain the size of an unknown "
               "type");
     }
