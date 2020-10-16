@@ -210,8 +210,6 @@ static void gen_func(const Function *fn) {
     printf("  mov rbp, rsp\n");
     stack = 0;
 
-    Node *body = fn->body;
-
     // TODO
     num_args = fn->num_args <= 6 ? fn->num_args : 6;
     for (int i = 0; i < num_args; ++i) {
@@ -221,10 +219,8 @@ static void gen_func(const Function *fn) {
     printf("  sub rsp, %d /* allocate for local variables */\n",
            fn->lvar_offset);
     num_vars = fn->lvar_offset / 8;
-    while (body) {
-        gen(body->lhs);
-        body = body->rhs;
-    }
+
+    gen_block(fn->body->inner);
 
     epilogue(NULL);
 }

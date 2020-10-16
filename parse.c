@@ -442,6 +442,32 @@ static Node *type_ident(const Token **rest, const Token *tok) {
     return node;
 }
 
+static Node *block(const Token **rest, const Token *tok, Env *env) {
+    if (!consume(&tok, tok, "{")) {
+        return NULL;
+    }
+
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_BLOCK;
+
+    NodeList *body = NULL;
+    while (!consume(&tok, tok, "}")) {
+        NodeList *next = calloc(1, sizeof(NodeList));
+        next->node = stmt(&tok, tok, env);
+        if (body) {
+            body->next = next;
+            body = body->next;
+        } else {
+            node->inner = next;
+            body = node->inner;
+        }
+    }
+
+    *rest = tok;
+
+    return node;
+}
+
 //
 //  function = type ident
 //             "(" (type ident ("," type ident)*)? ")"
@@ -486,20 +512,7 @@ static Function *function(const Token **rest, const Token *tok, Env *parent,
 
     int argument_offset = env.maximum_offset;
 
-    expect(&tok, tok, "{");
-    Node *body = NULL;
-    while (!consume(&tok, tok, "}")) {
-        Node *s = calloc(1, sizeof(Node));
-        s->kind = ND_FUNC_BODY;
-        s->lhs = stmt(&tok, tok, &env);
-        if (body) {
-            body->rhs = s;
-            body = body->rhs;
-        } else {
-            fn->body = s;
-            body = fn->body;
-        }
-    }
+    fn->body = block(&tok, tok, &env);
     fn->lvar_offset = env.maximum_offset - argument_offset;
 
     *rest = tok;
@@ -574,32 +587,6 @@ static Node *declare(const Token **rest, const Token *tok, Env *env,
     node->offset = var->offset;
 
     expect(&tok, tok, ";");
-    *rest = tok;
-
-    return node;
-}
-
-static Node *block(const Token **rest, const Token *tok, Env *env) {
-    if (!consume(&tok, tok, "{")) {
-        return NULL;
-    }
-
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_BLOCK;
-
-    NodeList *body = NULL;
-    while (!consume(&tok, tok, "}")) {
-        NodeList *next = calloc(1, sizeof(NodeList));
-        next->node = stmt(&tok, tok, env);
-        if (body) {
-            body->next = next;
-            body = body->next;
-        } else {
-            node->inner = next;
-            body = node->inner;
-        }
-    }
-
     *rest = tok;
 
     return node;
