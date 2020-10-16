@@ -647,17 +647,23 @@ Node *stmt(Env *env);
 
 // try to parse a type and an ident.
 // For parse a function and a declare.
-Node *type_ident() {
-    const Type *ty = type(&token, token);
-    if (ty == NULL)
+static Node *type_ident(const Token **rest, const Token *tok) {
+    const Type *ty = type(&tok, tok);
+    if (ty == NULL) {
         return NULL;
+    }
+
     Node *node = calloc(1, sizeof(Node));
     node->ty = ty;
-    const Token *ident = consume_ident(&token, token);
+    const Token *ident = consume_ident(&tok, tok);
+
     if (ident == NULL) {
-        unexpected("an ident", token);
+        unexpected("an ident", tok);
     }
+
     node->ident = ident->span;
+
+    *rest = tok;
     return node;
 }
 
@@ -676,14 +682,14 @@ Node *function(Env *parent, Node *node) {
     node->kind = ND_FUNC;
 
     if (!consume(&token, token, ")")) {
-        Node *arg = type_ident();
+        Node *arg = type_ident(&token, token);
         arg->kind = ND_FUNC_ARGS;
         node->lhs = arg;
 
         declare_var(&env, arg->ty, &arg->ident);
 
         while (consume(&token, token, ",")) {
-            arg = type_ident();
+            arg = type_ident(&token, token);
             arg->kind = ND_FUNC_ARGS;
             arg->lhs = node->lhs;
             node->lhs = arg;
@@ -863,7 +869,7 @@ Node *stmt(Env *env) {
             current->kind = ND_BLOCK;
         }
     } else {
-        node = type_ident();
+        node = type_ident(&token, token);
         if (node) {
             node = declare(&token, token, env, node);
         } else {
@@ -883,7 +889,7 @@ Node *stmt(Env *env) {
 void program(Env *env, Node *code[]) {
     int i = 0;
     while (!at_eof(token)) {
-        Node *node = type_ident();
+        Node *node = type_ident(&token, token);
         if (node == NULL)
             error("Cannot parse the program.");
 
