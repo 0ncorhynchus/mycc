@@ -73,6 +73,8 @@ typedef enum {
     ND_INIT,
 } NodeKind;
 
+typedef struct NodeList NodeList;
+
 typedef struct Node Node;
 struct Node {
     NodeKind kind;
@@ -95,8 +97,16 @@ struct Node {
     VarKind vkind;
     Node *init; // initial value
 
-    Node *next;
+    Node *next; // For the inner of ND_INIT
     int num_initializers;
+
+    // For ND_BODY
+    NodeList *inner;
+};
+
+struct NodeList {
+    NodeList *next;
+    Node *node;
 };
 
 typedef struct Var Var;

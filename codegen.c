@@ -151,20 +151,12 @@ void gen_for(Node *node, int l_index) {
     printf(".Lend%d:\n", l_index);
 }
 
-void gen_block(Node *node) {
-    while (node->lhs) {
-        gen(node->lhs);
-        node = node->rhs;
-        if (!node || node->kind != ND_BLOCK)
-            error("Expected ND_BLOCK");
+static void gen_block(const NodeList *list) {
+    while (list) {
+        gen(list->node);
+        list = list->next;
     }
 }
-
-typedef struct NodeList NodeList;
-struct NodeList {
-    Node *node;
-    NodeList *next;
-};
 
 void gen_call(Node *node) {
     int num_args = 0;
@@ -489,7 +481,7 @@ void gen(Node *node) {
         epilogue(node->lhs);
         return;
     case ND_BLOCK:
-        gen_block(node);
+        gen_block(node->inner);
         return;
     case ND_CALL:
         gen_call(node);

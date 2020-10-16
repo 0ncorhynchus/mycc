@@ -3,7 +3,11 @@ int main() {
 
     {} // check compile is passed
     {
-        x = 1;
+        x = 0;
+        { // nested block
+            x = 1;
+        }
+        assert_int(1, x);
     }
     assert_int(1, x);
     {

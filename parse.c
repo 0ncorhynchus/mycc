@@ -579,6 +579,32 @@ static Node *declare(const Token **rest, const Token *tok, Env *env,
     return node;
 }
 
+static Node *block(const Token **rest, const Token *tok, Env *env) {
+    if (!consume(&tok, tok, "{")) {
+        return NULL;
+    }
+
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_BLOCK;
+
+    NodeList *body = NULL;
+    while (!consume(&tok, tok, "}")) {
+        NodeList *next = calloc(1, sizeof(NodeList));
+        next->node = stmt(&tok, tok, env);
+        if (body) {
+            body->next = next;
+            body = body->next;
+        } else {
+            node->inner = next;
+            body = node->inner;
+        }
+    }
+
+    *rest = tok;
+
+    return node;
+}
+
 //
 //  stmt =  expr ";"
 //       | declare
@@ -639,16 +665,8 @@ static Node *stmt(const Token **rest, const Token *tok, Env *env) {
         node->kind = ND_RETURN;
         node->lhs = as_ptr(expr(&tok, tok, env));
         expect(&tok, tok, ";");
-    } else if (consume(&tok, tok, "{")) {
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_BLOCK;
-        Node *current = node;
-        while (!consume(&tok, tok, "}")) {
-            current->lhs = stmt(&tok, tok, env);
-            current->rhs = calloc(1, sizeof(Node));
-            current = current->rhs;
-            current->kind = ND_BLOCK;
-        }
+    } else if ((node = block(&tok, tok, env))) {
+        ;
     } else {
         node = type_ident(&tok, tok);
         if (node) {
