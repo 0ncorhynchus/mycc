@@ -672,8 +672,9 @@ static Node *type_ident(const Token **rest, const Token *tok) {
 //             "(" (type ident ("," type ident)*)? ")"
 //             "{" stmt* "}"
 //
-static Node *function(Env *parent, Node *node) {
-    if (!consume(&token, token, "("))
+static Node *function(const Token **rest, const Token *tok, Env *parent,
+                      Node *node) {
+    if (!consume(&tok, tok, "("))
         return NULL;
 
     Env env = make_scope(parent);
@@ -681,22 +682,22 @@ static Node *function(Env *parent, Node *node) {
 
     node->kind = ND_FUNC;
 
-    if (!consume(&token, token, ")")) {
-        Node *arg = type_ident(&token, token);
+    if (!consume(&tok, tok, ")")) {
+        Node *arg = type_ident(&tok, tok);
         arg->kind = ND_FUNC_ARGS;
         node->lhs = arg;
 
         declare_var(&env, arg->ty, &arg->ident);
 
-        while (consume(&token, token, ",")) {
-            arg = type_ident(&token, token);
+        while (consume(&tok, tok, ",")) {
+            arg = type_ident(&tok, tok);
             arg->kind = ND_FUNC_ARGS;
             arg->lhs = node->lhs;
             node->lhs = arg;
 
             declare_var(&env, arg->ty, &arg->ident);
         }
-        expect(&token, token, ")");
+        expect(&tok, tok, ")");
 
         argument_offset = env.maximum_offset;
         node->lhs->val = argument_offset / 8;
@@ -704,18 +705,20 @@ static Node *function(Env *parent, Node *node) {
             error("Not supported: more than 6 arguments.");
     }
 
-    expect(&token, token, "{");
+    expect(&tok, tok, "{");
     Node *body = node;
-    while (!consume(&token, token, "}")) {
+    while (!consume(&tok, tok, "}")) {
         body->rhs = calloc(1, sizeof(Node));
         body->rhs->kind = ND_FUNC_BODY;
-        body->rhs->lhs = stmt(&token, token, &env);
+        body->rhs->lhs = stmt(&tok, tok, &env);
         body = body->rhs;
     }
     if (node->rhs) {
         int variables_offset = env.maximum_offset - argument_offset;
         node->rhs->val = variables_offset;
     }
+
+    *rest = tok;
 
     return node;
 }
@@ -895,7 +898,7 @@ void program(Env *env, Node *code[]) {
         if (node == NULL)
             error("Cannot parse the program.");
 
-        Node *fn = function(env, node);
+        Node *fn = function(&token, token, env, node);
         if (fn)
             code[i++] = fn;
         else
