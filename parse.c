@@ -271,14 +271,14 @@ void tokenize(const char *path) {
     token = head.next;
 }
 
-const Type *type_specifier() {
-    if (consume(&token, token, "int")) {
+const Type *type_specifier(const Token **rest, const Token *tok) {
+    if (consume(rest, tok, "int")) {
         return &INT_T;
     }
-    if (consume(&token, token, "char")) {
+    if (consume(rest, tok, "char")) {
         return &CHAR_T;
     }
-    if (consume(&token, token, "void")) {
+    if (consume(rest, tok, "void")) {
         return &VOID_T;
     }
     return NULL;
@@ -287,39 +287,40 @@ const Type *type_specifier() {
 //
 //  type = type "*" | "int" | "char" | "void"
 //
-const Type *type() {
-    const Type *ty = type_specifier();
+const Type *type(const Token **rest, const Token *tok) {
+    const Type *ty = type_specifier(&tok, tok);
     if (ty == NULL) {
         return NULL;
     }
 
-    while (consume(&token, token, "*")) {
+    while (consume(&tok, tok, "*")) {
         ty = mk_ptr(ty);
     }
 
+    *rest = tok;
     return ty;
 }
 
 //
 //  typename = ( "int" | "char" | "void" ) ( "*"* | "[" num "]" )
 //
-const Type *typename() {
-    const Type *ty = type_specifier();
+const Type *typename(const Token **rest, const Token *tok) {
+    const Type *ty = type_specifier(&tok, tok);
     if (ty == NULL) {
         return NULL;
     }
 
-    if (consume(&token, token, "*")) {
+    if (consume(&tok, tok, "*")) {
         ty = mk_ptr(ty);
-        while (consume(&token, token, "*")) {
+        while (consume(&tok, tok, "*")) {
             ty = mk_ptr(ty);
         }
-    } else if (consume(&token, token, "[")) {
+    } else if (consume(&tok, tok, "[")) {
         int size;
-        if (!number(&token, token, &size)) {
+        if (!number(&tok, tok, &size)) {
             error("Expect a number.");
         }
-        expect(&token, token, "]");
+        expect(&tok, tok, "]");
 
         Type *array_ty = calloc(1, sizeof(Type));
         array_ty->ty = ARRAY;
@@ -328,6 +329,7 @@ const Type *typename() {
         ty = array_ty;
     }
 
+    *rest = tok;
     return ty;
 }
 
@@ -488,7 +490,7 @@ Node *unary(Env *env) {
     }
     if (consume(&token, token, "sizeof")) {
         if (consume(&token, token, "(")) {
-            const Type *ty = typename();
+            const Type *ty = typename(&token, token);
             if (ty == NULL) {
                 Node *node = expr(env);
                 if (node) {
@@ -619,7 +621,7 @@ Node *stmt(Env *env);
 // try to parse a type and an ident.
 // For parse a function and a declare.
 Node *type_ident() {
-    const Type *ty = type();
+    const Type *ty = type(&token, token);
     if (ty == NULL)
         return NULL;
     Node *node = calloc(1, sizeof(Node));
