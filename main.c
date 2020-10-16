@@ -9,10 +9,10 @@ int main(int argc, char **argv) {
     Node *code[100];
 
     const char *path = argv[1];
-    tokenize(path);
+    const Token *token = tokenize(path);
 
     Env global = init_env();
-    program(&global, code);
+    program(token, &global, code);
 
     printf(".intel_syntax noprefix\n");
     gen_strings(&global);

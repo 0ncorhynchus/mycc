@@ -9,7 +9,6 @@
 
 static const char *filename;
 static const char *user_input;
-static const Token *token;
 
 const char *reserved[] = {"if",  "else",   "while", "for",  "return",
                           "int", "sizeof", "char",  "void", NULL};
@@ -139,7 +138,7 @@ static Token *new_token(TokenKind kind, Token *cur, const char *str, int len) {
     return tok;
 }
 
-void tokenize(const char *path) {
+const Token *tokenize(const char *path) {
     filename = path;
     user_input = read_file(filename);
     const char *p = user_input;
@@ -268,7 +267,8 @@ void tokenize(const char *path) {
     }
 
     new_token(TK_EOF, cur, p, 0);
-    token = head.next;
+
+    return head.next;
 }
 
 const Type *type_specifier(const Token **rest, const Token *tok) {
@@ -891,7 +891,7 @@ static Node *stmt(const Token **rest, const Token *tok, Env *env) {
 //
 //  program = ( function | declare )*
 //
-void program(Env *env, Node *code[]) {
+void program(const Token *token, Env *env, Node *code[]) {
     int i = 0;
     while (!at_eof(token)) {
         Node *node = type_ident(&token, token);

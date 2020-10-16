@@ -146,7 +146,7 @@ void debug(char *fmt, ...);
 void error(char *fmt, ...);
 void error_at(const Span *span, char *fmt, ...);
 
-void tokenize(const char *path);
+const Token *tokenize(const char *path);
 
 const Type *mk_ptr(const Type *base);
 size_t sizeof_ty(const Type *ty);
@@ -158,7 +158,7 @@ const Var *get_var(Env *env, const Span *ident);
 const Var *declare_var(Env *env, const Type *ty, const Span *ident);
 const String *push_string(Env *env, const Span *ident);
 
-void program(Env *env, Node *code[]);
+void program(const Token *token, Env *env, Node *code[]);
 
 Node *as_ptr(Node *array);
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
