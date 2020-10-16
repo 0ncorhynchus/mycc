@@ -158,7 +158,6 @@ const Var *get_var(Env *env, const Span *ident);
 const Var *declare_var(Env *env, const Type *ty, const Span *ident);
 const String *push_string(Env *env, const Span *ident);
 
-Node *expr();
 void program(Env *env, Node *code[]);
 
 Node *as_ptr(Node *array);

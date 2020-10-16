@@ -363,58 +363,66 @@ Node *new_node_num(int val) {
     return node;
 }
 
+static Node *expr(const Token **rest, const Token *tok, Env *env);
+
 //
 //  primary = num
 //          | ident ( "(" ( expr ( "," expr )* )? ")" )?
 //          | "(" expr ")"
 //          | string
 //
-Node *primary(Env *env) {
-    if (consume(&token, token, "(")) {
-        Node *node = expr(env);
-        expect(&token, token, ")");
+static Node *primary(const Token **rest, const Token *tok, Env *env) {
+    if (consume(&tok, tok, "(")) {
+        Node *node = expr(&tok, tok, env);
+        expect(&tok, tok, ")");
+        *rest = tok;
         return node;
     }
 
-    const Token *tok = consume_ident(&token, token);
-    if (tok) {
+    const Token *tmp = consume_ident(&tok, tok);
+    if (tmp) {
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_LVAR;
-        node->ident = tok->span;
+        node->ident = tmp->span;
 
         // function call
-        if (consume(&token, token, "(")) {
+        if (consume(&tok, tok, "(")) {
             node->kind = ND_CALL;
-            if (consume(&token, token, ")"))
+            if (consume(&tok, tok, ")")) {
+                *rest = tok;
                 return node;
+            }
 
             node->lhs = calloc(1, sizeof(Node));
             Node *current = node->lhs;
             current->kind = ND_ARGS;
-            current->lhs = expr(env);
-            while (!consume(&token, token, ")")) {
-                expect(&token, token, ",");
+            current->lhs = expr(&tok, tok, env);
+            while (!consume(&tok, tok, ")")) {
+                expect(&tok, tok, ",");
                 current->rhs = calloc(1, sizeof(Node));
                 current = current->rhs;
                 current->kind = ND_ARGS;
-                current->lhs = expr(env);
+                current->lhs = expr(&tok, tok, env);
             }
+
+            *rest = tok;
             return node;
         }
 
-        const Var *var = get_var(env, &tok->span);
+        const Var *var = get_var(env, &tmp->span);
         node->ty = var->ty;
         node->offset = var->offset;
         node->vkind = var->kind;
 
+        *rest = tok;
         return node;
     }
 
-    tok = consume_string(&token, token);
-    if (tok) {
+    tmp = consume_string(&tok, tok);
+    if (tmp) {
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_STRING;
-        node->ident = tok->span;
+        node->ident = tmp->span;
         node->ident.ptr++;
         node->ident.len -= 2;
         node->ty = mk_ptr(&CHAR_T);
@@ -422,13 +430,16 @@ Node *primary(Env *env) {
         const String *string = push_string(env, &node->ident);
         node->val = string->index;
 
+        *rest = tok;
         return node;
     }
 
     int val;
-    if (number(&token, token, &val)) {
+    if (number(&tok, tok, &val)) {
+        *rest = tok;
         return new_node_num(val);
     }
+
     return NULL;
 }
 
@@ -444,13 +455,15 @@ Node *deref_offset_ptr(Node *ptr, Node *index) {
 }
 
 // parse primary ("[" expr "]")?
-Node *desugar_index(Env *env) {
-    Node *node = primary(env);
-    if (consume(&token, token, "[")) {
-        Node *index = expr(env);
-        expect(&token, token, "]");
+static Node *desugar_index(const Token **rest, const Token *tok, Env *env) {
+    Node *node = primary(&tok, tok, env);
+    if (consume(&tok, tok, "[")) {
+        Node *index = expr(&tok, tok, env);
+        expect(&tok, tok, "]");
+        *rest = tok;
         return deref_offset_ptr(as_ptr(node), index);
     }
+    *rest = tok;
     return node;
 }
 
@@ -459,52 +472,56 @@ Node *desugar_index(Env *env) {
 //        | ( "*" | "&" | "sizeof" ) unary
 //        | "sizeof" "(" type ")"
 //
-Node *unary(Env *env) {
-    if (consume(&token, token, "+")) {
-        return desugar_index(env);
+static Node *unary(const Token **rest, const Token *tok, Env *env) {
+    if (consume(&tok, tok, "+")) {
+        return desugar_index(rest, tok, env);
     }
-    if (consume(&token, token, "-")) {
-        return new_node(ND_SUB, new_node_num(0), desugar_index(env));
+    if (consume(&tok, tok, "-")) {
+        return new_node(ND_SUB, new_node_num(0), desugar_index(rest, tok, env));
     }
-    if (consume(&token, token, "*")) {
+    if (consume(&tok, tok, "*")) {
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_DEREF;
-        Node *inner = as_ptr(unary(env));
+        Node *inner = as_ptr(unary(&tok, tok, env));
         if (inner->ty && inner->ty->ty == PTR) {
             node->lhs = inner;
             node->ty = inner->ty->ptr_to;
+            *rest = tok;
             return node;
         }
         error("Cannot deref: '%s'", type_to_str(inner->ty));
     }
-    if (consume(&token, token, "&")) {
+    if (consume(&tok, tok, "&")) {
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_ADDR;
-        node->lhs = unary(env);
+        node->lhs = unary(&tok, tok, env);
         if (node->lhs && node->lhs->ty) {
             node->ty = mk_ptr(node->lhs->ty);
+            *rest = tok;
             return node;
         }
         error("Internal compile error: try to obtain the address to an unknown "
               "type");
     }
-    if (consume(&token, token, "sizeof")) {
-        if (consume(&token, token, "(")) {
-            const Type *ty = typename(&token, token);
+    if (consume(&tok, tok, "sizeof")) {
+        if (consume(&tok, tok, "(")) {
+            const Type *ty = typename(&tok, tok);
             if (ty == NULL) {
-                Node *node = expr(env);
+                Node *node = expr(&tok, tok, env);
                 if (node) {
                     ty = node->ty;
                 }
             }
-            expect(&token, token, ")");
+            expect(&tok, tok, ")");
 
             if (ty) {
+                *rest = tok;
                 return new_node_num(sizeof_ty(ty));
             }
         } else {
-            Node *node = unary(env);
+            Node *node = unary(&tok, tok, env);
             if (node->ty) {
+                *rest = tok;
                 return new_node_num(sizeof_ty(node->ty));
             }
         }
@@ -512,69 +529,74 @@ Node *unary(Env *env) {
               "type");
     }
 
-    return desugar_index(env);
+    return desugar_index(rest, tok, env);
 }
 
 //
 //  mul = unary ( "*" unary | "/" unary )*
 //
-Node *mul(Env *env) {
-    Node *node = unary(env);
+static Node *mul(const Token **rest, const Token *tok, Env *env) {
+    Node *node = unary(&tok, tok, env);
 
     for (;;) {
-        if (consume(&token, token, "*"))
-            node = new_node(ND_MUL, node, unary(env));
-        else if (consume(&token, token, "/"))
-            node = new_node(ND_DIV, node, unary(env));
-        else
+        if (consume(&tok, tok, "*")) {
+            node = new_node(ND_MUL, node, unary(&tok, tok, env));
+        } else if (consume(&tok, tok, "/")) {
+            node = new_node(ND_DIV, node, unary(&tok, tok, env));
+        } else {
+            *rest = tok;
             return node;
+        }
     }
 }
 
 //
 //  add = mul ( "+" mul | "-" mul )*
 //
-Node *add(Env *env) {
-    Node *node = mul(env);
+static Node *add(const Token **rest, const Token *tok, Env *env) {
+    Node *node = mul(&tok, tok, env);
 
     for (;;) {
-        if (consume(&token, token, "+"))
-            node = new_node(ND_ADD, as_ptr(node), as_ptr(mul(env)));
-        else if (consume(&token, token, "-"))
-            node = new_node(ND_SUB, as_ptr(node), as_ptr(mul(env)));
-        else
+        if (consume(&tok, tok, "+")) {
+            node = new_node(ND_ADD, as_ptr(node), as_ptr(mul(&tok, tok, env)));
+        } else if (consume(&tok, tok, "-")) {
+            node = new_node(ND_SUB, as_ptr(node), as_ptr(mul(&tok, tok, env)));
+        } else {
+            *rest = tok;
             return node;
+        }
     }
 }
 
 //
 //  relational= add ( "<" add | "<=" add | ">" add | ">=" add )*
 //
-Node *relational(Env *env) {
-    Node *node = add(env);
+static Node *relational(const Token **rest, const Token *tok, Env *env) {
+    Node *node = add(&tok, tok, env);
 
     for (;;) {
-        if (consume(&token, token, "<")) {
-            Node *rhs = add(env);
+        if (consume(&tok, tok, "<")) {
+            Node *rhs = add(&tok, tok, env);
             if (!is_same_type(node->ty, rhs->ty))
                 error("Not supported: compare between different types");
             node = new_node(ND_LT, node, rhs);
-        } else if (consume(&token, token, "<=")) {
-            Node *rhs = add(env);
+        } else if (consume(&tok, tok, "<=")) {
+            Node *rhs = add(&tok, tok, env);
             if (!is_same_type(node->ty, rhs->ty))
                 error("Not supported: compare between different types");
             node = new_node(ND_LE, node, rhs);
-        } else if (consume(&token, token, ">")) {
-            Node *lhs = add(env);
+        } else if (consume(&tok, tok, ">")) {
+            Node *lhs = add(&tok, tok, env);
             if (!is_same_type(node->ty, lhs->ty))
                 error("Not supported: compare between different types");
             node = new_node(ND_LT, lhs, node);
-        } else if (consume(&token, token, ">=")) {
-            Node *lhs = add(env);
+        } else if (consume(&tok, tok, ">=")) {
+            Node *lhs = add(&tok, tok, env);
             if (!is_same_type(node->ty, lhs->ty))
                 error("Not supported: compare between different types");
             node = new_node(ND_LE, lhs, node);
         } else {
+            *rest = tok;
             return node;
         }
 
@@ -585,36 +607,41 @@ Node *relational(Env *env) {
 //
 //  equality = relational ( "==" relational | "!=" relational )*
 //
-Node *equality(Env *env) {
-    Node *node = relational(env);
+static Node *equality(const Token **rest, const Token *tok, Env *env) {
+    Node *node = relational(&tok, tok, env);
 
     for (;;) {
-        if (consume(&token, token, "=="))
-            node = new_node(ND_EQ, node, relational(env));
-        else if (consume(&token, token, "!="))
-            node = new_node(ND_NE, node, relational(env));
-        else
+        if (consume(&tok, tok, "==")) {
+            node = new_node(ND_EQ, node, relational(&tok, tok, env));
+        } else if (consume(&tok, tok, "!=")) {
+            node = new_node(ND_NE, node, relational(&tok, tok, env));
+        } else {
+            *rest = tok;
             return node;
+        }
     }
 }
 
 //
 //  assign = equality ( "=" assign )?
 //
-Node *assign(Env *env) {
-    Node *node = equality(env);
-    if (consume(&token, token, "=")) {
+static Node *assign(const Token **rest, const Token *tok, Env *env) {
+    Node *node = equality(&tok, tok, env);
+    if (consume(&tok, tok, "=")) {
         const Type *ty = node->ty;
-        node = new_node(ND_ASSIGN, node, as_ptr(assign(env)));
+        node = new_node(ND_ASSIGN, node, as_ptr(assign(&tok, tok, env)));
         node->ty = ty;
     }
+    *rest = tok;
     return node;
 }
 
 //
 //  expr = assign
 //
-Node *expr(Env *env) { return assign(env); }
+static Node *expr(const Token **rest, const Token *tok, Env *env) {
+    return assign(rest, tok, env);
+}
 
 Node *stmt(Env *env);
 
@@ -690,39 +717,43 @@ Node *function(Env *parent, Node *node) {
 //
 //  init = expr | "{" init ( "," init )* "}"
 //
-Node *init(Env *env) {
-    if (consume(&token, token, "{")) {
+static Node *init(const Token **rest, const Token *tok, Env *env) {
+    if (consume(&tok, tok, "{")) {
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_INIT;
-        node->next = init(env);
+        node->next = init(&tok, tok, env);
         node->num_initializers = 1;
         Node *n = node->next;
-        while (consume(&token, token, ",")) {
-            n->next = init(env);
+        while (consume(&tok, tok, ",")) {
+            n->next = init(&tok, tok, env);
             n = n->next;
             node->num_initializers++;
         }
-        expect(&token, token, "}");
+        expect(&tok, tok, "}");
+        *rest = tok;
         return node;
     }
-    return expr(env);
+
+    *rest = tok;
+    return expr(rest, tok, env);
 }
 
 //
 //  declare = type ident ( "[" num "]" )? ( "=" init )? ";"
 //
-Node *declare(Env *env, Node *node) {
+static Node *declare(const Token **rest, const Token *tok, Env *env,
+                     Node *node) {
     node->kind = ND_DECLARE;
     bool is_array = false;
     bool is_known_size = false;
 
     Type *array_ty = NULL;
 
-    if (consume(&token, token, "[")) {
+    if (consume(&tok, tok, "[")) {
         is_array = true;
         int array_size = -1;
-        is_known_size = number(&token, token, &array_size);
-        expect(&token, token, "]");
+        is_known_size = number(&tok, tok, &array_size);
+        expect(&tok, tok, "]");
 
         array_ty = calloc(1, sizeof(Type));
         array_ty->ty = ARRAY;
@@ -730,8 +761,8 @@ Node *declare(Env *env, Node *node) {
         array_ty->array_size = array_size;
     }
 
-    if (consume(&token, token, "=")) {
-        node->init = as_ptr(init(env));
+    if (consume(&tok, tok, "=")) {
+        node->init = as_ptr(init(&tok, tok, env));
         if (is_array && !is_known_size) {
             switch (node->init->kind) {
             case (ND_INIT):
@@ -755,7 +786,8 @@ Node *declare(Env *env, Node *node) {
     node->vkind = var->kind;
     node->offset = var->offset;
 
-    expect(&token, token, ";");
+    expect(&tok, tok, ";");
+    *rest = tok;
 
     return node;
 }
@@ -776,7 +808,7 @@ Node *stmt(Env *env) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_IF_COND;
         expect(&token, token, "(");
-        node->lhs = expr(env);
+        node->lhs = expr(&token, token, env);
         expect(&token, token, ")");
 
         node->rhs = calloc(1, sizeof(Node));
@@ -789,7 +821,7 @@ Node *stmt(Env *env) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_WHILE;
         expect(&token, token, "(");
-        node->lhs = expr(env);
+        node->lhs = expr(&token, token, env);
         expect(&token, token, ")");
         node->rhs = stmt(env);
     } else if (consume(&token, token, "for")) {
@@ -797,28 +829,28 @@ Node *stmt(Env *env) {
         node->kind = ND_FOR_INIT;
         expect(&token, token, "(");
         if (!consume(&token, token, ";")) {
-            node->lhs = expr(env);
+            node->lhs = expr(&token, token, env);
             expect(&token, token, ";");
         }
 
         node->rhs = calloc(1, sizeof(Node));
         node->rhs->kind = ND_FOR_COND;
         if (!consume(&token, token, ";")) {
-            node->rhs->lhs = expr(env);
+            node->rhs->lhs = expr(&token, token, env);
             expect(&token, token, ";");
         }
 
         node->rhs->rhs = calloc(1, sizeof(Node));
         node->rhs->rhs->kind = ND_FOR_BODY;
         if (!consume(&token, token, ")")) {
-            node->rhs->rhs->lhs = expr(env);
+            node->rhs->rhs->lhs = expr(&token, token, env);
             expect(&token, token, ")");
         }
         node->rhs->rhs->rhs = stmt(env);
     } else if (consume(&token, token, "return")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_RETURN;
-        node->lhs = as_ptr(expr(env));
+        node->lhs = as_ptr(expr(&token, token, env));
         expect(&token, token, ";");
     } else if (consume(&token, token, "{")) {
         node = calloc(1, sizeof(Node));
@@ -833,11 +865,11 @@ Node *stmt(Env *env) {
     } else {
         node = type_ident();
         if (node) {
-            node = declare(env, node);
+            node = declare(&token, token, env, node);
         } else {
             node = calloc(1, sizeof(Node));
             node->kind = ND_SEMICOLON;
-            node->lhs = expr(env);
+            node->lhs = expr(&token, token, env);
             expect(&token, token, ";");
         }
     }
@@ -859,7 +891,7 @@ void program(Env *env, Node *code[]) {
         if (fn)
             code[i++] = fn;
         else
-            code[i++] = declare(env, node);
+            code[i++] = declare(&token, token, env, node);
     }
     code[i] = NULL;
 }
