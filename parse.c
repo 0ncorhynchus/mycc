@@ -83,10 +83,18 @@ int is_alnum(char c) {
 
 static bool consume(const Token **rest, const Token *tok, char *op) {
     if (tok->kind != TK_RESERVED || strlen(op) != tok->span.len ||
-        memcmp(tok->span.ptr, op, tok->span.len))
+        memcmp(tok->span.ptr, op, tok->span.len)) {
         return false;
+    }
     *rest = tok->next;
     return true;
+}
+
+static void expect(const Token **rest, const Token *tok, char *op) {
+    if (!consume(rest, tok, op)) {
+        error_at(&tok->span, "Unexpected token: '%s': expected, but got '%.*s'",
+                 op, tok->span.len, tok->span.ptr);
+    }
 }
 
 static const Token *consume_ident(const Token **rest, const Token *tok) {
@@ -97,25 +105,12 @@ static const Token *consume_ident(const Token **rest, const Token *tok) {
     return tok;
 }
 
-const Token *consume_string() {
-    if (token->kind != TK_STRING) {
+static const Token *consume_string(const Token **rest, const Token *tok) {
+    if (tok->kind != TK_STRING) {
         return NULL;
     }
-    const Token *tok = token;
-    token = token->next;
+    *rest = tok->next;
     return tok;
-}
-
-bool is_ident(const Token *token) { return token && token->kind == TK_IDENT; }
-
-void expect(char *op) {
-    if (token->kind != TK_RESERVED || strlen(op) != token->span.len ||
-        memcmp(token->span.ptr, op, token->span.len)) {
-        error_at(&token->span,
-                 "Unexpected token: '%s': expected, but got '%.*s'", op,
-                 token->span.len, token->span.ptr);
-    }
-    token = token->next;
 }
 
 bool number(int *val) {
@@ -320,7 +315,7 @@ const Type *typename() {
         if (!number(&size)) {
             error("Expect a number.");
         }
-        expect("]");
+        expect(&token, token, "]");
 
         Type *array_ty = calloc(1, sizeof(Type));
         array_ty->ty = ARRAY;
@@ -371,7 +366,7 @@ Node *new_node_num(int val) {
 Node *primary(Env *env) {
     if (consume(&token, token, "(")) {
         Node *node = expr(env);
-        expect(")");
+        expect(&token, token, ")");
         return node;
     }
 
@@ -392,7 +387,7 @@ Node *primary(Env *env) {
             current->kind = ND_ARGS;
             current->lhs = expr(env);
             while (!consume(&token, token, ")")) {
-                expect(",");
+                expect(&token, token, ",");
                 current->rhs = calloc(1, sizeof(Node));
                 current = current->rhs;
                 current->kind = ND_ARGS;
@@ -409,7 +404,7 @@ Node *primary(Env *env) {
         return node;
     }
 
-    tok = consume_string();
+    tok = consume_string(&token, token);
     if (tok) {
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_STRING;
@@ -447,7 +442,7 @@ Node *desugar_index(Env *env) {
     Node *node = primary(env);
     if (consume(&token, token, "[")) {
         Node *index = expr(env);
-        expect("]");
+        expect(&token, token, "]");
         return deref_offset_ptr(as_ptr(node), index);
     }
     return node;
@@ -496,7 +491,7 @@ Node *unary(Env *env) {
                     ty = node->ty;
                 }
             }
-            expect(")");
+            expect(&token, token, ")");
 
             if (ty) {
                 return new_node_num(sizeof_ty(ty));
@@ -664,7 +659,7 @@ Node *function(Env *parent, Node *node) {
 
             declare_var(&env, arg->ty, &arg->ident);
         }
-        expect(")");
+        expect(&token, token, ")");
 
         argument_offset = env.maximum_offset;
         node->lhs->val = argument_offset / 8;
@@ -672,7 +667,7 @@ Node *function(Env *parent, Node *node) {
             error("Not supported: more than 6 arguments.");
     }
 
-    expect("{");
+    expect(&token, token, "{");
     Node *body = node;
     while (!consume(&token, token, "}")) {
         body->rhs = calloc(1, sizeof(Node));
@@ -703,7 +698,7 @@ Node *init(Env *env) {
             n = n->next;
             node->num_initializers++;
         }
-        expect("}");
+        expect(&token, token, "}");
         return node;
     }
     return expr(env);
@@ -723,7 +718,7 @@ Node *declare(Env *env, Node *node) {
         is_array = true;
         int array_size = -1;
         is_known_size = number(&array_size);
-        expect("]");
+        expect(&token, token, "]");
 
         array_ty = calloc(1, sizeof(Type));
         array_ty->ty = ARRAY;
@@ -756,7 +751,7 @@ Node *declare(Env *env, Node *node) {
     node->vkind = var->kind;
     node->offset = var->offset;
 
-    expect(";");
+    expect(&token, token, ";");
 
     return node;
 }
@@ -776,9 +771,9 @@ Node *stmt(Env *env) {
     if (consume(&token, token, "if")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_IF_COND;
-        expect("(");
+        expect(&token, token, "(");
         node->lhs = expr(env);
-        expect(")");
+        expect(&token, token, ")");
 
         node->rhs = calloc(1, sizeof(Node));
         node->rhs->kind = ND_IF_BODY;
@@ -789,38 +784,38 @@ Node *stmt(Env *env) {
     } else if (consume(&token, token, "while")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_WHILE;
-        expect("(");
+        expect(&token, token, "(");
         node->lhs = expr(env);
-        expect(")");
+        expect(&token, token, ")");
         node->rhs = stmt(env);
     } else if (consume(&token, token, "for")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_FOR_INIT;
-        expect("(");
+        expect(&token, token, "(");
         if (!consume(&token, token, ";")) {
             node->lhs = expr(env);
-            expect(";");
+            expect(&token, token, ";");
         }
 
         node->rhs = calloc(1, sizeof(Node));
         node->rhs->kind = ND_FOR_COND;
         if (!consume(&token, token, ";")) {
             node->rhs->lhs = expr(env);
-            expect(";");
+            expect(&token, token, ";");
         }
 
         node->rhs->rhs = calloc(1, sizeof(Node));
         node->rhs->rhs->kind = ND_FOR_BODY;
         if (!consume(&token, token, ")")) {
             node->rhs->rhs->lhs = expr(env);
-            expect(")");
+            expect(&token, token, ")");
         }
         node->rhs->rhs->rhs = stmt(env);
     } else if (consume(&token, token, "return")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_RETURN;
         node->lhs = as_ptr(expr(env));
-        expect(";");
+        expect(&token, token, ";");
     } else if (consume(&token, token, "{")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_BLOCK;
@@ -839,7 +834,7 @@ Node *stmt(Env *env) {
             node = calloc(1, sizeof(Node));
             node->kind = ND_SEMICOLON;
             node->lhs = expr(env);
-            expect(";");
+            expect(&token, token, ";");
         }
     }
 
