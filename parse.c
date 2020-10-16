@@ -81,6 +81,11 @@ int is_alnum(char c) {
            ('0' <= c && c <= '9') || (c == '_');
 }
 
+static void unexpected(const char *expected, const Token *got) {
+    error_at(&got->span, "Unexpected token: '%s' expected, but got '%.*s'",
+             expected, got->span.len, got->span.ptr);
+}
+
 static bool consume(const Token **rest, const Token *tok, char *op) {
     if (tok->kind != TK_RESERVED || strlen(op) != tok->span.len ||
         memcmp(tok->span.ptr, op, tok->span.len)) {
@@ -92,8 +97,7 @@ static bool consume(const Token **rest, const Token *tok, char *op) {
 
 static void expect(const Token **rest, const Token *tok, char *op) {
     if (!consume(rest, tok, op)) {
-        error_at(&tok->span, "Unexpected token: '%s': expected, but got '%.*s'",
-                 op, tok->span.len, tok->span.ptr);
+        unexpected(op, tok);
     }
 }
 
@@ -622,9 +626,7 @@ Node *type_ident() {
     node->ty = ty;
     const Token *ident = consume_ident(&token, token);
     if (ident == NULL) {
-        error_at(&token->span,
-                 "Unexpected token: an ident expected, but got '%.*s'",
-                 token->span.len, token->span.ptr);
+        unexpected("an ident", token);
     }
     node->ident = ident->span;
     return node;
