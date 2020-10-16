@@ -7,38 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// # EBNF
-//
-//  program     =  ( function | declare )*
-//  stmt        =  expr ";"
-//               | declare
-//               | "{" stmt* "}"
-//               | "if" "(" expr ")" stmt ( "else" stmt )?
-//               | "while" "(" expr ")" stmt
-//               | "for" "(" expr? ";" expr? ";" expr? ")" stmt
-//               | "return" expr? ";"
-//  declare     =  type ident ( "[" num "]" )? ( "=" init )? ";"
-//  init        =  expr | "{" init ( "," init )* "}"
-//  function    =  type ident
-//                 "(" (type ident ("," type ident)*)? ")"
-//                 "{" stmt* "}"
-//  expr        =  assign
-//  assign      =  equality ( "=" assign )?
-//  equality    =  relational ( "==" relational | "!=" relational )*
-//  relational  =  add ( "<" add | "<=" add | ">" add | ">=" add )*
-//  add         =  mul ( "+" mul | "-" mul )*
-//  mul         =  unary ( "*" unary | "/" unary )*
-//  unary       =  ( "+" | "-" )? primary ( "[" expr "]" )?
-//               | ( "*" | "&" | "sizeof" ) unary
-//               | "sizeof" "(" type ")"
-//  primary     =  num
-//               | ident ( "(" ( expr ( "," expr )* )? ")" )?
-//               | "(" expr ")"
-//               | string
-//  type        = type "*" | "int" | "char" | "void"
-//  typename    = ( "int" | "char" | "void" ) ( "*"* | "[" num "]" )
-//
-
 static const char *filename;
 static const char *user_input;
 static const Token *token;
@@ -337,6 +305,9 @@ const Type *type_specifier() {
     return NULL;
 }
 
+//
+//  type = type "*" | "int" | "char" | "void"
+//
 const Type *type() {
     const Type *ty = type_specifier();
     if (ty == NULL) {
@@ -353,6 +324,9 @@ const Type *type() {
     return ty;
 }
 
+//
+//  typename = ( "int" | "char" | "void" ) ( "*"* | "[" num "]" )
+//
 const Type *typename() {
     const Type *ty = type_specifier();
     if (ty == NULL) {
@@ -411,6 +385,12 @@ Node *new_node_num(int val) {
     return node;
 }
 
+//
+//  primary = num
+//          | ident ( "(" ( expr ( "," expr )* )? ")" )?
+//          | "(" expr ")"
+//          | string
+//
 Node *primary(Env *env) {
     if (consume("(")) {
         Node *node = expr(env);
@@ -496,6 +476,11 @@ Node *desugar_index(Env *env) {
     return node;
 }
 
+//
+//  unary = ( "+" | "-" )? primary ( "[" expr "]" )?
+//        | ( "*" | "&" | "sizeof" ) unary
+//        | "sizeof" "(" type ")"
+//
 Node *unary(Env *env) {
     if (consume("+")) {
         return desugar_index(env);
@@ -552,6 +537,9 @@ Node *unary(Env *env) {
     return desugar_index(env);
 }
 
+//
+//  mul = unary ( "*" unary | "/" unary )*
+//
 Node *mul(Env *env) {
     Node *node = unary(env);
 
@@ -565,6 +553,9 @@ Node *mul(Env *env) {
     }
 }
 
+//
+//  add = mul ( "+" mul | "-" mul )*
+//
 Node *add(Env *env) {
     Node *node = mul(env);
 
@@ -578,6 +569,9 @@ Node *add(Env *env) {
     }
 }
 
+//
+//  relational= add ( "<" add | "<=" add | ">" add | ">=" add )*
+//
 Node *relational(Env *env) {
     Node *node = add(env);
 
@@ -610,6 +604,9 @@ Node *relational(Env *env) {
     }
 }
 
+//
+//  equality = relational ( "==" relational | "!=" relational )*
+//
 Node *equality(Env *env) {
     Node *node = relational(env);
 
@@ -623,6 +620,9 @@ Node *equality(Env *env) {
     }
 }
 
+//
+//  assign = equality ( "=" assign )?
+//
 Node *assign(Env *env) {
     Node *node = equality(env);
     if (consume("=")) {
@@ -633,6 +633,9 @@ Node *assign(Env *env) {
     return node;
 }
 
+//
+//  expr = assign
+//
 Node *expr(Env *env) { return assign(env); }
 
 Node *stmt(Env *env);
@@ -649,6 +652,11 @@ Node *type_ident() {
     return node;
 }
 
+//
+//  function = type ident
+//             "(" (type ident ("," type ident)*)? ")"
+//             "{" stmt* "}"
+//
 Node *function(Env *parent, Node *node) {
     if (!consume("("))
         return NULL;
@@ -697,6 +705,9 @@ Node *function(Env *parent, Node *node) {
     return node;
 }
 
+//
+//  init = expr | "{" init ( "," init )* "}"
+//
 Node *init(Env *env) {
     if (consume("{")) {
         Node *node = calloc(1, sizeof(Node));
@@ -715,6 +726,9 @@ Node *init(Env *env) {
     return expr(env);
 }
 
+//
+//  declare = type ident ( "[" num "]" )? ( "=" init )? ";"
+//
 Node *declare(Env *env, Node *node) {
     node->kind = ND_DECLARE;
     bool is_array = false;
@@ -764,6 +778,15 @@ Node *declare(Env *env, Node *node) {
     return node;
 }
 
+//
+//  stmt =  expr ";"
+//       | declare
+//       | "{" stmt* "}"
+//       | "if" "(" expr ")" stmt ( "else" stmt )?
+//       | "while" "(" expr ")" stmt
+//       | "for" "(" expr? ";" expr? ";" expr? ")" stmt
+//       | "return" expr? ";"
+//
 Node *stmt(Env *env) {
     Node *node = NULL;
 
@@ -840,6 +863,9 @@ Node *stmt(Env *env) {
     return node;
 }
 
+//
+//  program = ( function | declare )*
+//
 void program(Env *env, Node *code[]) {
     int i = 0;
     while (!at_eof()) {
