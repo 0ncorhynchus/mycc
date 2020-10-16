@@ -211,15 +211,15 @@ void gen_call(Node *node) {
     push("rax");
 }
 
-static void gen_func(const Node *node) {
-    printf(".global %.*s\n", node->ident.len, node->ident.ptr);
-    printf("%.*s:\n", node->ident.len, node->ident.ptr);
+static void gen_func(const Function *fn) {
+    printf(".global %s\n", fn->ident);
+    printf("%s:\n", fn->ident);
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
     stack = 0;
 
-    Node *args = node->lhs;
-    Node *body = node->rhs;
+    Node *args = fn->args;
+    Node *body = fn->body;
 
     // TODO
     num_args = args ? args->val : 0;

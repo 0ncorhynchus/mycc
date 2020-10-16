@@ -447,55 +447,65 @@ static Node *type_ident(const Token **rest, const Token *tok) {
 //             "(" (type ident ("," type ident)*)? ")"
 //             "{" stmt* "}"
 //
-static Node *function(const Token **rest, const Token *tok, Env *parent,
-                      Node *node) {
+static Function *function(const Token **rest, const Token *tok, Env *parent,
+                          Node *node) {
     if (!consume(&tok, tok, "("))
         return NULL;
+
+    Function *fn = calloc(1, sizeof(Function));
+    char *ident = malloc(node->ident.len + 1);
+    memcpy(ident, node->ident.ptr, node->ident.len);
+    ident[node->ident.len] = '\0';
+    fn->ident = ident;
 
     Env env = make_scope(parent);
     int argument_offset = 0;
 
-    node->kind = ND_FUNC;
-
     if (!consume(&tok, tok, ")")) {
         Node *arg = type_ident(&tok, tok);
         arg->kind = ND_FUNC_ARGS;
-        node->lhs = arg;
+        fn->args = arg;
 
         declare_var(&env, arg->ty, &arg->ident);
 
         while (consume(&tok, tok, ",")) {
             arg = type_ident(&tok, tok);
             arg->kind = ND_FUNC_ARGS;
-            arg->lhs = node->lhs;
-            node->lhs = arg;
+            arg->lhs = fn->args;
+            fn->args = arg;
 
             declare_var(&env, arg->ty, &arg->ident);
         }
         expect(&tok, tok, ")");
 
         argument_offset = env.maximum_offset;
-        node->lhs->val = argument_offset / 8;
-        if (node->lhs->val > 6)
+        fn->args->val = argument_offset / 8;
+        if (fn->args->val > 6)
             error("Not supported: more than 6 arguments.");
     }
 
     expect(&tok, tok, "{");
-    Node *body = node;
+    Node *body = NULL;
     while (!consume(&tok, tok, "}")) {
-        body->rhs = calloc(1, sizeof(Node));
-        body->rhs->kind = ND_FUNC_BODY;
-        body->rhs->lhs = stmt(&tok, tok, &env);
-        body = body->rhs;
+        Node *s = calloc(1, sizeof(Node));
+        s->kind = ND_FUNC_BODY;
+        s->lhs = stmt(&tok, tok, &env);
+        if (body) {
+            body->rhs = s;
+            body = body->rhs;
+        } else {
+            fn->body = s;
+            body = fn->body;
+        }
     }
-    if (node->rhs) {
+    if (fn->body) {
         int variables_offset = env.maximum_offset - argument_offset;
-        node->rhs->val = variables_offset;
+        fn->body->val = variables_offset;
     }
 
     *rest = tok;
 
-    return node;
+    return fn;
 }
 
 //
@@ -667,7 +677,7 @@ void program(const Token *token, Env *env, Unit *code[]) {
         if (node == NULL)
             error("Cannot parse the program.");
 
-        Node *fn = function(&token, token, env, node);
+        Function *fn = function(&token, token, env, node);
         code[i] = calloc(1, sizeof(Unit));
         if (fn) {
             code[i]->function = fn;

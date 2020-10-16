@@ -140,9 +140,16 @@ static inline Env make_scope(Env *parent) {
     return env;
 }
 
+typedef struct Function Function;
+struct Function {
+    const char *ident;
+    Node *args;
+    Node *body;
+};
+
 typedef struct Unit Unit;
 struct Unit {
-    const Node *function;
+    const Function *function;
     const Node *declaration;
 };
 
