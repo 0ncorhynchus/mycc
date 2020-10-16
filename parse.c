@@ -117,20 +117,20 @@ static const Token *consume_string(const Token **rest, const Token *tok) {
     return tok;
 }
 
-bool number(int *val) {
-    if (token->kind != TK_NUM) {
+static bool number(const Token **rest, const Token *tok, int *val) {
+    if (tok->kind != TK_NUM) {
         return false;
     }
 
-    *val = token->val;
-    token = token->next;
+    *val = tok->val;
+    *rest = tok->next;
 
     return true;
 }
 
-bool at_eof() { return token->kind == TK_EOF; }
+static bool at_eof(const Token *tok) { return tok->kind == TK_EOF; }
 
-Token *new_token(TokenKind kind, Token *cur, const char *str, int len) {
+static Token *new_token(TokenKind kind, Token *cur, const char *str, int len) {
     Token *tok = calloc(1, sizeof(Token));
     tok->kind = kind;
     tok->span.ptr = str;
@@ -316,7 +316,7 @@ const Type *typename() {
         }
     } else if (consume(&token, token, "[")) {
         int size;
-        if (!number(&size)) {
+        if (!number(&token, token, &size)) {
             error("Expect a number.");
         }
         expect(&token, token, "]");
@@ -424,7 +424,7 @@ Node *primary(Env *env) {
     }
 
     int val;
-    if (number(&val)) {
+    if (number(&token, token, &val)) {
         return new_node_num(val);
     }
     return NULL;
@@ -719,7 +719,7 @@ Node *declare(Env *env, Node *node) {
     if (consume(&token, token, "[")) {
         is_array = true;
         int array_size = -1;
-        is_known_size = number(&array_size);
+        is_known_size = number(&token, token, &array_size);
         expect(&token, token, "]");
 
         array_ty = calloc(1, sizeof(Type));
@@ -848,7 +848,7 @@ Node *stmt(Env *env) {
 //
 void program(Env *env, Node *code[]) {
     int i = 0;
-    while (!at_eof()) {
+    while (!at_eof(token)) {
         Node *node = type_ident();
         if (node == NULL)
             error("Cannot parse the program.");
