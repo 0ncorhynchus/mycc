@@ -89,31 +89,11 @@ static bool consume(Token **rest, const Token *tok, char *op) {
     return true;
 }
 
-bool is_reserved(const Token *token, char *op) {
-    if (token == NULL || token->kind != TK_RESERVED ||
-        strlen(op) != token->span.len ||
-        memcmp(token->span.ptr, op, token->span.len))
-        return false;
-    return true;
-}
-
-const Token *consume_ident() {
-    if (token->kind != TK_IDENT)
+static const Token *consume_ident(Token **rest, const Token *tok) {
+    if (tok->kind != TK_IDENT) {
         return NULL;
-    const Token *tok = token;
-    token = token->next;
-    return tok;
-}
-
-const Token *expect_ident() {
-    if (token->kind != TK_IDENT) {
-        error_at(&token->span,
-                 "Unexpected token: an ident expected, but got '%.*s'",
-                 token->span.len, token->span.ptr);
     }
-
-    const Token *tok = token;
-    token = token->next;
+    *rest = tok->next;
     return tok;
 }
 
@@ -395,7 +375,7 @@ Node *primary(Env *env) {
         return node;
     }
 
-    const Token *tok = consume_ident();
+    const Token *tok = consume_ident(&token, token);
     if (tok) {
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_LVAR;
@@ -645,7 +625,13 @@ Node *type_ident() {
         return NULL;
     Node *node = calloc(1, sizeof(Node));
     node->ty = ty;
-    node->ident = expect_ident()->span;
+    const Token *ident = consume_ident(&token, token);
+    if (ident == NULL) {
+        error_at(&token->span,
+                 "Unexpected token: an ident expected, but got '%.*s'",
+                 token->span.len, token->span.ptr);
+    }
+    node->ident = ident->span;
     return node;
 }
 
