@@ -101,11 +101,7 @@ const Type *typename(const Token **rest, const Token *tok) {
         }
         expect(&tok, tok, "]");
 
-        Type *array_ty = calloc(1, sizeof(Type));
-        array_ty->ty = ARRAY;
-        array_ty->ptr_to = ty;
-        array_ty->array_size = size;
-        ty = array_ty;
+        ty = mk_array(ty, size);
     }
 
     *rest = tok;
@@ -532,21 +528,15 @@ static Node *init(const Token **rest, const Token *tok, Env *env) {
 static Node *declare(const Token **rest, const Token *tok, Env *env,
                      Node *node) {
     node->kind = ND_DECLARE;
+
     bool is_array = false;
     bool is_known_size = false;
-
-    Type *array_ty = NULL;
+    int array_size = 0;
 
     if (consume(&tok, tok, "[")) {
         is_array = true;
-        int array_size = -1;
         is_known_size = number(&tok, tok, &array_size);
         expect(&tok, tok, "]");
-
-        array_ty = calloc(1, sizeof(Type));
-        array_ty->ty = ARRAY;
-        array_ty->ptr_to = node->ty;
-        array_ty->array_size = array_size;
     }
 
     if (consume(&tok, tok, "=")) {
@@ -554,10 +544,10 @@ static Node *declare(const Token **rest, const Token *tok, Env *env,
         if (is_array && !is_known_size) {
             switch (node->init->kind) {
             case (ND_INIT):
-                array_ty->array_size = node->init->num_initializers;
+                array_size = node->init->num_initializers;
                 break;
             case (ND_STRING):
-                array_ty->array_size = node->init->ident.len + 1;
+                array_size = node->init->ident.len + 1;
                 break;
             default:
                 error("array must be initialized with a brace-enclosed "
@@ -566,8 +556,8 @@ static Node *declare(const Token **rest, const Token *tok, Env *env,
         }
     }
 
-    if (array_ty) {
-        node->ty = array_ty;
+    if (is_array) {
+        node->ty = mk_array(node->ty, array_size);
     }
 
     const Var *var = declare_var(env, node->ty, &node->ident);

@@ -147,6 +147,7 @@ void error_at(const Span *span, char *fmt, ...);
 const Token *tokenize(const char *path);
 
 const Type *mk_ptr(const Type *base);
+const Type *mk_array(const Type *base, int array_size);
 size_t sizeof_ty(const Type *ty);
 char *type_to_str(const Type *ty);
 bool is_same_type(const Type *lhs, const Type *rhs);

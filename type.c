@@ -12,6 +12,14 @@ const Type *mk_ptr(const Type *base) {
     return ptr;
 }
 
+const Type *mk_array(const Type *base, int array_size) {
+    Type *array = calloc(1, sizeof(Type));
+    array->ty = ARRAY;
+    array->ptr_to = base;
+    array->array_size = array_size;
+    return array;
+}
+
 size_t sizeof_ty(const Type *ty) {
     if (ty == NULL) {
         error(
