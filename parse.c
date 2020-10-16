@@ -9,7 +9,7 @@
 
 static const char *filename;
 static const char *user_input;
-static Token *token;
+static const Token *token;
 
 const char *reserved[] = {"if",  "else",   "while", "for",  "return",
                           "int", "sizeof", "char",  "void", NULL};
@@ -81,7 +81,7 @@ int is_alnum(char c) {
            ('0' <= c && c <= '9') || (c == '_');
 }
 
-static bool consume(Token **rest, const Token *tok, char *op) {
+static bool consume(const Token **rest, const Token *tok, char *op) {
     if (tok->kind != TK_RESERVED || strlen(op) != tok->span.len ||
         memcmp(tok->span.ptr, op, tok->span.len))
         return false;
@@ -89,7 +89,7 @@ static bool consume(Token **rest, const Token *tok, char *op) {
     return true;
 }
 
-static const Token *consume_ident(Token **rest, const Token *tok) {
+static const Token *consume_ident(const Token **rest, const Token *tok) {
     if (tok->kind != TK_IDENT) {
         return NULL;
     }
