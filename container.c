@@ -1,7 +1,4 @@
 #include "mycc.h"
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdlib.h>
 #include <string.h>
 
 bool is_global(const Env *env) { return env->parent == NULL; }

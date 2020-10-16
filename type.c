@@ -1,5 +1,4 @@
 #include "mycc.h"
-#include <stdlib.h>
 #include <string.h>
 
 const Type INT_T = {INT, NULL, 0};

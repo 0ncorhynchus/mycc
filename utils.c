@@ -1,5 +1,6 @@
 #include "mycc.h"
-#include <stdlib.h>
+#include <stdarg.h>
+#include <stdio.h>
 
 void debug(char *fmt, ...) {
     fprintf(stderr, "[debug] ");

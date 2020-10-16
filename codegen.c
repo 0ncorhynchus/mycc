@@ -1,9 +1,6 @@
 #include "mycc.h"
 #include <assert.h>
-#include <stdarg.h>
-#include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
 
 static const char *arg_registers[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 

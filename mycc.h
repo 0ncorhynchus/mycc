@@ -1,7 +1,5 @@
 #pragma once
-#include <stdarg.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 typedef struct Span Span;
