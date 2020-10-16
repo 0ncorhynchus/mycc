@@ -140,6 +140,12 @@ static inline Env make_scope(Env *parent) {
     return env;
 }
 
+typedef struct Unit Unit;
+struct Unit {
+    const Node *function;
+    const Node *declaration;
+};
+
 void debug(char *fmt, ...);
 void error(char *fmt, ...);
 void error_at(const Span *span, char *fmt, ...);
@@ -157,7 +163,7 @@ const Var *get_var(Env *env, const Span *ident);
 const Var *declare_var(Env *env, const Type *ty, const Span *ident);
 const String *push_string(Env *env, const Span *ident);
 
-void program(const Token *token, Env *env, Node *code[]);
+void program(const Token *token, Env *env, Unit *code[]);
 
 Node *as_ptr(Node *array);
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
@@ -165,5 +171,5 @@ Node *new_node_num(int val);
 Node *deref_offset_ptr(Node *ptr, Node *index);
 
 void gen(Node *node);
-void gen_top(Node *node);
+void gen_top(Unit *node);
 void gen_strings(Env *env);

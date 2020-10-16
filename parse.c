@@ -660,7 +660,7 @@ static Node *stmt(const Token **rest, const Token *tok, Env *env) {
 //
 //  program = ( function | declare )*
 //
-void program(const Token *token, Env *env, Node *code[]) {
+void program(const Token *token, Env *env, Unit *code[]) {
     int i = 0;
     while (!at_eof(token)) {
         Node *node = type_ident(&token, token);
@@ -668,10 +668,13 @@ void program(const Token *token, Env *env, Node *code[]) {
             error("Cannot parse the program.");
 
         Node *fn = function(&token, token, env, node);
-        if (fn)
-            code[i++] = fn;
-        else
-            code[i++] = declare(&token, token, env, node);
+        code[i] = calloc(1, sizeof(Unit));
+        if (fn) {
+            code[i]->function = fn;
+        } else {
+            code[i]->declaration = declare(&token, token, env, node);
+        }
+        i++;
     }
     code[i] = NULL;
 }

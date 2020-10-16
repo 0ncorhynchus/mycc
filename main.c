@@ -7,7 +7,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    Node *code[100];
+    Unit *code[100];
 
     const char *path = argv[1];
     const Token *token = tokenize(path);

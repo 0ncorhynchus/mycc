@@ -211,7 +211,7 @@ void gen_call(Node *node) {
     push("rax");
 }
 
-void gen_func(Node *node) {
+static void gen_func(const Node *node) {
     printf(".global %.*s\n", node->ident.len, node->ident.ptr);
     printf("%.*s:\n", node->ident.len, node->ident.ptr);
     printf("  push rbp\n");
@@ -307,7 +307,7 @@ bool eval_constexpr(const Node *node, int *val) {
     }
 }
 
-void gen_declare(Node *node) {
+static void gen_declare(const Node *node) {
     size_t size = sizeof_ty(node->ty);
     printf(".global %.*s\n", node->ident.len, node->ident.ptr);
     if (node->init == NULL) {
@@ -356,16 +356,13 @@ void gen_declare(Node *node) {
     error("Invalid initializer for a global variable");
 }
 
-void gen_top(Node *node) {
+void gen_top(Unit *code) {
     printf(".text\n");
-    switch (node->kind) {
-    case ND_FUNC:
-        gen_func(node);
-        return;
-    case ND_DECLARE:
-        gen_declare(node);
-        return;
-    default:
+    if (code->function) {
+        gen_func(code->function);
+    } else if (code->declaration) {
+        gen_declare(code->declaration);
+    } else {
         error("Invalid top node");
     }
 }
