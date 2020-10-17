@@ -25,10 +25,12 @@ struct Token {
 };
 
 typedef struct Type Type;
+typedef struct Node Node;
 
 typedef struct {
     const Type *ty;
     const char *ident;
+    const Node *init;
 } Declaration;
 
 typedef struct ParamList ParamList;
@@ -91,7 +93,6 @@ typedef enum {
 
 typedef struct NodeList NodeList;
 
-typedef struct Node Node;
 struct Node {
     NodeKind kind;
     const Type *ty;
@@ -180,7 +181,7 @@ struct Function {
 typedef struct Unit Unit;
 struct Unit {
     const Function *function;
-    const Node *declaration;
+    const Declaration *declaration;
 };
 
 void

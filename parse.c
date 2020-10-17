@@ -115,7 +115,7 @@ declspec(const Token **rest, const Token *tok) {
     return type_specifier(rest, tok);
 }
 
-static const Declaration *
+static Declaration *
 declarator(const Token **rest, const Token *tok, const Type *ty);
 
 //
@@ -185,7 +185,7 @@ char_from_span(const Span *span) {
 //      direct_declarator "(" function_args? ")"
 //  function_args = ( parameter_type_list | identifier_list )
 //
-static const Declaration *
+static Declaration *
 direct_declarator(const Token **rest, const Token *tok, const Type *ty) {
     const Token *ident = consume_ident(&tok, tok);
     if (ident == NULL) {
@@ -195,6 +195,11 @@ direct_declarator(const Token **rest, const Token *tok, const Type *ty) {
     if (consume(&tok, tok, "(")) {
         ty = mk_func(ty, param_list(&tok, tok));
         expect(&tok, tok, ")");
+    } else if (consume(&tok, tok, "[")) {
+        int array_size = -1;
+        number(&tok, tok, &array_size);
+        expect(&tok, tok, "]");
+        ty = mk_array(ty, array_size);
     }
 
     Declaration *decl = calloc(1, sizeof(Declaration));
@@ -208,7 +213,7 @@ direct_declarator(const Token **rest, const Token *tok, const Type *ty) {
 //
 // declarator = pointer? direct_declarator
 //
-static const Declaration *
+static Declaration *
 declarator(const Token **rest, const Token *tok, const Type *ty) {
     for (int i = 0; i < pointer(&tok, tok); i++) {
         ty = mk_ptr(ty);
@@ -691,6 +696,84 @@ init(const Token **rest, const Token *tok, Env *env) {
     return expr(rest, tok, env);
 }
 
+typedef struct {
+    Node *expr;
+} Initializer;
+
+//
+//  initializer =
+//      assignment_expression
+//      "{" initializer_list ","? "}"
+//  initializer_list = designation? initializer ( "," designation? initializer)*
+//  designation = designator_list "="
+//  designator_list = designator+
+//  designator =
+//      "[" constant_expression "]"
+//      "." identifier
+//
+static const Initializer *
+initializer(const Token **rest, const Token *tok, Env *env) {
+    Initializer *init;
+    Node *e = expr(&tok, tok, env);
+    if (e) {
+        init = calloc(1, sizeof(Initializer));
+        init->expr = e;
+        *rest = tok;
+        return init;
+    }
+    return NULL;
+}
+
+//
+//  declaration =
+//      declaration_specifiers init_declarator_list? ";"
+//      static_assert_declaration
+//  init_declarator_list = init_declarator ( "," init_declarator )*
+//  init_declarator = declarator ( "=" initializer )?
+//
+static const Declaration *
+declaration(const Token **rest, const Token *tok, Env *env) {
+    const Type *ty = declspec(&tok, tok);
+    if (ty == NULL) {
+        return NULL;
+    }
+    Declaration *decl = declarator(&tok, tok, ty);
+    if (decl == NULL || decl->ty->ty == FUNCTION) {
+        return NULL;
+    }
+    if (consume(&tok, tok, "=")) {
+        const Initializer *init = initializer(&tok, tok, env);
+        if (init == NULL) {
+            return NULL;
+        }
+        if (decl->ty->ty == ARRAY && decl->ty->array_size == -1) {
+            int array_size = -1;
+            switch (init->expr->kind) {
+            case (ND_INIT):
+                array_size = init->expr->num_initializers;
+                break;
+            case (ND_STRING):
+                array_size = init->expr->ident.len + 1;
+                break;
+            default:
+                error("array must be initialized with a brace-enclosed "
+                      "initializer");
+            }
+            // XXX: Replace array type with newly allocated one
+            // due to const Type*.
+            decl->ty = mk_array(decl->ty->ptr_to, array_size);
+        }
+        decl->init = init->expr;
+    }
+    expect(&tok, tok, ";");
+
+    const Span span = {decl->ident, strlen(decl->ident)};
+    declare_var(env, decl->ty, &span);
+
+    *rest = tok;
+    return decl;
+}
+
 //
 //  declare = type ident ( "[" num "]" )? ( "=" init )? ";"
 //
@@ -827,16 +910,20 @@ program(const Token *token, Env *env, Unit *code[]) {
     int i = 0;
     while (!at_eof(token)) {
         code[i] = calloc(1, sizeof(Unit));
-        Function *fn = function(&token, token, env);
+
+        const Function *fn = function(&token, token, env);
         if (fn) {
-            code[i]->function = fn;
-        } else {
-            Node *node = type_ident(&token, token);
-            if (node == NULL)
-                error("Cannot parse the program.");
-            code[i]->declaration = declare(&token, token, env, node);
+            code[i++]->function = fn;
+            continue;
         }
-        i++;
+
+        const Declaration *decl = declaration(&token, token, env);
+        if (decl) {
+            code[i++]->declaration = decl;
+            continue;
+        }
+
+        error_at(&token->span, "Cannot parse the program.");
     }
     code[i] = NULL;
 }
