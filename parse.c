@@ -63,6 +63,15 @@ const Type *type_specifier(const Token **rest, const Token *tok) {
     return NULL;
 }
 
+static int pointer(const Token **rest, const Token *tok) {
+    unsigned int num_ptrs = 0;
+    while (consume(&tok, tok, "*")) {
+        num_ptrs++;
+    }
+    *rest = tok;
+    return num_ptrs;
+}
+
 //
 //  type = type "*" | "int" | "char" | "void"
 //
@@ -72,7 +81,7 @@ const Type *type(const Token **rest, const Token *tok) {
         return NULL;
     }
 
-    while (consume(&tok, tok, "*")) {
+    for (int i = 0; i < pointer(&tok, tok); i++) {
         ty = mk_ptr(ty);
     }
 
@@ -81,6 +90,7 @@ const Type *type(const Token **rest, const Token *tok) {
 }
 
 //
+//  typename = specifier_qualifier_list abstract_declarator?
 //  typename = ( "int" | "char" | "void" ) ( "*"* | "[" num "]" )
 //
 const Type *typename(const Token **rest, const Token *tok) {
@@ -89,12 +99,11 @@ const Type *typename(const Token **rest, const Token *tok) {
         return NULL;
     }
 
-    if (consume(&tok, tok, "*")) {
+    for (int i = 0; i < pointer(&tok, tok); i++) {
         ty = mk_ptr(ty);
-        while (consume(&tok, tok, "*")) {
-            ty = mk_ptr(ty);
-        }
-    } else if (consume(&tok, tok, "[")) {
+    }
+
+    if (consume(&tok, tok, "[")) {
         int size;
         if (!number(&tok, tok, &size)) {
             error("Expect a number.");
@@ -245,7 +254,7 @@ static Node *desugar_index(const Token **rest, const Token *tok, Env *env) {
 //
 //  unary = ( "+" | "-" )? primary ( "[" expr "]" )?
 //        | ( "*" | "&" | "sizeof" ) unary
-//        | "sizeof" "(" type ")"
+//        | "sizeof" "(" typename ")"
 //
 static Node *unary(const Token **rest, const Token *tok, Env *env) {
     if (consume(&tok, tok, "+")) {
