@@ -25,10 +25,27 @@ struct Token {
 };
 
 typedef struct Type Type;
+
+typedef struct {
+    const Type *ty;
+    const char *ident;
+} ParamDecl;
+
+typedef struct ParamList ParamList;
+struct ParamList {
+    ParamList *next;
+    const ParamDecl *decl;
+};
+
 struct Type {
-    enum { INT, PTR, ARRAY, CHAR, VOID } ty;
+    enum { INT, PTR, ARRAY, CHAR, VOID, FUNCTION } ty;
+
     const Type *ptr_to;
     int array_size;
+
+    // For FUNCTION
+    const Type *retty;
+    const ParamList *args;
 };
 
 extern const Type INT_T;
@@ -154,7 +171,7 @@ struct Function {
     const char *ident;
     unsigned int num_args;
     int lvar_offset;
-    Node *args;
+    const ParamList *args;
     Node *body;
 };
 
@@ -172,6 +189,7 @@ const Token *tokenize(const char *path);
 
 const Type *mk_ptr(const Type *base);
 const Type *mk_array(const Type *base, int array_size);
+const Type *mk_func(const Type *retty, const ParamList *args);
 size_t sizeof_ty(const Type *ty);
 char *type_to_str(const Type *ty);
 bool is_same_type(const Type *lhs, const Type *rhs);

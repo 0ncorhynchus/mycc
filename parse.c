@@ -90,19 +90,132 @@ const Type *type(const Token **rest, const Token *tok) {
 }
 
 //
-//  typename = specifier_qualifier_list abstract_declarator?
-//  typename = ( "int" | "char" | "void" ) ( "*"* | "[" num "]" )
+//  declaration_specifiers = (declaration_specifier)+
+//  declaration_specifier =
+//      storage_class_specifier
+//      type_specifier
+//      type_qualifier
+//      function_specifier
+//      alignment_specifier
 //
-const Type *typename(const Token **rest, const Token *tok) {
+static const Type *declspec(const Token **rest, const Token *tok) {
+    return type_specifier(rest, tok);
+}
+
+static const ParamDecl *declarator(const Token **rest, const Token *tok,
+                                   const Type *ty);
+
+//
+//  parameter_declaration =
+//      declaration_specifiers declarator
+//      declaration_specifiers abstract_declarator?
+//
+static const ParamDecl *param_decl(const Token **rest, const Token *tok) {
+    const Type *base = declspec(&tok, tok);
+    const ParamDecl *retval = declarator(&tok, tok, base);
+    *rest = tok;
+    return retval;
+}
+
+//
+//  parameter_type_list = parameter_list ("," "...")?
+//  parameter_list = parameter_declaration ("," parameter_declaration)*
+//
+static ParamList *param_list(const Token **rest, const Token *tok) {
+    const ParamDecl *decl = param_decl(&tok, tok);
+    if (decl == NULL)
+        return NULL;
+
+    ParamList *top = calloc(1, sizeof(ParamList));
+    top->decl = decl;
+    ParamList *last = top;
+    for (;;) {
+        if (!consume(&tok, tok, ",")) {
+            break;
+        }
+        decl = param_decl(&tok, tok);
+        if (decl) {
+            last->next = calloc(1, sizeof(ParamList));
+            last->next->decl = decl;
+            last = last->next;
+        } else if (consume(&tok, tok, "...")) {
+            // "..." == ParamList { NULL, NULL }
+            last->next = calloc(1, sizeof(ParamList));
+            break;
+        } else {
+            unexpected("<parameter_declaration> or \"...\"", tok);
+        }
+    }
+
+    *rest = tok;
+    return top;
+}
+
+const char *char_from_span(const Span *span) {
+    char *c = malloc(span->len + 1);
+    memcpy(c, span->ptr, span->len);
+    c[span->len] = '\0';
+    return c;
+}
+
+//
+//  direct_declarator =
+//      identifier
+//      "(" declarator ")"
+//      direct_declarator "[" type_qualifier_list? assign? "]"
+//      direct_declarator "[" "static" type_qualifier_list? assign "]"
+//      direct_declarator "[" type_qualifier_list "static" assign "]"
+//      direct_declarator "[" type_qualifier_list? "*" "]"
+//      direct_declarator "(" function_args? ")"
+//  function_args = ( parameter_type_list | identifier_list )
+//
+static const ParamDecl *direct_declarator(const Token **rest, const Token *tok,
+                                          const Type *ty) {
+    const Token *ident = consume_ident(&tok, tok);
+    if (ident == NULL) {
+        return NULL;
+    }
+
+    if (consume(&tok, tok, "(")) {
+        ty = mk_func(ty, param_list(&tok, tok));
+        expect(&tok, tok, ")");
+    }
+
+    ParamDecl *decl = calloc(1, sizeof(ParamDecl));
+    decl->ty = ty;
+    decl->ident = char_from_span(&ident->span);
+
+    *rest = tok;
+    return decl;
+}
+
+//
+// declarator = pointer? direct_declarator
+//
+static const ParamDecl *declarator(const Token **rest, const Token *tok,
+                                   const Type *ty) {
+    for (int i = 0; i < pointer(&tok, tok); i++) {
+        ty = mk_ptr(ty);
+    }
+
+    return direct_declarator(rest, tok, ty);
+}
+
+//
+//  typename = ( "int" | "char" | "void" )  "*"* ( "[" num "]" )?
+//
+static const Type *typename(const Token **rest, const Token *tok) {
     const Type *ty = type_specifier(&tok, tok);
     if (ty == NULL) {
         return NULL;
     }
 
+    // abstract_declarator? = pointer? direct_abstract_declarator?
     for (int i = 0; i < pointer(&tok, tok); i++) {
         ty = mk_ptr(ty);
     }
 
+    // direct_abstract_declarator
     if (consume(&tok, tok, "[")) {
         int size;
         if (!number(&tok, tok, &size)) {
@@ -478,45 +591,35 @@ static Node *block(const Token **rest, const Token *tok, Env *env) {
 }
 
 //
-//  function = type ident
-//             "(" (type ident ("," type ident)*)? ")"
-//             "{" stmt* "}"
+//  function_definition = declaration_specifiers declarator declartion_list?
+//      compound_statement
 //
-static Function *function(const Token **rest, const Token *tok, Env *parent,
-                          Node *node) {
-    if (!consume(&tok, tok, "("))
+static Function *function(const Token **rest, const Token *tok, Env *parent) {
+    const Type *ty = declspec(&tok, tok);
+    if (ty == NULL) {
         return NULL;
+    }
+
+    const ParamDecl *decl = declarator(&tok, tok, ty);
+    if (decl == NULL || decl->ty->ty != FUNCTION) {
+        return NULL;
+    }
 
     Function *fn = calloc(1, sizeof(Function));
-    char *ident = malloc(node->ident.len + 1);
-    memcpy(ident, node->ident.ptr, node->ident.len);
-    ident[node->ident.len] = '\0';
-    fn->ident = ident;
+    fn->ident = decl->ident;
+    fn->args = decl->ty->args;
 
     Env env = make_scope(parent);
-
-    if (!consume(&tok, tok, ")")) {
-        Node *arg = type_ident(&tok, tok);
-        arg->kind = ND_FUNC_ARGS;
-        fn->args = arg;
-
-        declare_var(&env, arg->ty, &arg->ident);
+    const ParamList *arg = fn->args;
+    while (arg) {
+        const ParamDecl *decl = arg->decl;
+        const Span span = {decl->ident, strlen(decl->ident)};
+        declare_var(&env, decl->ty, &span);
         fn->num_args++;
-
-        while (consume(&tok, tok, ",")) {
-            arg = type_ident(&tok, tok);
-            arg->kind = ND_FUNC_ARGS;
-            arg->lhs = fn->args;
-            fn->args = arg;
-
-            declare_var(&env, arg->ty, &arg->ident);
-            fn->num_args++;
-        }
-        expect(&tok, tok, ")");
-
-        if (fn->num_args > 6) {
-            error("Not supported: more than 6 arguments.");
-        }
+        arg = arg->next;
+    }
+    if (fn->num_args > 6) {
+        error("Not supported: more than 6 arguments.");
     }
 
     int argument_offset = env.maximum_offset;
@@ -686,15 +789,14 @@ static Node *stmt(const Token **rest, const Token *tok, Env *env) {
 void program(const Token *token, Env *env, Unit *code[]) {
     int i = 0;
     while (!at_eof(token)) {
-        Node *node = type_ident(&token, token);
-        if (node == NULL)
-            error("Cannot parse the program.");
-
-        Function *fn = function(&token, token, env, node);
         code[i] = calloc(1, sizeof(Unit));
+        Function *fn = function(&token, token, env);
         if (fn) {
             code[i]->function = fn;
         } else {
+            Node *node = type_ident(&token, token);
+            if (node == NULL)
+                error("Cannot parse the program.");
             code[i]->declaration = declare(&token, token, env, node);
         }
         i++;

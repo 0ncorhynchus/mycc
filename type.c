@@ -20,6 +20,14 @@ const Type *mk_array(const Type *base, int array_size) {
     return array;
 }
 
+const Type *mk_func(const Type *retty, const ParamList *args) {
+    Type *func = calloc(1, sizeof(Type));
+    func->ty = FUNCTION;
+    func->retty = retty;
+    func->args = args;
+    return func;
+}
+
 size_t sizeof_ty(const Type *ty) {
     if (ty == NULL) {
         error(
