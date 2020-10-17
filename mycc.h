@@ -29,12 +29,12 @@ typedef struct Type Type;
 typedef struct {
     const Type *ty;
     const char *ident;
-} ParamDecl;
+} Declaration;
 
 typedef struct ParamList ParamList;
 struct ParamList {
     ParamList *next;
-    const ParamDecl *decl;
+    const Declaration *decl;
 };
 
 struct Type {

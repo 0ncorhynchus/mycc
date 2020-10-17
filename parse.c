@@ -102,17 +102,17 @@ static const Type *declspec(const Token **rest, const Token *tok) {
     return type_specifier(rest, tok);
 }
 
-static const ParamDecl *declarator(const Token **rest, const Token *tok,
-                                   const Type *ty);
+static const Declaration *declarator(const Token **rest, const Token *tok,
+                                     const Type *ty);
 
 //
 //  parameter_declaration =
 //      declaration_specifiers declarator
 //      declaration_specifiers abstract_declarator?
 //
-static const ParamDecl *param_decl(const Token **rest, const Token *tok) {
+static const Declaration *param_decl(const Token **rest, const Token *tok) {
     const Type *base = declspec(&tok, tok);
-    const ParamDecl *retval = declarator(&tok, tok, base);
+    const Declaration *retval = declarator(&tok, tok, base);
     *rest = tok;
     return retval;
 }
@@ -122,7 +122,7 @@ static const ParamDecl *param_decl(const Token **rest, const Token *tok) {
 //  parameter_list = parameter_declaration ("," parameter_declaration)*
 //
 static ParamList *param_list(const Token **rest, const Token *tok) {
-    const ParamDecl *decl = param_decl(&tok, tok);
+    const Declaration *decl = param_decl(&tok, tok);
     if (decl == NULL)
         return NULL;
 
@@ -169,8 +169,8 @@ const char *char_from_span(const Span *span) {
 //      direct_declarator "(" function_args? ")"
 //  function_args = ( parameter_type_list | identifier_list )
 //
-static const ParamDecl *direct_declarator(const Token **rest, const Token *tok,
-                                          const Type *ty) {
+static const Declaration *direct_declarator(const Token **rest,
+                                            const Token *tok, const Type *ty) {
     const Token *ident = consume_ident(&tok, tok);
     if (ident == NULL) {
         return NULL;
@@ -181,7 +181,7 @@ static const ParamDecl *direct_declarator(const Token **rest, const Token *tok,
         expect(&tok, tok, ")");
     }
 
-    ParamDecl *decl = calloc(1, sizeof(ParamDecl));
+    Declaration *decl = calloc(1, sizeof(Declaration));
     decl->ty = ty;
     decl->ident = char_from_span(&ident->span);
 
@@ -192,8 +192,8 @@ static const ParamDecl *direct_declarator(const Token **rest, const Token *tok,
 //
 // declarator = pointer? direct_declarator
 //
-static const ParamDecl *declarator(const Token **rest, const Token *tok,
-                                   const Type *ty) {
+static const Declaration *declarator(const Token **rest, const Token *tok,
+                                     const Type *ty) {
     for (int i = 0; i < pointer(&tok, tok); i++) {
         ty = mk_ptr(ty);
     }
@@ -600,7 +600,7 @@ static Function *function(const Token **rest, const Token *tok, Env *parent) {
         return NULL;
     }
 
-    const ParamDecl *decl = declarator(&tok, tok, ty);
+    const Declaration *decl = declarator(&tok, tok, ty);
     if (decl == NULL || decl->ty->ty != FUNCTION) {
         return NULL;
     }
@@ -612,7 +612,7 @@ static Function *function(const Token **rest, const Token *tok, Env *parent) {
     Env env = make_scope(parent);
     const ParamList *arg = fn->args;
     while (arg) {
-        const ParamDecl *decl = arg->decl;
+        const Declaration *decl = arg->decl;
         const Span span = {decl->ident, strlen(decl->ident)};
         declare_var(&env, decl->ty, &span);
         fn->num_args++;
