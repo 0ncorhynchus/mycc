@@ -5,14 +5,16 @@ const Type INT_T = {INT, NULL, 0};
 const Type CHAR_T = {CHAR, NULL, 0};
 const Type VOID_T = {VOID, NULL, 0};
 
-const Type *mk_ptr(const Type *base) {
+const Type *
+mk_ptr(const Type *base) {
     Type *ptr = calloc(1, sizeof(Type));
     ptr->ty = PTR;
     ptr->ptr_to = base;
     return ptr;
 }
 
-const Type *mk_array(const Type *base, int array_size) {
+const Type *
+mk_array(const Type *base, int array_size) {
     Type *array = calloc(1, sizeof(Type));
     array->ty = ARRAY;
     array->ptr_to = base;
@@ -20,7 +22,8 @@ const Type *mk_array(const Type *base, int array_size) {
     return array;
 }
 
-const Type *mk_func(const Type *retty, const ParamList *args) {
+const Type *
+mk_func(const Type *retty, const ParamList *args) {
     Type *func = calloc(1, sizeof(Type));
     func->ty = FUNCTION;
     func->retty = retty;
@@ -28,7 +31,8 @@ const Type *mk_func(const Type *retty, const ParamList *args) {
     return func;
 }
 
-size_t sizeof_ty(const Type *ty) {
+size_t
+sizeof_ty(const Type *ty) {
     if (ty == NULL) {
         error(
             "Internal compile error: try to obtain the size of unknown type.");
@@ -52,7 +56,8 @@ size_t sizeof_ty(const Type *ty) {
     }
 }
 
-char *type_to_str(const Type *ty) {
+char *
+type_to_str(const Type *ty) {
     char *buffer = calloc(256, 1);
 
     const Type *tmp;
@@ -97,7 +102,8 @@ char *type_to_str(const Type *ty) {
     return retval;
 }
 
-static bool is_subtype(const Type *base, const Type *derived) {
+static bool
+is_subtype(const Type *base, const Type *derived) {
     if (base == NULL || derived == NULL) {
         return false;
     }
@@ -122,7 +128,8 @@ static bool is_subtype(const Type *base, const Type *derived) {
     }
 }
 
-static const Type *check_type(const Type *lhs, const Type *rhs) {
+static const Type *
+check_type(const Type *lhs, const Type *rhs) {
     if (is_subtype(lhs, rhs)) {
         return lhs;
     }
@@ -134,11 +141,13 @@ static const Type *check_type(const Type *lhs, const Type *rhs) {
     return NULL;
 }
 
-bool is_same_type(const Type *lhs, const Type *rhs) {
+bool
+is_same_type(const Type *lhs, const Type *rhs) {
     return is_subtype(lhs, rhs) && is_subtype(rhs, lhs);
 }
 
-const Type *get_type(const Node *lhs, const Node *rhs) {
+const Type *
+get_type(const Node *lhs, const Node *rhs) {
     if (lhs == NULL || rhs == NULL)
         return NULL;
     const Type *ty = check_type(lhs->ty, rhs->ty);

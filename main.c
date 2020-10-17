@@ -1,7 +1,8 @@
 #include "mycc.h"
 #include <stdio.h>
 
-int main(int argc, char **argv) {
+int
+main(int argc, char **argv) {
     if (argc != 2) {
         fprintf(stderr, "Invalid number of arguments\n");
         return 1;

@@ -1,12 +1,14 @@
 #include "mycc.h"
 #include <string.h>
 
-static void unexpected(const char *expected, const Token *got) {
+static void
+unexpected(const char *expected, const Token *got) {
     error_at(&got->span, "Unexpected token: '%s' expected, but got '%.*s'",
              expected, got->span.len, got->span.ptr);
 }
 
-static bool consume(const Token **rest, const Token *tok, char *op) {
+static bool
+consume(const Token **rest, const Token *tok, char *op) {
     if (tok->kind != TK_RESERVED || strlen(op) != tok->span.len ||
         memcmp(tok->span.ptr, op, tok->span.len)) {
         return false;
@@ -15,13 +17,15 @@ static bool consume(const Token **rest, const Token *tok, char *op) {
     return true;
 }
 
-static void expect(const Token **rest, const Token *tok, char *op) {
+static void
+expect(const Token **rest, const Token *tok, char *op) {
     if (!consume(rest, tok, op)) {
         unexpected(op, tok);
     }
 }
 
-static const Token *consume_ident(const Token **rest, const Token *tok) {
+static const Token *
+consume_ident(const Token **rest, const Token *tok) {
     if (tok->kind != TK_IDENT) {
         return NULL;
     }
@@ -29,7 +33,8 @@ static const Token *consume_ident(const Token **rest, const Token *tok) {
     return tok;
 }
 
-static const Token *consume_string(const Token **rest, const Token *tok) {
+static const Token *
+consume_string(const Token **rest, const Token *tok) {
     if (tok->kind != TK_STRING) {
         return NULL;
     }
@@ -37,7 +42,8 @@ static const Token *consume_string(const Token **rest, const Token *tok) {
     return tok;
 }
 
-static bool number(const Token **rest, const Token *tok, int *val) {
+static bool
+number(const Token **rest, const Token *tok, int *val) {
     if (tok->kind != TK_NUM) {
         return false;
     }
@@ -48,9 +54,13 @@ static bool number(const Token **rest, const Token *tok, int *val) {
     return true;
 }
 
-static bool at_eof(const Token *tok) { return tok->kind == TK_EOF; }
+static bool
+at_eof(const Token *tok) {
+    return tok->kind == TK_EOF;
+}
 
-const Type *type_specifier(const Token **rest, const Token *tok) {
+const Type *
+type_specifier(const Token **rest, const Token *tok) {
     if (consume(rest, tok, "int")) {
         return &INT_T;
     }
@@ -63,7 +73,8 @@ const Type *type_specifier(const Token **rest, const Token *tok) {
     return NULL;
 }
 
-static int pointer(const Token **rest, const Token *tok) {
+static int
+pointer(const Token **rest, const Token *tok) {
     unsigned int num_ptrs = 0;
     while (consume(&tok, tok, "*")) {
         num_ptrs++;
@@ -75,7 +86,8 @@ static int pointer(const Token **rest, const Token *tok) {
 //
 //  type = type "*" | "int" | "char" | "void"
 //
-const Type *type(const Token **rest, const Token *tok) {
+const Type *
+type(const Token **rest, const Token *tok) {
     const Type *ty = type_specifier(&tok, tok);
     if (ty == NULL) {
         return NULL;
@@ -98,19 +110,21 @@ const Type *type(const Token **rest, const Token *tok) {
 //      function_specifier
 //      alignment_specifier
 //
-static const Type *declspec(const Token **rest, const Token *tok) {
+static const Type *
+declspec(const Token **rest, const Token *tok) {
     return type_specifier(rest, tok);
 }
 
-static const Declaration *declarator(const Token **rest, const Token *tok,
-                                     const Type *ty);
+static const Declaration *
+declarator(const Token **rest, const Token *tok, const Type *ty);
 
 //
 //  parameter_declaration =
 //      declaration_specifiers declarator
 //      declaration_specifiers abstract_declarator?
 //
-static const Declaration *param_decl(const Token **rest, const Token *tok) {
+static const Declaration *
+param_decl(const Token **rest, const Token *tok) {
     const Type *base = declspec(&tok, tok);
     const Declaration *retval = declarator(&tok, tok, base);
     *rest = tok;
@@ -121,7 +135,8 @@ static const Declaration *param_decl(const Token **rest, const Token *tok) {
 //  parameter_type_list = parameter_list ("," "...")?
 //  parameter_list = parameter_declaration ("," parameter_declaration)*
 //
-static ParamList *param_list(const Token **rest, const Token *tok) {
+static ParamList *
+param_list(const Token **rest, const Token *tok) {
     const Declaration *decl = param_decl(&tok, tok);
     if (decl == NULL)
         return NULL;
@@ -151,7 +166,8 @@ static ParamList *param_list(const Token **rest, const Token *tok) {
     return top;
 }
 
-const char *char_from_span(const Span *span) {
+const char *
+char_from_span(const Span *span) {
     char *c = malloc(span->len + 1);
     memcpy(c, span->ptr, span->len);
     c[span->len] = '\0';
@@ -169,8 +185,8 @@ const char *char_from_span(const Span *span) {
 //      direct_declarator "(" function_args? ")"
 //  function_args = ( parameter_type_list | identifier_list )
 //
-static const Declaration *direct_declarator(const Token **rest,
-                                            const Token *tok, const Type *ty) {
+static const Declaration *
+direct_declarator(const Token **rest, const Token *tok, const Type *ty) {
     const Token *ident = consume_ident(&tok, tok);
     if (ident == NULL) {
         return NULL;
@@ -192,8 +208,8 @@ static const Declaration *direct_declarator(const Token **rest,
 //
 // declarator = pointer? direct_declarator
 //
-static const Declaration *declarator(const Token **rest, const Token *tok,
-                                     const Type *ty) {
+static const Declaration *
+declarator(const Token **rest, const Token *tok, const Type *ty) {
     for (int i = 0; i < pointer(&tok, tok); i++) {
         ty = mk_ptr(ty);
     }
@@ -231,7 +247,8 @@ static const Type *typename(const Token **rest, const Token *tok) {
 }
 
 // Implicit converter from array T[] to pointer T*
-Node *as_ptr(Node *array) {
+Node *
+as_ptr(Node *array) {
     if (array == NULL || array->ty == NULL || array->ty->ty != ARRAY)
         return array;
 
@@ -243,7 +260,8 @@ Node *as_ptr(Node *array) {
     return ptr;
 }
 
-Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
+Node *
+new_node(NodeKind kind, Node *lhs, Node *rhs) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = kind;
     node->ty = get_type(lhs, rhs);
@@ -252,7 +270,8 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
     return node;
 }
 
-Node *new_node_num(int val) {
+Node *
+new_node_num(int val) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_NUM;
     node->ty = &INT_T;
@@ -260,7 +279,8 @@ Node *new_node_num(int val) {
     return node;
 }
 
-static Node *expr(const Token **rest, const Token *tok, Env *env);
+static Node *
+expr(const Token **rest, const Token *tok, Env *env);
 
 //
 //  primary = num
@@ -268,7 +288,8 @@ static Node *expr(const Token **rest, const Token *tok, Env *env);
 //          | "(" expr ")"
 //          | string
 //
-static Node *primary(const Token **rest, const Token *tok, Env *env) {
+static Node *
+primary(const Token **rest, const Token *tok, Env *env) {
     if (consume(&tok, tok, "(")) {
         Node *node = expr(&tok, tok, env);
         expect(&tok, tok, ")");
@@ -340,7 +361,8 @@ static Node *primary(const Token **rest, const Token *tok, Env *env) {
     return NULL;
 }
 
-Node *deref_offset_ptr(Node *ptr, Node *index) {
+Node *
+deref_offset_ptr(Node *ptr, Node *index) {
     Node *new = calloc(1, sizeof(Node));
     new->kind = ND_DEREF;
     new->lhs = new_node(ND_ADD, ptr, index);
@@ -352,7 +374,8 @@ Node *deref_offset_ptr(Node *ptr, Node *index) {
 }
 
 // parse primary ("[" expr "]")?
-static Node *desugar_index(const Token **rest, const Token *tok, Env *env) {
+static Node *
+desugar_index(const Token **rest, const Token *tok, Env *env) {
     Node *node = primary(&tok, tok, env);
     if (consume(&tok, tok, "[")) {
         Node *index = expr(&tok, tok, env);
@@ -369,7 +392,8 @@ static Node *desugar_index(const Token **rest, const Token *tok, Env *env) {
 //        | ( "*" | "&" | "sizeof" ) unary
 //        | "sizeof" "(" typename ")"
 //
-static Node *unary(const Token **rest, const Token *tok, Env *env) {
+static Node *
+unary(const Token **rest, const Token *tok, Env *env) {
     if (consume(&tok, tok, "+")) {
         return desugar_index(rest, tok, env);
     }
@@ -432,7 +456,8 @@ static Node *unary(const Token **rest, const Token *tok, Env *env) {
 //
 //  mul = unary ( "*" unary | "/" unary )*
 //
-static Node *mul(const Token **rest, const Token *tok, Env *env) {
+static Node *
+mul(const Token **rest, const Token *tok, Env *env) {
     Node *node = unary(&tok, tok, env);
 
     for (;;) {
@@ -450,7 +475,8 @@ static Node *mul(const Token **rest, const Token *tok, Env *env) {
 //
 //  add = mul ( "+" mul | "-" mul )*
 //
-static Node *add(const Token **rest, const Token *tok, Env *env) {
+static Node *
+add(const Token **rest, const Token *tok, Env *env) {
     Node *node = mul(&tok, tok, env);
 
     for (;;) {
@@ -468,7 +494,8 @@ static Node *add(const Token **rest, const Token *tok, Env *env) {
 //
 //  relational= add ( "<" add | "<=" add | ">" add | ">=" add )*
 //
-static Node *relational(const Token **rest, const Token *tok, Env *env) {
+static Node *
+relational(const Token **rest, const Token *tok, Env *env) {
     Node *node = add(&tok, tok, env);
 
     for (;;) {
@@ -504,7 +531,8 @@ static Node *relational(const Token **rest, const Token *tok, Env *env) {
 //
 //  equality = relational ( "==" relational | "!=" relational )*
 //
-static Node *equality(const Token **rest, const Token *tok, Env *env) {
+static Node *
+equality(const Token **rest, const Token *tok, Env *env) {
     Node *node = relational(&tok, tok, env);
 
     for (;;) {
@@ -522,7 +550,8 @@ static Node *equality(const Token **rest, const Token *tok, Env *env) {
 //
 //  assign = equality ( "=" assign )?
 //
-static Node *assign(const Token **rest, const Token *tok, Env *env) {
+static Node *
+assign(const Token **rest, const Token *tok, Env *env) {
     Node *node = equality(&tok, tok, env);
     if (consume(&tok, tok, "=")) {
         const Type *ty = node->ty;
@@ -536,15 +565,18 @@ static Node *assign(const Token **rest, const Token *tok, Env *env) {
 //
 //  expr = assign
 //
-static Node *expr(const Token **rest, const Token *tok, Env *env) {
+static Node *
+expr(const Token **rest, const Token *tok, Env *env) {
     return assign(rest, tok, env);
 }
 
-static Node *stmt(const Token **rest, const Token *tok, Env *env);
+static Node *
+stmt(const Token **rest, const Token *tok, Env *env);
 
 // try to parse a type and an ident.
 // For parse a function and a declare.
-static Node *type_ident(const Token **rest, const Token *tok) {
+static Node *
+type_ident(const Token **rest, const Token *tok) {
     const Type *ty = type(&tok, tok);
     if (ty == NULL) {
         return NULL;
@@ -564,7 +596,8 @@ static Node *type_ident(const Token **rest, const Token *tok) {
     return node;
 }
 
-static Node *block(const Token **rest, const Token *tok, Env *env) {
+static Node *
+block(const Token **rest, const Token *tok, Env *env) {
     if (!consume(&tok, tok, "{")) {
         return NULL;
     }
@@ -594,7 +627,8 @@ static Node *block(const Token **rest, const Token *tok, Env *env) {
 //  function_definition = declaration_specifiers declarator declartion_list?
 //      compound_statement
 //
-static Function *function(const Token **rest, const Token *tok, Env *parent) {
+static Function *
+function(const Token **rest, const Token *tok, Env *parent) {
     const Type *ty = declspec(&tok, tok);
     if (ty == NULL) {
         return NULL;
@@ -635,7 +669,8 @@ static Function *function(const Token **rest, const Token *tok, Env *parent) {
 //
 //  init = expr | "{" init ( "," init )* "}"
 //
-static Node *init(const Token **rest, const Token *tok, Env *env) {
+static Node *
+init(const Token **rest, const Token *tok, Env *env) {
     if (consume(&tok, tok, "{")) {
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_INIT;
@@ -659,8 +694,8 @@ static Node *init(const Token **rest, const Token *tok, Env *env) {
 //
 //  declare = type ident ( "[" num "]" )? ( "=" init )? ";"
 //
-static Node *declare(const Token **rest, const Token *tok, Env *env,
-                     Node *node) {
+static Node *
+declare(const Token **rest, const Token *tok, Env *env, Node *node) {
     node->kind = ND_DECLARE;
 
     bool is_array = false;
@@ -713,7 +748,8 @@ static Node *declare(const Token **rest, const Token *tok, Env *env,
 //       | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //       | "return" expr? ";"
 //
-static Node *stmt(const Token **rest, const Token *tok, Env *env) {
+static Node *
+stmt(const Token **rest, const Token *tok, Env *env) {
     Node *node = NULL;
 
     if (consume(&tok, tok, "if")) {
@@ -786,7 +822,8 @@ static Node *stmt(const Token **rest, const Token *tok, Env *env) {
 //
 //  program = ( function | declare )*
 //
-void program(const Token *token, Env *env, Unit *code[]) {
+void
+program(const Token *token, Env *env, Unit *code[]) {
     int i = 0;
     while (!at_eof(token)) {
         code[i] = calloc(1, sizeof(Unit));

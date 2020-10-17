@@ -4,7 +4,8 @@
 
 static const char *arg_registers[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
-const char *ax(size_t size) {
+const char *
+ax(size_t size) {
     switch (size) {
     case 1:
         return "al";
@@ -18,7 +19,8 @@ const char *ax(size_t size) {
     }
 }
 
-const char *di(size_t size) {
+const char *
+di(size_t size) {
     switch (size) {
     case 1:
         return "dil";
@@ -38,22 +40,26 @@ static int stack = 0;
 static int num_args = 0;
 static int num_vars = 0;
 
-void push(const char *arg) {
+void
+push(const char *arg) {
     stack++;
     printf("  push %s\n", arg);
 }
 
-void push_val(int val) {
+void
+push_val(int val) {
     stack++;
     printf("  push %d\n", val);
 }
 
-void pop(const char *arg) {
+void
+pop(const char *arg) {
     stack--;
     printf("  pop %s\n", arg);
 }
 
-static void epilogue(Node *node) {
+static void
+epilogue(Node *node) {
     if (node) {
         gen(node);
         pop("rax");
@@ -70,7 +76,8 @@ static void epilogue(Node *node) {
     num_vars = 0;
 }
 
-void gen_lval(Node *node) {
+void
+gen_lval(Node *node) {
     switch (node->kind) {
     case ND_LVAR:
         switch (node->vkind) {
@@ -93,7 +100,8 @@ void gen_lval(Node *node) {
     }
 }
 
-void gen_if_body(Node *node, int l_index) {
+void
+gen_if_body(Node *node, int l_index) {
     if (node->kind != ND_IF_BODY)
         error("Expected ND_IF_BODY");
 
@@ -111,7 +119,8 @@ void gen_if_body(Node *node, int l_index) {
     printf(".Lend%d:\n", l_index);
 }
 
-void gen_while(Node *node, int l_index) {
+void
+gen_while(Node *node, int l_index) {
     printf(".Lbegin%d:\n", l_index);
     gen(node->lhs);
     pop("rax");
@@ -122,7 +131,8 @@ void gen_while(Node *node, int l_index) {
     printf(".Lend%d:\n", l_index);
 }
 
-void gen_for(Node *node, int l_index) {
+void
+gen_for(Node *node, int l_index) {
     if (node->lhs) {
         gen(node->lhs);
         pop("rax"); // consume the retval
@@ -151,14 +161,16 @@ void gen_for(Node *node, int l_index) {
     printf(".Lend%d:\n", l_index);
 }
 
-static void gen_block(const NodeList *list) {
+static void
+gen_block(const NodeList *list) {
     while (list) {
         gen(list->node);
         list = list->next;
     }
 }
 
-void gen_call(Node *node) {
+void
+gen_call(Node *node) {
     int num_args = 0;
     Node *arg = node->lhs;
     NodeList *args = NULL;
@@ -203,7 +215,8 @@ void gen_call(Node *node) {
     push("rax");
 }
 
-static void gen_func(const Function *fn) {
+static void
+gen_func(const Function *fn) {
     printf(".global %s\n", fn->ident);
     printf("%s:\n", fn->ident);
     printf("  push rbp\n");
@@ -225,7 +238,8 @@ static void gen_func(const Function *fn) {
     epilogue(NULL);
 }
 
-bool eval_constexpr(const Node *node, int *val) {
+bool
+eval_constexpr(const Node *node, int *val) {
     int lhs, rhs;
     switch (node->kind) {
     case (ND_NUM):
@@ -293,7 +307,8 @@ bool eval_constexpr(const Node *node, int *val) {
     }
 }
 
-static void gen_declare(const Node *node) {
+static void
+gen_declare(const Node *node) {
     size_t size = sizeof_ty(node->ty);
     printf(".global %.*s\n", node->ident.len, node->ident.ptr);
     if (node->init == NULL) {
@@ -342,7 +357,8 @@ static void gen_declare(const Node *node) {
     error("Invalid initializer for a global variable");
 }
 
-void gen_top(Unit *code) {
+void
+gen_top(Unit *code) {
     printf(".text\n");
     if (code->function) {
         gen_func(code->function);
@@ -353,7 +369,8 @@ void gen_top(Unit *code) {
     }
 }
 
-void gen_add(Node *node, char *op) {
+void
+gen_add(Node *node, char *op) {
     if (node->lhs->ty->ty == PTR) {
         if (node->rhs->ty->ty == PTR) {
             error("Invalid operands to binary '%s' between pointers", op);
@@ -434,14 +451,16 @@ void gen_add(Node *node, char *op) {
     push("rax");
 }
 
-Node *new_assign(Node *lhs, Node *rhs) {
+Node *
+new_assign(Node *lhs, Node *rhs) {
     const Type *ty = lhs->ty;
     Node *node = new_node(ND_ASSIGN, lhs, rhs);
     node->ty = ty;
     return node;
 }
 
-void gen(Node *node) {
+void
+gen(Node *node) {
     switch (node->kind) {
     case ND_NUM:
         push_val(node->val);
@@ -611,7 +630,8 @@ void gen(Node *node) {
     push("rax");
 }
 
-void gen_strings(Env *env) {
+void
+gen_strings(Env *env) {
     String *str = env->strings;
 
     if (str) {

@@ -2,7 +2,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-void debug(char *fmt, ...) {
+void
+debug(char *fmt, ...) {
     fprintf(stderr, "[debug] ");
     va_list ap;
     va_start(ap, fmt);
@@ -10,7 +11,8 @@ void debug(char *fmt, ...) {
     fprintf(stderr, "\n");
 }
 
-void error(char *fmt, ...) {
+void
+error(char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     vfprintf(stderr, fmt, ap);

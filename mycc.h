@@ -156,12 +156,14 @@ struct Env {
     int maximum_strings;
 };
 
-static inline Env init_env() {
+static inline Env
+init_env() {
     Env env = {NULL, NULL, NULL, 0, 0};
     return env;
 }
 
-static inline Env make_scope(Env *parent) {
+static inline Env
+make_scope(Env *parent) {
     Env env = {parent, NULL, NULL, 0, 0};
     return env;
 }
@@ -181,31 +183,53 @@ struct Unit {
     const Node *declaration;
 };
 
-void debug(char *fmt, ...);
-void error(char *fmt, ...);
-void error_at(const Span *span, char *fmt, ...);
+void
+debug(char *fmt, ...);
+void
+error(char *fmt, ...);
+void
+error_at(const Span *span, char *fmt, ...);
 
-const Token *tokenize(const char *path);
+const Token *
+tokenize(const char *path);
 
-const Type *mk_ptr(const Type *base);
-const Type *mk_array(const Type *base, int array_size);
-const Type *mk_func(const Type *retty, const ParamList *args);
-size_t sizeof_ty(const Type *ty);
-char *type_to_str(const Type *ty);
-bool is_same_type(const Type *lhs, const Type *rhs);
-const Type *get_type(const Node *lhs, const Node *rhs);
+const Type *
+mk_ptr(const Type *base);
+const Type *
+mk_array(const Type *base, int array_size);
+const Type *
+mk_func(const Type *retty, const ParamList *args);
+size_t
+sizeof_ty(const Type *ty);
+char *
+type_to_str(const Type *ty);
+bool
+is_same_type(const Type *lhs, const Type *rhs);
+const Type *
+get_type(const Node *lhs, const Node *rhs);
 
-const Var *get_var(Env *env, const Span *ident);
-const Var *declare_var(Env *env, const Type *ty, const Span *ident);
-const String *push_string(Env *env, const Span *ident);
+const Var *
+get_var(Env *env, const Span *ident);
+const Var *
+declare_var(Env *env, const Type *ty, const Span *ident);
+const String *
+push_string(Env *env, const Span *ident);
 
-void program(const Token *token, Env *env, Unit *code[]);
+void
+program(const Token *token, Env *env, Unit *code[]);
 
-Node *as_ptr(Node *array);
-Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
-Node *new_node_num(int val);
-Node *deref_offset_ptr(Node *ptr, Node *index);
+Node *
+as_ptr(Node *array);
+Node *
+new_node(NodeKind kind, Node *lhs, Node *rhs);
+Node *
+new_node_num(int val);
+Node *
+deref_offset_ptr(Node *ptr, Node *index);
 
-void gen(Node *node);
-void gen_top(Unit *node);
-void gen_strings(Env *env);
+void
+gen(Node *node);
+void
+gen_top(Unit *node);
+void
+gen_strings(Env *env);

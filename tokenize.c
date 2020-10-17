@@ -11,7 +11,8 @@ static const char *user_input;
 const char *reserved[] = {"if",  "else",   "while", "for",  "return",
                           "int", "sizeof", "char",  "void", NULL};
 
-void error_at(const Span *span, char *fmt, ...) {
+void
+error_at(const Span *span, char *fmt, ...) {
     const char *line = span->ptr;
     while (user_input < line && line[-1] != '\n') {
         line--;
@@ -46,7 +47,8 @@ void error_at(const Span *span, char *fmt, ...) {
     exit(1);
 }
 
-static char *read_file(const char *path) {
+static char *
+read_file(const char *path) {
     FILE *fp = fopen(path, "r");
     if (!fp) {
         error("cannot open %s: %s", path, strerror(errno));
@@ -73,12 +75,14 @@ static char *read_file(const char *path) {
     return buf;
 }
 
-static int is_alnum(char c) {
+static int
+is_alnum(char c) {
     return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') ||
            ('0' <= c && c <= '9') || (c == '_');
 }
 
-static Token *new_token(TokenKind kind, Token *cur, const char *str, int len) {
+static Token *
+new_token(TokenKind kind, Token *cur, const char *str, int len) {
     Token *tok = calloc(1, sizeof(Token));
     tok->kind = kind;
     tok->span.ptr = str;
@@ -87,7 +91,8 @@ static Token *new_token(TokenKind kind, Token *cur, const char *str, int len) {
     return tok;
 }
 
-const Token *tokenize(const char *path) {
+const Token *
+tokenize(const char *path) {
     filename = path;
     user_input = read_file(filename);
     const char *p = user_input;

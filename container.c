@@ -1,9 +1,13 @@
 #include "mycc.h"
 #include <string.h>
 
-bool is_global(const Env *env) { return env->parent == NULL; }
+bool
+is_global(const Env *env) {
+    return env->parent == NULL;
+}
 
-static Var *find_var(Env *env, const Span *ident) {
+static Var *
+find_var(Env *env, const Span *ident) {
     for (VarList *next = env->vars; next; next = next->next) {
         if (strlen(next->var.ident) == ident->len &&
             !memcmp(ident->ptr, next->var.ident, ident->len)) {
@@ -13,7 +17,8 @@ static Var *find_var(Env *env, const Span *ident) {
     return NULL;
 }
 
-const Var *get_var(Env *env, const Span *ident) {
+const Var *
+get_var(Env *env, const Span *ident) {
     while (env) {
         Var *retval = find_var(env, ident);
         if (retval)
@@ -26,7 +31,8 @@ const Var *get_var(Env *env, const Span *ident) {
     return NULL;
 }
 
-const Var *declare_var(Env *env, const Type *ty, const Span *ident) {
+const Var *
+declare_var(Env *env, const Type *ty, const Span *ident) {
     if (find_var(env, ident))
         error_at(ident, "'%.*s' is already declared", ident->len, ident->ptr);
 
@@ -51,14 +57,16 @@ const Var *declare_var(Env *env, const Type *ty, const Span *ident) {
     return &new->var;
 }
 
-Env *get_global(Env *env) {
+Env *
+get_global(Env *env) {
     while (!is_global(env)) {
         env = env->parent;
     }
     return env;
 }
 
-const String *push_string(Env *env, const Span *ident) {
+const String *
+push_string(Env *env, const Span *ident) {
     Env *global = get_global(env);
 
     String *str = calloc(1, sizeof(String));
