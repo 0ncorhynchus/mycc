@@ -218,8 +218,8 @@ gen_call(Node *node) {
 
 static void
 gen_func(const Function *fn) {
-    printf(".global %s\n", fn->ident);
-    printf("%s:\n", fn->ident);
+    printf(".global %s\n", fn->def->ident);
+    printf("%s:\n", fn->def->ident);
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
     stack = 0;

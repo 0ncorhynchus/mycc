@@ -38,6 +38,7 @@ struct Var {
     const Type *ty;
     int offset;
     const char *ident;
+    bool is_body_defined;
 };
 
 typedef struct Initializer Initializer;
@@ -184,10 +185,9 @@ make_scope(Env *parent) {
 
 typedef struct Function Function;
 struct Function {
-    const char *ident;
+    const Var *def; // For ident and type and args
     unsigned int num_args;
     int lvar_offset;
-    const ParamList *args;
     Node *body;
 };
 
@@ -228,6 +228,8 @@ bool
 declare_arg(Env *env, Var *var);
 bool
 declare_var(Env *env, Var *var);
+void
+declare_fn(Env *env, Var *var);
 const String *
 push_string(Env *env, const char *ident);
 

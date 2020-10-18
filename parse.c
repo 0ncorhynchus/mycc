@@ -621,15 +621,14 @@ function(const Token **rest, const Token *tok, Env *parent) {
     }
 
     Function *fn = calloc(1, sizeof(Function));
-    fn->ident = decl->var->ident;
-    fn->args = decl->var->ty->args;
+    fn->def = decl->var;
 
     Env env = make_scope(parent);
-    const ParamList *arg = fn->args;
+    const ParamList *arg = fn->def->ty->args;
     while (arg) {
         Declaration *decl = arg->decl;
         if (!declare_arg(&env, decl->var)) {
-            error("'%s' is already declared", decl->var->ident);
+            error_at(&tok->span, "'%s' is already declared", decl->var->ident);
         }
         fn->num_args++;
         arg = arg->next;
@@ -641,8 +640,11 @@ function(const Token **rest, const Token *tok, Env *parent) {
         free(fn);
         return NULL;
     }
+
     fn->body = body;
     fn->lvar_offset = env.maximum_offset - argument_offset;
+
+    declare_fn(parent, decl->var);
 
     *rest = tok;
 
@@ -740,7 +742,7 @@ declaration(const Token **rest, const Token *tok, Env *env) {
     expect(&tok, tok, ";");
 
     if (!declare_var(env, decl->var)) {
-        error("'%s' is already declared", decl->var->ident);
+        error_at(&tok->span, "'%s' is already declared", decl->var->ident);
     }
 
     *rest = tok;

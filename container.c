@@ -80,6 +80,25 @@ declare_var(Env *env, Var *var) {
     return true;
 }
 
+void
+declare_fn(Env *env, Var *var) {
+    Var *defined = find_var(env, var->ident);
+    if (defined) {
+        if (!is_same_type(var->ty, defined->ty)) {
+            error("conflicting types for '%s'", var->ident);
+        }
+        if (defined->is_body_defined) {
+            error("redefinition of '%s'", var->ident);
+        }
+        defined->is_body_defined = true;
+    } else {
+        VarList *new = calloc(1, sizeof(VarList));
+        new->next = env->vars;
+        new->var = var;
+        env->vars = new;
+    }
+}
+
 Env *
 get_global(Env *env) {
     while (!is_global(env)) {
