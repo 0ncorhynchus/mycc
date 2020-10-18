@@ -57,6 +57,14 @@ declare_arg(Env *env, Var *var) {
     return true;
 }
 
+static Env *
+get_block_top(Env *env) {
+    while (!is_global(env) && env->is_block_scope) {
+        env = env->parent;
+    }
+    return env;
+}
+
 bool
 declare_var(Env *env, Var *var) {
     if (find_var(env, var->ident)) {
@@ -68,8 +76,9 @@ declare_var(Env *env, Var *var) {
     } else {
         var->kind = VLOCAL;
         size_t size = ((sizeof_ty(var->ty) - 1) / 8 + 1) * 8;
-        env->maximum_offset += size;
-        var->offset = env->maximum_offset;
+        Env *top = get_block_top(env);
+        top->maximum_offset += size;
+        var->offset = top->maximum_offset;
     }
 
     VarList *new = calloc(1, sizeof(VarList));

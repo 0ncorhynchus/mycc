@@ -22,6 +22,12 @@ main() {
         x = 3;
         assert_int(3, x);
     }
+    assert_int(3, x);
+    {
+        int x = 1;
+        assert_int(1, x);
+    }
+    assert_int(3, x);
     {
         x = 4;
         assert_int(4, x);
@@ -29,4 +35,6 @@ main() {
         assert_int(5, x);
         return summary();
     }
+
+    return 1;
 }

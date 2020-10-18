@@ -169,17 +169,24 @@ struct Env {
     int maximum_strings;
     unsigned int num_args;
     unsigned int maximum_arg_offset;
+    bool is_block_scope;
 };
 
 static inline Env
 init_env() {
-    Env env = {NULL, NULL, NULL, 0, 0, 0, 8};
+    Env env = {NULL, NULL, NULL, 0, 0, 0, 0, false};
     return env;
 }
 
 static inline Env
 make_scope(Env *parent) {
-    Env env = {parent, NULL, NULL, 0, 0, 0, 8};
+    Env env = {parent, NULL, NULL, 0, 0, 0, 8, false};
+    return env;
+}
+
+static inline Env
+make_block_scope(Env *parent) {
+    Env env = {parent, NULL, NULL, 0, 0, 0, 0, true};
     return env;
 }
 

@@ -810,18 +810,20 @@ stmt(const Token **rest, const Token *tok, Env *env) {
         node->kind = ND_RETURN;
         node->lhs = as_ptr(expr(&tok, tok, env));
         expect(&tok, tok, ";");
-    } else if ((node = block(&tok, tok, env))) {
-        ;
     } else {
-        node = calloc(1, sizeof(Node));
-        const Declaration *decl = declaration(&tok, tok, env);
-        if (decl) {
-            node->kind = ND_DECLARE;
-            node->decl = decl;
-        } else {
-            node->kind = ND_SEMICOLON;
-            node->lhs = expr(&tok, tok, env);
-            expect(&tok, tok, ";");
+        Env new = make_block_scope(env);
+        node = block(&tok, tok, &new);
+        if (!node) {
+            node = calloc(1, sizeof(Node));
+            const Declaration *decl = declaration(&tok, tok, env);
+            if (decl) {
+                node->kind = ND_DECLARE;
+                node->decl = decl;
+            } else {
+                node->kind = ND_SEMICOLON;
+                node->lhs = expr(&tok, tok, env);
+                expect(&tok, tok, ";");
+            }
         }
     }
 
