@@ -8,9 +8,27 @@
 static const char *filename;
 static const char *user_input;
 
-const char *reserved[] = {"if",  "else",   "while", "for",  "return",
-                          "int", "sizeof", "char",  "void", "enum"};
+const char *reserved[] = {
+    "auto",       "break",     "case",           "char",
+    "const",      "continue",  "default",        "do",
+    "double",     "else",      "enum",           "extern",
+    "float",      "for",       "goto",           "if",
+    "inline",     "int",       "long",           "register",
+    "restrict",   "return",    "short",          "signed",
+    "sizeof",     "static",    "struct",         "switch",
+    "typedef",    "union",     "unsigned",       "void",
+    "volatile",   "while",     "_Alignas",       "_Alignof",
+    "_Atomic",    "_Bool",     "_Complex",       "_Generic",
+    "_Imaginary", "_Noreturn", "_Static_assert", "_Thread_local"};
 const size_t num_reserved = sizeof(reserved) / sizeof(const char *);
+
+const char *punctuators[] = {
+    "~",   "}",  "||", "|=",   "|",  "{",  "^=",  "^",   "]",  "[",  "?",
+    ">>=", ">>", ">=", ">",    "==", "=",  "<=",  "<<=", "<<", "<:", "<%",
+    "<",   ";",  ":>", ":",    "/=", "/",  "...", ".",   "->", "-=", "--",
+    "-",   ",",  "+=", "++",   "+",  "*=", "*",   ")",   "(",  "&=", "&&",
+    "&",   "%>", "%=", "%:%:", "%:", "%",  "##",  "#",   "!=", "!"};
+const size_t num_punctuators = sizeof(punctuators) / sizeof(const char *);
 
 void
 error_at(const Span *span, char *fmt, ...) {
@@ -137,49 +155,6 @@ tokenize(const char *path) {
             continue;
         }
 
-        if (*p == '=') {
-            int len;
-            if (*(p + 1) && *(p + 1) == '=')
-                len = 2;
-            else
-                len = 1;
-            cur = new_token(TK_RESERVED, cur, p, len);
-            p += len;
-            continue;
-        }
-
-        if (*p == '!') {
-            if (!*(p + 1) || *(p + 1) != '=') {
-                Span span = {p, 1};
-                error_at(&span, "Failed to tokenize");
-            }
-
-            cur = new_token(TK_RESERVED, cur, p, 2);
-            p += 2;
-            continue;
-        }
-
-        if (*p == '<' || *p == '>') {
-            int len;
-
-            if (*(p + 1) && *(p + 1) == '=') {
-                len = 2;
-            } else {
-                len = 1;
-            }
-
-            cur = new_token(TK_RESERVED, cur, p, len);
-            p += len;
-            continue;
-        }
-
-        if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' ||
-            *p == ')' || *p == ';' || *p == '{' || *p == '}' || *p == ',' ||
-            *p == '&' || *p == '[' || *p == ']') {
-            cur = new_token(TK_RESERVED, cur, p++, 1);
-            continue;
-        }
-
         if (isdigit(*p)) {
             const char *first = p;
             char *endptr;
@@ -202,6 +177,20 @@ tokenize(const char *path) {
 
             int len = p - first;
             cur = new_token(TK_STRING, cur, first, len);
+            continue;
+        }
+
+        bool is_punctuate = false;
+        for (int i = 0; i < num_punctuators; i++) {
+            int len = strlen(punctuators[i]);
+            if (strncmp(p, punctuators[i], len) == 0) {
+                cur = new_token(TK_RESERVED, cur, p, len);
+                p += len;
+                is_punctuate = true;
+                break;
+            }
+        }
+        if (is_punctuate) {
             continue;
         }
 
