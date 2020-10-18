@@ -1,3 +1,5 @@
+#include "test.h"
+
 int
 fibo(int index) {
     int a = 1;

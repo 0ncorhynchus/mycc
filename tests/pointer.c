@@ -1,3 +1,5 @@
+#include "test.h"
+
 int
 main() {
     int x = 3;

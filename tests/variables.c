@@ -1,3 +1,5 @@
+#include "test.h"
+
 int spam;
 int a = 3;
 char b[] = "foobar";

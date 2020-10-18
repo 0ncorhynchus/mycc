@@ -1,3 +1,5 @@
+#include "test.h"
+
 int
 main() {
     assert_int(0, 0);

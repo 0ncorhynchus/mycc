@@ -107,6 +107,16 @@ tokenize(const char *path) {
             continue;
         }
 
+        // Macro
+        if (strncmp(p, "#", 1) == 0) {
+            p++;
+            while (*p != '\n') {
+                p++;
+            }
+            continue;
+        }
+
+        // Line Comment
         if (strncmp(p, "//", 2) == 0) {
             p += 2;
             while (*p != '\n') {
@@ -115,6 +125,7 @@ tokenize(const char *path) {
             continue;
         }
 
+        // Block Comment
         if (strncmp(p, "/*", 2) == 0) {
             char *q = strstr(p + 2, "*/");
             if (!q) {

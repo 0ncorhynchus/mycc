@@ -17,7 +17,7 @@ clean:
 	rm -f mycc $(OBJS) $(TESTS) $(VTESTS)
 
 fmt:
-	clang-format -i mycc.h $(SRCS) $(TEST_SRCS)
+	clang-format -i mycc.h $(SRCS) tests/test.h $(TEST_SRCS)
 
 #
 # Tests
@@ -25,11 +25,15 @@ fmt:
 test: $(TESTS)
 	for t in $^; do echo; echo $$t; ./$$t || exit 1; done
 
+tests/utils.o: tests/test.h
+
 tests/%.out: tests/%.s tests/utils.o
 	$(CC) -o $@ $^
 
-tests/%.s: tests/%.c mycc
-	./mycc $< > $@ || exit 1
+tests/%.s: tests/%.c tests/test.h mycc
+	$(eval tmp := $(shell mktemp))
+	cpp $< > $(tmp)
+	./mycc $(tmp) > $@ || exit 1
 
 #
 # Validation tests with cc

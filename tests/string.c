@@ -1,3 +1,5 @@
+#include "test.h"
+
 int
 main() {
     char x[3] = {-1, 2, 4};
