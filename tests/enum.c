@@ -20,7 +20,7 @@ main() {
     int i = A;
     assert_int(A, i);
 
-    enum A j = 1;
+    enum Base j = 1;
     assert_int(G, j);
 
     assert_int(1, A + 1);
