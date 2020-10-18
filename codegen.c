@@ -78,16 +78,17 @@ epilogue(Node *node) {
 
 void
 gen_lval(Node *node) {
+    const Var *var;
     switch (node->kind) {
     case ND_LVAR:
-        switch (node->vkind) {
+        var = node->var;
+        switch (var->kind) {
         case VLOCAL:
             printf("  mov rax, rbp\n");
-            printf("  sub rax, %d /* %.*s */\n", node->offset, node->ident.len,
-                   node->ident.ptr);
+            printf("  sub rax, %d /* %s */\n", var->offset, var->ident);
             break;
         case VGLOBAL:
-            printf("  lea rax, %.*s[rip]\n", node->ident.len, node->ident.ptr);
+            printf("  lea rax, %s[rip]\n", var->ident);
             break;
         }
         push("rax");
@@ -342,27 +343,27 @@ gen_declare(const Declaration *decl) {
         return;
     }
 
+    const Node *lhs = init->lhs;
+    const Node *rhs = init->rhs;
+
     switch (init->kind) {
     case (ND_STRING):
         printf("  .ascii \"%.*s\\0\"\n", init->ident.len, init->ident.ptr);
         return;
     case (ND_ADDR):
-        if (init->lhs->kind == ND_LVAR && init->lhs->vkind == VGLOBAL) {
-            printf("  .quad %.*s\n", init->lhs->ident.len,
-                   init->lhs->ident.ptr);
+        if (lhs->kind == ND_LVAR && lhs->var->kind == VGLOBAL) {
+            printf("  .quad %s\n", lhs->var->ident);
             return;
         }
     case (ND_ADD):
-        if (init->lhs->kind == ND_ADDR && init->lhs->lhs->kind == ND_LVAR &&
-            init->lhs->lhs->vkind == VGLOBAL && init->rhs->kind == ND_NUM) {
-            printf("  .quad %.*s + %d\n", init->lhs->lhs->ident.len,
-                   init->lhs->lhs->ident.ptr, init->rhs->val);
+        if (lhs->kind == ND_ADDR && lhs->lhs->kind == ND_LVAR &&
+            lhs->lhs->var->kind == VGLOBAL && rhs->kind == ND_NUM) {
+            printf("  .quad %s + %d\n", lhs->lhs->var->ident, rhs->val);
             return;
         }
     default:
-        break;
+        error("Invalid initializer for a global variable");
     }
-    error("Invalid initializer for a global variable");
 }
 
 void
@@ -530,10 +531,8 @@ gen(Node *node) {
 
         Node *var = calloc(1, sizeof(Node));
         var->kind = ND_LVAR;
-        var->ty = node->decl->var->ty;
-        var->offset = node->decl->var->offset;
-        var->vkind = node->decl->var->kind;
-        // var->ident = node->ident; TODO
+        var->var = node->decl->var;
+        var->ty = var->var->ty;
 
         const Initializer *init = node->decl->init;
         if (node->decl->var->ty->ty == ARRAY) {

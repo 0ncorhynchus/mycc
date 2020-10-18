@@ -127,12 +127,10 @@ struct Node {
     Node *rhs;
 
     // For ND_LVAR
-    int offset;
+    const Var *var;
 
-    // For ND_LVAR, ND_FUNC, ND_CALL
+    // For ND_FUNC, ND_CALL
     Span ident;
-
-    VarKind vkind;
 
     // For ND_DECLARE
     const Declaration *decl;

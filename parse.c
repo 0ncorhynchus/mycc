@@ -306,11 +306,10 @@ primary(const Token **rest, const Token *tok, Env *env) {
     const Token *tmp = consume_ident(&tok, tok);
     if (tmp) {
         Node *node = calloc(1, sizeof(Node));
-        node->kind = ND_LVAR;
-        node->ident = tmp->span;
 
         // function call
         if (consume(&tok, tok, "(")) {
+            node->ident = tmp->span;
             node->kind = ND_CALL;
             if (consume(&tok, tok, ")")) {
                 *rest = tok;
@@ -329,15 +328,11 @@ primary(const Token **rest, const Token *tok, Env *env) {
                 current->lhs = expr(&tok, tok, env);
             }
 
-            *rest = tok;
-            return node;
+        } else {
+            node->kind = ND_LVAR;
+            node->var = get_var(env, char_from_span(&tmp->span));
+            node->ty = node->var->ty;
         }
-
-        const char *ident = char_from_span(&tmp->span);
-        const Var *var = get_var(env, ident);
-        node->ty = var->ty;
-        node->offset = var->offset;
-        node->vkind = var->kind;
 
         *rest = tok;
         return node;
