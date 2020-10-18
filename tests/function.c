@@ -1,4 +1,5 @@
-int fibo(int index) {
+int
+fibo(int index) {
     int a = 1;
     int b = 0;
     int i;
@@ -11,12 +12,19 @@ int fibo(int index) {
     return a;
 }
 
-void foo() { return; }
+void
+foo() {
+    return;
+}
 
-int args6(int x, int y, int z, int p, int q, int r) { return r; }
+int
+args6(int x, int y, int z, int p, int q, int r) {
+    return r;
+}
 // int args7(int x, int y, int z, int p, int q, int r, int m) { return r; }
 
-int main() {
+int
+main() {
     assert_int(1, fibo(0));
     assert_int(1, fibo(1));
     assert_int(2, fibo(2));

@@ -1,4 +1,5 @@
-int main() {
+int
+main() {
     int x = 0;
 
     if (0 == 0)

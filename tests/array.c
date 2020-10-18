@@ -1,4 +1,5 @@
-int main() {
+int
+main() {
     int a[2] = {1, 2};
 
     assert_int(1, a[0]);

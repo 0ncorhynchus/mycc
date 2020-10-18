@@ -4,7 +4,8 @@ char b[] = "foobar";
 int *c = &a;
 char *d = b + 3;
 
-int main() {
+int
+main() {
     int foo;
     assert_int(1, foo = 1);
 

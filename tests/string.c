@@ -1,4 +1,5 @@
-int main() {
+int
+main() {
     char x[3] = {-1, 2, 4};
     int y = 4;
 

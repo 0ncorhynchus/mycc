@@ -1,4 +1,5 @@
-int main() {
+int
+main() {
     int x;
 
     {} // check compile is passed

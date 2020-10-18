@@ -1,4 +1,5 @@
-int main() {
+int
+main() {
     int x;
     int *y;
     int z[5];
@@ -13,7 +14,7 @@ int main() {
     assert_int(20, sizeof(z));
 
     assert_int(4, sizeof(int));
-    assert_int(8, sizeof(int*));
+    assert_int(8, sizeof(int *));
     assert_int(20, sizeof(int[5]));
 
     return summary();

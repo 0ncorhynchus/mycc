@@ -17,7 +17,7 @@ clean:
 	rm -f mycc $(OBJS) $(TESTS) $(VTESTS)
 
 fmt:
-	clang-format -i mycc.h $(SRCS)
+	clang-format -i mycc.h $(SRCS) $(TEST_SRCS)
 
 #
 # Tests

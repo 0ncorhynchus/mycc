@@ -1,4 +1,5 @@
-int main() {
+int
+main() {
     assert_int(0, 0);
     assert_int(42, 42);
     assert_int(21, 5 + 20 - 4);
