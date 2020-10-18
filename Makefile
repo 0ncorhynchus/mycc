@@ -34,6 +34,7 @@ tests/%.s: tests/%.c tests/test.h mycc
 	$(eval tmp := $(shell mktemp))
 	cpp $< > $(tmp)
 	./mycc $(tmp) > $@ || exit 1
+	rm $(tmp)
 
 #
 # Validation tests with cc
