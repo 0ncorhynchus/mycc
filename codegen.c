@@ -309,21 +309,22 @@ eval_constexpr(const Node *node, int *val) {
 
 static void
 gen_declare(const Declaration *decl) {
-    if (decl->ty->ty == FUNCTION) {
+    const Var *var = decl->var;
+    if (var->ty->ty == FUNCTION) {
         return;
     }
 
-    printf(".global %s\n", decl->ident);
+    printf(".global %s\n", var->ident);
     if (decl->init == NULL) {
         printf(".bss\n");
     } else {
         printf(".data\n");
     }
 
-    printf("%s:\n", decl->ident);
+    printf("%s:\n", var->ident);
 
     if (decl->init == NULL) {
-        const size_t size = sizeof_ty(decl->ty);
+        const size_t size = sizeof_ty(var->ty);
         printf("  .zero %zu\n", size);
         return;
     }
@@ -523,21 +524,21 @@ gen(Node *node) {
         gen_lval(node->lhs);
         return;
     case ND_DECLARE:
-        if (node->decl->vkind != VLOCAL || node->decl->init == NULL) {
+        if (node->decl->var->kind != VLOCAL || node->decl->init == NULL) {
             return;
         }
 
         Node *var = calloc(1, sizeof(Node));
         var->kind = ND_LVAR;
-        var->ty = node->decl->ty;
-        var->offset = node->decl->offset;
-        var->vkind = node->decl->vkind;
+        var->ty = node->decl->var->ty;
+        var->offset = node->decl->var->offset;
+        var->vkind = node->decl->var->kind;
         // var->ident = node->ident; TODO
 
         const Initializer *init = node->decl->init;
-        if (node->decl->ty->ty == ARRAY) {
+        if (node->decl->var->ty->ty == ARRAY) {
             if (init->expr && init->expr->kind == ND_STRING) {
-                for (int index = 0; index < node->decl->ty->array_size;
+                for (int index = 0; index < node->decl->var->ty->array_size;
                      index++) {
                     Node *idx = new_node_num(index);
                     Node *lhs = deref_offset_ptr(as_ptr(var), idx);
@@ -548,7 +549,7 @@ gen(Node *node) {
                 return;
             } else if (init->list) {
                 const InitList *list = init->list;
-                for (int index = 0; index < node->decl->ty->array_size;
+                for (int index = 0; index < node->decl->var->ty->array_size;
                      index++) {
                     Node *idx = new_node_num(index);
                     Node *lhs = deref_offset_ptr(as_ptr(var), idx);

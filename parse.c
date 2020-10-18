@@ -203,8 +203,9 @@ direct_declarator(const Token **rest, const Token *tok, const Type *ty) {
     }
 
     Declaration *decl = calloc(1, sizeof(Declaration));
-    decl->ty = ty;
-    decl->ident = char_from_span(&ident->span);
+    decl->var = calloc(1, sizeof(Var));
+    decl->var->ty = ty;
+    decl->var->ident = char_from_span(&ident->span);
 
     *rest = tok;
     return decl;
@@ -617,22 +618,22 @@ function(const Token **rest, const Token *tok, Env *parent) {
     }
 
     const Declaration *decl = declarator(&tok, tok, ty);
-    if (decl == NULL || decl->ty->ty != FUNCTION) {
+    if (decl == NULL || decl->var->ty->ty != FUNCTION) {
         return NULL;
     }
 
     Function *fn = calloc(1, sizeof(Function));
-    fn->ident = decl->ident;
-    fn->args = decl->ty->args;
+    fn->ident = decl->var->ident;
+    fn->args = decl->var->ty->args;
 
     Env env = make_scope(parent);
     const ParamList *arg = fn->args;
     while (arg) {
         Declaration *decl = arg->decl;
-        const Span span = {decl->ident, strlen(decl->ident)};
-        const Var *var = declare_arg(&env, decl->ty, &span);
-        decl->vkind = var->kind;
-        decl->offset = var->offset;
+        const Span span = {decl->var->ident, strlen(decl->var->ident)};
+        const Var *var = declare_arg(&env, decl->var->ty, &span);
+        decl->var->kind = var->kind;
+        decl->var->offset = var->offset;
         fn->num_args++;
         arg = arg->next;
     }
@@ -723,7 +724,7 @@ declaration(const Token **rest, const Token *tok, Env *env) {
         if (init == NULL) {
             return NULL;
         }
-        if (decl->ty->ty == ARRAY && decl->ty->array_size == -1) {
+        if (decl->var->ty->ty == ARRAY && decl->var->ty->array_size == -1) {
             int array_size = -1;
             if (init->expr && init->expr->kind == ND_STRING) {
                 array_size = init->expr->ident.len + 1;
@@ -735,16 +736,16 @@ declaration(const Token **rest, const Token *tok, Env *env) {
             }
             // XXX: Replace array type with newly allocated one
             // due to const Type*.
-            decl->ty = mk_array(decl->ty->ptr_to, array_size);
+            decl->var->ty = mk_array(decl->var->ty->ptr_to, array_size);
         }
         decl->init = init;
     }
     expect(&tok, tok, ";");
 
-    const Span span = {decl->ident, strlen(decl->ident)};
-    const Var *var = declare_var(env, decl->ty, &span);
-    decl->vkind = var->kind;
-    decl->offset = var->offset;
+    const Span span = {decl->var->ident, strlen(decl->var->ident)};
+    const Var *var = declare_var(env, decl->var->ty, &span);
+    decl->var->kind = var->kind;
+    decl->var->offset = var->offset;
 
     *rest = tok;
     return decl;

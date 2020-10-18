@@ -32,6 +32,14 @@ typedef enum {
     VGLOBAL,
 } VarKind;
 
+typedef struct Var Var;
+struct Var {
+    VarKind kind;
+    const Type *ty;
+    int offset;
+    const char *ident;
+};
+
 typedef struct Initializer Initializer;
 
 typedef struct InitList InitList;
@@ -47,11 +55,8 @@ struct Initializer {
 };
 
 typedef struct {
-    const Type *ty;
-    const char *ident;
+    Var *var;
     const Initializer *init;
-    VarKind vkind;
-    int offset;
 } Declaration;
 
 typedef struct ParamList ParamList;
@@ -141,14 +146,6 @@ struct Node {
 struct NodeList {
     NodeList *next;
     Node *node;
-};
-
-typedef struct Var Var;
-struct Var {
-    VarKind kind;
-    const Type *ty;
-    int offset;
-    const char *ident;
 };
 
 // Linked list for variables
