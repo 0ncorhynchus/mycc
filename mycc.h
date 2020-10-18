@@ -83,31 +83,29 @@ extern const Type CHAR_T;
 extern const Type VOID_T;
 
 typedef enum {
-    ND_ADD,       // "+"
-    ND_SUB,       // "-"
-    ND_MUL,       // "*"
-    ND_DIV,       // "/"
-    ND_NUM,       // [0-9]+
-    ND_LT,        // "<"
-    ND_LE,        // "<="
-    ND_EQ,        // "=="
-    ND_NE,        // "!="
-    ND_ASSIGN,    // "="
-    ND_LVAR,      // [a-zA-Z_][a-zA-Z0-9_]*
-    ND_RETURN,    // "return"
-    ND_IF_COND,   // "if" "(" expr ")"
-    ND_IF_BODY,   // stmt ("else" stmt)?
-    ND_WHILE,     // "while"
-    ND_FOR_INIT,  // "for" "(" expr?;
-    ND_FOR_COND,  // expr?;
-    ND_FOR_BODY,  // expr?; ")" stmt
-    ND_BLOCK,     // "{" stmt* "}"
-    ND_CALL,      // <function call>
-    ND_ARGS,      // function call arguments
-    ND_FUNC,      // function definition
-    ND_FUNC_ARGS, // function arguments
-    ND_ADDR,      // "&"
-    ND_DEREF,     // "*"
+    ND_ADD,      // "+"
+    ND_SUB,      // "-"
+    ND_MUL,      // "*"
+    ND_DIV,      // "/"
+    ND_NUM,      // [0-9]+
+    ND_LT,       // "<"
+    ND_LE,       // "<="
+    ND_EQ,       // "=="
+    ND_NE,       // "!="
+    ND_ASSIGN,   // "="
+    ND_LVAR,     // [a-zA-Z_][a-zA-Z0-9_]*
+    ND_RETURN,   // "return"
+    ND_IF_COND,  // "if" "(" expr ")"
+    ND_IF_BODY,  // stmt ("else" stmt)?
+    ND_WHILE,    // "while"
+    ND_FOR_INIT, // "for" "(" expr?;
+    ND_FOR_COND, // expr?;
+    ND_FOR_BODY, // expr?; ")" stmt
+    ND_BLOCK,    // "{" stmt* "}"
+    ND_CALL,     // <function call>
+    ND_ARGS,     // function call arguments
+    ND_ADDR,     // "&"
+    ND_DEREF,    // "*"
     ND_DECLARE,
     ND_STRING,
     ND_SEMICOLON,
@@ -129,7 +127,7 @@ struct Node {
     // For ND_LVAR
     const Var *var;
 
-    // For ND_FUNC, ND_CALL
+    // For ND_CALL
     Span ident;
 
     // For ND_DECLARE

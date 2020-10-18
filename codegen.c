@@ -502,9 +502,6 @@ gen(Node *node) {
     case ND_CALL:
         gen_call(node);
         return;
-    case ND_FUNC:
-        // skip
-        return;
     case ND_DEREF:
         gen(node->lhs);
         pop("rax");
