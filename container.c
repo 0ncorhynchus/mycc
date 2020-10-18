@@ -108,6 +108,40 @@ declare_fn(Env *env, Var *var) {
     }
 }
 
+void
+declare_typedef(Env *env, Var *var) {
+    if (find_var(env, var->ident)) {
+        return;
+    }
+
+    VarList *new = calloc(1, sizeof(VarList));
+    new->next = env->vars;
+    new->var = var;
+    new->is_typedef = true;
+    env->vars = new;
+}
+
+static const Type *
+find_typedef(const Env *env, const char *ident) {
+    for (VarList *next = env->vars; next; next = next->next) {
+        if (next->is_typedef && strcmp(ident, next->var->ident) == 0) {
+            return next->var->ty;
+        }
+    }
+    return NULL;
+}
+
+const Type *
+get_typedef(const Env *env, const char *ident) {
+    while (env) {
+        const Type *retval = find_typedef(env, ident);
+        if (retval)
+            return retval;
+        env = env->parent;
+    }
+    return NULL;
+}
+
 static bool
 declare_enum_const(Env *env, Var *var, int value) {
     if (find_var(env, var->ident)) {

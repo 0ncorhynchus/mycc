@@ -8,7 +8,7 @@ unexpected(const char *expected, const Token *got) {
 }
 
 static bool
-consume(const Token **rest, const Token *tok, char *op) {
+consume(const Token **rest, const Token *tok, const char *op) {
     if (tok->kind != TK_RESERVED || strlen(op) != tok->span.len ||
         memcmp(tok->span.ptr, op, tok->span.len)) {
         return false;
@@ -135,9 +135,10 @@ enum_specifier(const Token **rest, const Token *tok) {
 //      struct_or_union_specifier |
 //      enum_specifier |
 //      typedef_name
+//  typedef_name = identifier
 //
 const Type *
-type_specifier(const Token **rest, const Token *tok) {
+type_specifier(const Token **rest, const Token *tok, const Env *env) {
     if (consume(rest, tok, "int")) {
         return &INT_T;
     }
@@ -151,6 +152,15 @@ type_specifier(const Token **rest, const Token *tok) {
     const Type *ty = enum_specifier(rest, tok);
     if (ty) {
         return ty;
+    }
+
+    const Token *typedef_name = consume_ident(&tok, tok);
+    if (typedef_name) {
+        const Type *ty = get_typedef(env, char_from_span(&typedef_name->span));
+        if (ty) {
+            *rest = tok;
+            return ty;
+        }
     }
 
     return NULL;
@@ -167,6 +177,45 @@ pointer(const Token **rest, const Token *tok) {
 }
 
 //
+//  storage_class_specifier
+//
+// At most, one storage-class specifier is allowed expect that `_Thread_local`
+// may appear with `static` or `extern`.
+//
+typedef enum {
+    EMPTY = 0,        // 0b00000
+    THREAD_LOCAL = 1, // 0b00001
+    EXTERN = 2,       // 0b00010
+    STATIC = 6,       // 0b00110
+    TYPEDEF = 11,     // 0b01011
+    AUTO = 19,        // 0b10011
+    REGISTER = 27,    // 0b11011
+} StorageClass;
+
+static StorageClass
+storage_spec(const Token **rest, const Token *tok) {
+    if (consume(rest, tok, "typedef")) {
+        return TYPEDEF;
+    }
+    if (consume(rest, tok, "extern")) {
+        return EXTERN;
+    }
+    if (consume(rest, tok, "static")) {
+        return STATIC;
+    }
+    if (consume(rest, tok, "_Thread_local")) {
+        return THREAD_LOCAL;
+    }
+    if (consume(rest, tok, "auto")) {
+        return AUTO;
+    }
+    if (consume(rest, tok, "register")) {
+        return REGISTER;
+    }
+    return EMPTY;
+}
+
+//
 //  declaration_specifiers = (declaration_specifier)+
 //  declaration_specifier =
 //      storage_class_specifier
@@ -175,23 +224,54 @@ pointer(const Token **rest, const Token *tok) {
 //      function_specifier
 //      alignment_specifier
 //
-static const Type *
-declspec(const Token **rest, const Token *tok) {
-    return type_specifier(rest, tok);
+typedef struct {
+    StorageClass storage;
+    const Type *ty;
+} DeclSpec;
+
+static const DeclSpec
+declspec(const Token **rest, const Token *tok, const Env *env) {
+    DeclSpec spec = {};
+    bool is_consumed = false;
+
+    for (;;) {
+        const StorageClass s = storage_spec(&tok, tok);
+        if (s != EMPTY) {
+            if ((spec.storage & s) != 0) {
+                error("storage-class error");
+            }
+            spec.storage |= s;
+            continue;
+        }
+
+        const Type *ty = type_specifier(&tok, tok, env);
+        if (ty) {
+            spec.ty = ty;
+            is_consumed = true;
+            continue;
+        }
+
+        break;
+    }
+
+    if (is_consumed) {
+        *rest = tok;
+    }
+    return spec;
 }
 
 static Declaration *
-declarator(const Token **rest, const Token *tok, const Type *ty);
-
+declarator(const Token **rest, const Token *tok, const Env *env,
+           const Type *ty);
 //
 //  parameter_declaration =
 //      declaration_specifiers declarator
 //      declaration_specifiers abstract_declarator?
 //
 static Declaration *
-param_decl(const Token **rest, const Token *tok) {
-    const Type *base = declspec(&tok, tok);
-    Declaration *retval = declarator(&tok, tok, base);
+param_decl(const Token **rest, const Token *tok, const Env *env) {
+    const Type *base = declspec(&tok, tok, env).ty;
+    Declaration *retval = declarator(&tok, tok, env, base);
     *rest = tok;
     return retval;
 }
@@ -201,8 +281,8 @@ param_decl(const Token **rest, const Token *tok) {
 //  parameter_list = parameter_declaration ("," parameter_declaration)*
 //
 static ParamList *
-param_list(const Token **rest, const Token *tok) {
-    Declaration *decl = param_decl(&tok, tok);
+param_list(const Token **rest, const Token *tok, const Env *env) {
+    Declaration *decl = param_decl(&tok, tok, env);
     if (decl == NULL)
         return NULL;
 
@@ -213,7 +293,7 @@ param_list(const Token **rest, const Token *tok) {
         if (!consume(&tok, tok, ",")) {
             break;
         }
-        decl = param_decl(&tok, tok);
+        decl = param_decl(&tok, tok, env);
         if (decl) {
             last->next = calloc(1, sizeof(ParamList));
             last->next->decl = decl;
@@ -243,14 +323,15 @@ param_list(const Token **rest, const Token *tok) {
 //  function_args = ( parameter_type_list | identifier_list )
 //
 static Declaration *
-direct_declarator(const Token **rest, const Token *tok, const Type *ty) {
+direct_declarator(const Token **rest, const Token *tok, const Env *env,
+                  const Type *ty) {
     const Token *ident = consume_ident(&tok, tok);
     if (ident == NULL) {
         return NULL;
     }
 
     if (consume(&tok, tok, "(")) {
-        ty = mk_func(ty, param_list(&tok, tok));
+        ty = mk_func(ty, param_list(&tok, tok, env));
         expect(&tok, tok, ")");
     } else if (consume(&tok, tok, "[")) {
         int array_size = -1;
@@ -272,19 +353,21 @@ direct_declarator(const Token **rest, const Token *tok, const Type *ty) {
 // declarator = pointer? direct_declarator
 //
 static Declaration *
-declarator(const Token **rest, const Token *tok, const Type *ty) {
+declarator(const Token **rest, const Token *tok, const Env *env,
+           const Type *ty) {
     for (int i = 0; i < pointer(&tok, tok); i++) {
         ty = mk_ptr(ty);
     }
 
-    return direct_declarator(rest, tok, ty);
+    return direct_declarator(rest, tok, env, ty);
 }
 
 //
 //  typename = ( "int" | "char" | "void" )  "*"* ( "[" num "]" )?
 //
-static const Type *typename(const Token **rest, const Token *tok) {
-    const Type *ty = type_specifier(&tok, tok);
+static const Type *typename(const Token **rest, const Token *tok,
+                            const Env *env) {
+    const Type *ty = type_specifier(&tok, tok, env);
     if (ty == NULL) {
         return NULL;
     }
@@ -482,12 +565,13 @@ unary(const Token **rest, const Token *tok, Env *env) {
             *rest = tok;
             return node;
         }
-        error("Internal compile error: try to obtain the address to an unknown "
+        error("Internal compile error: try to obtain the address to an "
+              "unknown "
               "type");
     }
     if (consume(&tok, tok, "sizeof")) {
         if (consume(&tok, tok, "(")) {
-            const Type *ty = typename(&tok, tok);
+            const Type *ty = typename(&tok, tok, env);
             if (ty == NULL) {
                 Node *node = expr(&tok, tok, env);
                 if (node) {
@@ -667,12 +751,12 @@ block(const Token **rest, const Token *tok, Env *env) {
 //
 static Function *
 function(const Token **rest, const Token *tok, Env *parent) {
-    const Type *ty = declspec(&tok, tok);
+    const Type *ty = declspec(&tok, tok, parent).ty;
     if (ty == NULL) {
         return NULL;
     }
 
-    const Declaration *decl = declarator(&tok, tok, ty);
+    const Declaration *decl = declarator(&tok, tok, parent, ty);
     if (decl == NULL || decl->var->ty->ty != FUNCTION) {
         return NULL;
     }
@@ -712,7 +796,8 @@ function(const Token **rest, const Token *tok, Env *parent) {
 //  initializer =
 //      assignment_expression
 //      "{" initializer_list ","? "}"
-//  initializer_list = designation? initializer ( "," designation? initializer)*
+//  initializer_list = designation? initializer ( "," designation?
+//  initializer)*
 //
 //  designation = designator_list "=" designator_list = designator+
 //  designator =
@@ -767,24 +852,33 @@ initializer(const Token **rest, const Token *tok, Env *env) {
 //
 static const Declaration *
 declaration(const Token **rest, const Token *tok, Env *env) {
-    const Type *ty = declspec(&tok, tok);
-    if (ty == NULL) {
+    const DeclSpec spec = declspec(&tok, tok, env);
+    if (spec.ty == NULL) {
         return NULL;
     }
-    Declaration *decl = declarator(&tok, tok, ty);
+
+    Declaration *decl = declarator(&tok, tok, env, spec.ty);
     if (decl == NULL) {
         expect(&tok, tok, ";");
 
-        if (ty->ty == ENUM) {
+        if (spec.ty->ty == ENUM) {
             decl = calloc(1, sizeof(Declaration));
-            decl->type_decl = ty;
-        } else {
-            return NULL;
+            decl->type_decl = spec.ty;
+            *rest = tok;
+            return decl;
         }
+        return NULL;
+    }
 
+    // typedef
+    if (spec.storage == TYPEDEF) {
+        expect(&tok, tok, ";");
+        declare_typedef(env, decl->var);
         *rest = tok;
+        decl->var = NULL;
         return decl;
     }
+
     if (consume(&tok, tok, "=")) {
         const Initializer *init = initializer(&tok, tok, env);
         if (init == NULL) {
@@ -906,11 +1000,11 @@ void
 program(const Token *token, Env *env, Unit *code[]) {
     int i = 0;
     while (!at_eof(token)) {
-        code[i] = calloc(1, sizeof(Unit));
-
         const Function *fn = function(&token, token, env);
         if (fn) {
-            code[i++]->function = fn;
+            code[i] = calloc(1, sizeof(Unit));
+            code[i]->function = fn;
+            i++;
             continue;
         }
 
@@ -918,8 +1012,10 @@ program(const Token *token, Env *env, Unit *code[]) {
         if (decl) {
             if (decl->type_decl) {
                 declare_enum(env, decl->type_decl);
-            } else {
-                code[i++]->declaration = decl;
+            } else if (decl->var) {
+                code[i] = calloc(1, sizeof(Unit));
+                code[i]->declaration = decl;
+                i++;
             }
             continue;
         }

@@ -164,6 +164,7 @@ typedef struct VarList VarList;
 struct VarList {
     VarList *next;
     Var *var;
+    bool is_typedef;
 };
 
 struct String {
@@ -259,6 +260,12 @@ bool
 declare_var(Env *env, Var *var);
 void
 declare_fn(Env *env, Var *var);
+
+void
+declare_typedef(Env *env, Var *var);
+const Type *
+get_typedef(const Env *env, const char *ident);
+
 void
 declare_enum(Env *env, const Type *ty);
 const String *
