@@ -89,13 +89,13 @@ get_global(Env *env) {
 }
 
 const String *
-push_string(Env *env, const Span *ident) {
+push_string(Env *env, const char *ident) {
     Env *global = get_global(env);
 
     String *str = calloc(1, sizeof(String));
     str->next = global->strings;
     str->index = global->maximum_strings;
-    str->ident = *ident;
+    str->ident = ident;
     global->maximum_strings++;
 
     global->strings = str;

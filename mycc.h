@@ -117,7 +117,7 @@ struct Node {
     NodeKind kind;
     const Type *ty;
 
-    // For ND_NUM,
+    // For ND_NUM, ND_STRING
     int val;
 
     // For operators: ND_ADD, ND_SUB, ...
@@ -129,6 +129,9 @@ struct Node {
 
     // For ND_CALL
     Span ident;
+
+    // For ND_STRING
+    const char *str;
 
     // For ND_DECLARE
     const Declaration *decl;
@@ -155,7 +158,7 @@ typedef struct String String;
 struct String {
     String *next;
     int index;
-    Span ident;
+    const char *ident;
 };
 
 typedef struct Env Env;
@@ -228,7 +231,7 @@ declare_arg(Env *env, Var *var);
 bool
 declare_var(Env *env, Var *var);
 const String *
-push_string(Env *env, const Span *ident);
+push_string(Env *env, const char *ident);
 
 void
 program(const Token *token, Env *env, Unit *code[]);

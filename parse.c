@@ -340,14 +340,16 @@ primary(const Token **rest, const Token *tok, Env *env) {
 
     tmp = consume_string(&tok, tok);
     if (tmp) {
+        Span span = tmp->span;
+        span.ptr++;
+        span.len -= 2;
+
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_STRING;
-        node->ident = tmp->span;
-        node->ident.ptr++;
-        node->ident.len -= 2;
+        node->str = char_from_span(&span);
         node->ty = mk_ptr(&CHAR_T);
 
-        const String *string = push_string(env, &node->ident);
+        const String *string = push_string(env, node->str);
         node->val = string->index;
 
         *rest = tok;
@@ -722,7 +724,7 @@ declaration(const Token **rest, const Token *tok, Env *env) {
         if (decl->var->ty->ty == ARRAY && decl->var->ty->array_size == -1) {
             int array_size = -1;
             if (init->expr && init->expr->kind == ND_STRING) {
-                array_size = init->expr->ident.len + 1;
+                array_size = strlen(init->expr->str) + 1;
             } else if (init->list) {
                 array_size = init->num_initializers;
             } else {

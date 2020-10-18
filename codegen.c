@@ -348,7 +348,7 @@ gen_declare(const Declaration *decl) {
 
     switch (init->kind) {
     case (ND_STRING):
-        printf("  .ascii \"%.*s\\0\"\n", init->ident.len, init->ident.ptr);
+        printf("  .ascii \"%s\\0\"\n", init->str);
         return;
     case (ND_ADDR):
         if (lhs->kind == ND_LVAR && lhs->var->kind == VGLOBAL) {
@@ -638,7 +638,7 @@ gen(Node *node) {
 
 void
 gen_strings(Env *env) {
-    String *str = env->strings;
+    const String *str = env->strings;
 
     if (str) {
         printf("\n");
@@ -648,7 +648,7 @@ gen_strings(Env *env) {
 
     while (str) {
         printf(".LC%d:\n", str->index);
-        printf("  .string \"%.*s\"\n", str->ident.len, str->ident.ptr);
+        printf("  .string \"%s\"\n", str->ident);
 
         str = str->next;
     }
