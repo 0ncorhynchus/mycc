@@ -17,5 +17,13 @@ main() {
     assert_int(2, C);
     assert_int(3, T);
 
+    int i = A;
+    assert_int(A, i);
+
+    enum A j = 1;
+    assert_int(G, j);
+
+    assert_int(1, A + 1);
+
     return summary();
 }

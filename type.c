@@ -55,7 +55,7 @@ sizeof_ty(const Type *ty) {
         error("sizeof(void) is not allowed.");
         return 1; // GNU compatible.
     case ENUM:
-        return 4;
+        return sizeof_ty(&INT_T);
     default:
         error("The size of %s is unknown.", type_to_str(ty));
         return 0;
@@ -130,6 +130,13 @@ is_subtype(const Type *base, const Type *derived) {
         return false;
     }
 
+    if (base->ty == ENUM) {
+        return is_subtype(&INT_T, derived);
+    }
+    if (derived->ty == ENUM) {
+        return is_subtype(base, &INT_T);
+    }
+
     const ParamList *barg, *darg;
 
     switch (base->ty) {
@@ -167,6 +174,7 @@ is_subtype(const Type *base, const Type *derived) {
     }
 }
 
+// TODO
 static const Type *
 check_type(const Type *lhs, const Type *rhs) {
     if (is_subtype(lhs, rhs)) {
