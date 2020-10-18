@@ -1,8 +1,8 @@
 #include "mycc.h"
 #include <string.h>
 
-const Type INT_T = {INT};
-const Type CHAR_T = {CHAR};
+const Type INT_T = {INTEGER, INT};
+const Type CHAR_T = {INTEGER, CHAR};
 const Type VOID_T = {VOID};
 
 const Type *
@@ -39,14 +39,17 @@ sizeof_ty(const Type *ty) {
     }
 
     switch (ty->ty) {
-    case INT:
-        return 4;
+    case INTEGER:
+        switch (ty->ikind) {
+        case CHAR:
+            return 1;
+        case INT:
+            return 4;
+        }
     case PTR:
         return 8;
     case ARRAY:
         return sizeof_ty(ty->ptr_to) * ty->array_size;
-    case CHAR:
-        return 1;
     case VOID:
         error("sizeof(void) is not allowed.");
         return 1; // GNU compatible.
@@ -63,8 +66,15 @@ type_to_str(const Type *ty) {
     const Type *tmp;
     for (tmp = ty; tmp; tmp = tmp->ptr_to) {
         switch (tmp->ty) {
-        case INT:
-            strcat(buffer, "tni");
+        case INTEGER:
+            switch (tmp->ikind) {
+            case CHAR:
+                strcat(buffer, "rahc");
+                break;
+            case INT:
+                strcat(buffer, "tni");
+                break;
+            }
             break;
         case PTR:
             strcat(buffer, "*");
@@ -80,9 +90,6 @@ type_to_str(const Type *ty) {
                 }
             }
             strcat(buffer, "[");
-            break;
-        case CHAR:
-            strcat(buffer, "rahc");
             break;
         case VOID:
             strcat(buffer, "doiv");
@@ -111,20 +118,18 @@ is_subtype(const Type *base, const Type *derived) {
     const ParamList *barg, *darg;
 
     switch (base->ty) {
-    case INT:
-        return derived->ty == INT || derived->ty == CHAR;
+    case INTEGER:
+        return derived->ty == INTEGER && sizeof_ty(base) >= sizeof_ty(derived);
     case PTR:
         if (derived->ty == PTR) {
             return is_subtype(base->ptr_to, derived->ptr_to);
         }
-        return derived->ty == INT || derived->ty == CHAR;
+        return derived->ty == INTEGER;
     case ARRAY:
         if (derived->ty == ARRAY && base->array_size == derived->array_size) {
             return is_subtype(base->ptr_to, derived->ptr_to);
         }
         return false;
-    case CHAR:
-        return derived->ty == CHAR;
     case FUNCTION:
         if (derived->ty != FUNCTION) {
             return false;

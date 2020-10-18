@@ -40,7 +40,9 @@ struct ParamList {
 };
 
 struct Type {
-    enum { INT, PTR, ARRAY, CHAR, VOID, FUNCTION } ty;
+    enum { INTEGER, PTR, ARRAY, VOID, FUNCTION } ty;
+
+    enum { CHAR, INT } ikind;
 
     const Type *ptr_to;
     int array_size;
