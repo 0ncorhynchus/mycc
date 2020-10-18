@@ -7,84 +7,77 @@ is_global(const Env *env) {
 }
 
 static Var *
-find_var(Env *env, const Span *ident) {
+find_var(Env *env, const char *ident) {
     for (VarList *next = env->vars; next; next = next->next) {
-        if (strlen(next->var.ident) == ident->len &&
-            !memcmp(ident->ptr, next->var.ident, ident->len)) {
-            return &next->var;
+        if (strcmp(ident, next->var->ident) == 0) {
+            return next->var;
         }
     }
     return NULL;
 }
 
 const Var *
-get_var(Env *env, const Span *ident) {
+get_var(Env *env, const char *ident) {
     while (env) {
         Var *retval = find_var(env, ident);
         if (retval)
             return retval;
         env = env->parent;
     }
-
-    error_at(ident, "'%.*s' is undeclared", ident->len, ident->ptr);
-
+    error("'%s' is undeclared", ident);
     return NULL;
 }
 
-static VarList *
-declare_prelude(Env *env, const Type *ty, const Span *ident) {
-    if (find_var(env, ident))
-        error_at(ident, "'%.*s' is already declared", ident->len, ident->ptr);
-
-    VarList *new = calloc(1, sizeof(VarList));
-    new->next = env->vars;
-    new->var.ty = ty;
-    char *id = calloc(ident->len + 1, 1);
-    memcpy(id, ident->ptr, ident->len);
-    new->var.ident = id;
-
-    return new;
-}
-
-const Var *
-declare_arg(Env *env, const Type *ty, const Span *ident) {
-    VarList *new = declare_prelude(env, ty, ident);
+bool
+declare_arg(Env *env, Var *var) {
+    if (find_var(env, var->ident)) {
+        return false;
+    }
 
     if (is_global(env)) {
         error("Internal compiler error: %s:%d", __FILE__, __LINE__);
     } else {
-        new->var.kind = VLOCAL;
+        var->kind = VLOCAL;
         env->num_args++;
-        size_t size = ((sizeof_ty(ty) - 1) / 8 + 1) * 8;
+        size_t size = ((sizeof_ty(var->ty) - 1) / 8 + 1) * 8;
         if (env->num_args > 6) {
             env->maximum_arg_offset += size;
-            new->var.offset = -env->maximum_arg_offset;
+            var->offset = -env->maximum_arg_offset;
         } else {
-            size_t size = ((sizeof_ty(ty) - 1) / 8 + 1) * 8;
             env->maximum_offset += size;
-            new->var.offset = env->maximum_offset;
+            var->offset = env->maximum_offset;
         }
     }
 
+    VarList *new = calloc(1, sizeof(VarList));
+    new->next = env->vars;
+    new->var = var;
     env->vars = new;
-    return &new->var;
+
+    return true;
 }
 
-const Var *
-declare_var(Env *env, const Type *ty, const Span *ident) {
-    VarList *new = declare_prelude(env, ty, ident);
-
-    if (is_global(env)) {
-        new->var.kind = VGLOBAL;
-    } else {
-        new->var.kind = VLOCAL;
-        size_t size = ((sizeof_ty(ty) - 1) / 8 + 1) * 8;
-        env->maximum_offset += size;
-        new->var.offset = env->maximum_offset;
+bool
+declare_var(Env *env, Var *var) {
+    if (find_var(env, var->ident)) {
+        return false;
     }
 
+    if (is_global(env)) {
+        var->kind = VGLOBAL;
+    } else {
+        var->kind = VLOCAL;
+        size_t size = ((sizeof_ty(var->ty) - 1) / 8 + 1) * 8;
+        env->maximum_offset += size;
+        var->offset = env->maximum_offset;
+    }
+
+    VarList *new = calloc(1, sizeof(VarList));
+    new->next = env->vars;
+    new->var = var;
     env->vars = new;
-    return &new->var;
+
+    return true;
 }
 
 Env *

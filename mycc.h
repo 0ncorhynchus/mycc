@@ -152,7 +152,7 @@ struct NodeList {
 typedef struct VarList VarList;
 struct VarList {
     VarList *next;
-    Var var;
+    Var *var;
 };
 
 typedef struct String String;
@@ -226,11 +226,11 @@ const Type *
 get_type(const Node *lhs, const Node *rhs);
 
 const Var *
-get_var(Env *env, const Span *ident);
-const Var *
-declare_arg(Env *env, const Type *ty, const Span *ident);
-const Var *
-declare_var(Env *env, const Type *ty, const Span *ident);
+get_var(Env *env, const char *ident);
+bool
+declare_arg(Env *env, Var *var);
+bool
+declare_var(Env *env, Var *var);
 const String *
 push_string(Env *env, const Span *ident);
 

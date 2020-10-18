@@ -333,7 +333,8 @@ primary(const Token **rest, const Token *tok, Env *env) {
             return node;
         }
 
-        const Var *var = get_var(env, &tmp->span);
+        const char *ident = char_from_span(&tmp->span);
+        const Var *var = get_var(env, ident);
         node->ty = var->ty;
         node->offset = var->offset;
         node->vkind = var->kind;
@@ -630,10 +631,9 @@ function(const Token **rest, const Token *tok, Env *parent) {
     const ParamList *arg = fn->args;
     while (arg) {
         Declaration *decl = arg->decl;
-        const Span span = {decl->var->ident, strlen(decl->var->ident)};
-        const Var *var = declare_arg(&env, decl->var->ty, &span);
-        decl->var->kind = var->kind;
-        decl->var->offset = var->offset;
+        if (!declare_arg(&env, decl->var)) {
+            error("'%s' is already declared", decl->var->ident);
+        }
         fn->num_args++;
         arg = arg->next;
     }
@@ -742,10 +742,9 @@ declaration(const Token **rest, const Token *tok, Env *env) {
     }
     expect(&tok, tok, ";");
 
-    const Span span = {decl->var->ident, strlen(decl->var->ident)};
-    const Var *var = declare_var(env, decl->var->ty, &span);
-    decl->var->kind = var->kind;
-    decl->var->offset = var->offset;
+    if (!declare_var(env, decl->var)) {
+        error("'%s' is already declared", decl->var->ident);
+    }
 
     *rest = tok;
     return decl;
