@@ -1,9 +1,9 @@
 #include "mycc.h"
 #include <string.h>
 
-const Type INT_T = {INT, NULL, 0};
-const Type CHAR_T = {CHAR, NULL, 0};
-const Type VOID_T = {VOID, NULL, 0};
+const Type INT_T = {INT};
+const Type CHAR_T = {CHAR};
+const Type VOID_T = {VOID};
 
 const Type *
 mk_ptr(const Type *base) {
@@ -108,6 +108,8 @@ is_subtype(const Type *base, const Type *derived) {
         return false;
     }
 
+    const ParamList *barg, *darg;
+
     switch (base->ty) {
     case INT:
         return derived->ty == INT || derived->ty == CHAR;
@@ -123,6 +125,23 @@ is_subtype(const Type *base, const Type *derived) {
         return false;
     case CHAR:
         return derived->ty == CHAR;
+    case FUNCTION:
+        if (derived->ty != FUNCTION) {
+            return false;
+        }
+        if (!is_subtype(base->retty, derived->retty)) {
+            return false;
+        }
+        barg = base->args;
+        darg = derived->args;
+        while (barg && darg) {
+            if (!is_subtype(darg->decl->ty, barg->decl->ty)) {
+                return false;
+            }
+            barg = barg->next;
+            darg = darg->next;
+        }
+        return (barg == NULL && darg == NULL);
     default:
         return false;
     }
