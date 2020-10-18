@@ -31,8 +31,8 @@ get_var(Env *env, const Span *ident) {
     return NULL;
 }
 
-const Var *
-declare_var(Env *env, const Type *ty, const Span *ident) {
+static VarList *
+declare_prelude(Env *env, const Type *ty, const Span *ident) {
     if (find_var(env, ident))
         error_at(ident, "'%.*s' is already declared", ident->len, ident->ptr);
 
@@ -42,6 +42,37 @@ declare_var(Env *env, const Type *ty, const Span *ident) {
     char *id = calloc(ident->len + 1, 1);
     memcpy(id, ident->ptr, ident->len);
     new->var.ident = id;
+
+    return new;
+}
+
+const Var *
+declare_arg(Env *env, const Type *ty, const Span *ident) {
+    VarList *new = declare_prelude(env, ty, ident);
+
+    if (is_global(env)) {
+        error("Internal compiler error: %s:%d", __FILE__, __LINE__);
+    } else {
+        new->var.kind = VLOCAL;
+        env->num_args++;
+        size_t size = ((sizeof_ty(ty) - 1) / 8 + 1) * 8;
+        if (env->num_args > 6) {
+            env->maximum_arg_offset += size;
+            new->var.offset = -env->maximum_arg_offset;
+        } else {
+            size_t size = ((sizeof_ty(ty) - 1) / 8 + 1) * 8;
+            env->maximum_offset += size;
+            new->var.offset = env->maximum_offset;
+        }
+    }
+
+    env->vars = new;
+    return &new->var;
+}
+
+const Var *
+declare_var(Env *env, const Type *ty, const Span *ident) {
+    VarList *new = declare_prelude(env, ty, ident);
 
     if (is_global(env)) {
         new->var.kind = VGLOBAL;
@@ -53,7 +84,6 @@ declare_var(Env *env, const Type *ty, const Span *ident) {
     }
 
     env->vars = new;
-
     return &new->var;
 }
 

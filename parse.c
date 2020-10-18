@@ -653,15 +653,11 @@ function(const Token **rest, const Token *tok, Env *parent) {
     while (arg) {
         const Declaration *decl = arg->decl;
         const Span span = {decl->ident, strlen(decl->ident)};
-        declare_var(&env, decl->ty, &span);
+        declare_arg(&env, decl->ty, &span);
         fn->num_args++;
         arg = arg->next;
     }
-    if (fn->num_args > 6) {
-        error("Not supported: more than 6 arguments.");
-    }
-
-    int argument_offset = env.maximum_offset;
+    const int argument_offset = env.maximum_offset;
 
     Node *body = block(&tok, tok, &env);
     if (body == NULL) {

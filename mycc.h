@@ -157,17 +157,19 @@ struct Env {
     String *strings;
     int maximum_offset;
     int maximum_strings;
+    unsigned int num_args;
+    unsigned int maximum_arg_offset;
 };
 
 static inline Env
 init_env() {
-    Env env = {NULL, NULL, NULL, 0, 0};
+    Env env = {NULL, NULL, NULL, 0, 0, 0, 8};
     return env;
 }
 
 static inline Env
 make_scope(Env *parent) {
-    Env env = {parent, NULL, NULL, 0, 0};
+    Env env = {parent, NULL, NULL, 0, 0, 0, 8};
     return env;
 }
 
@@ -213,6 +215,8 @@ get_type(const Node *lhs, const Node *rhs);
 
 const Var *
 get_var(Env *env, const Span *ident);
+const Var *
+declare_arg(Env *env, const Type *ty, const Span *ident);
 const Var *
 declare_var(Env *env, const Type *ty, const Span *ident);
 const String *

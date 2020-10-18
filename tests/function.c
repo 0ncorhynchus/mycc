@@ -12,6 +12,11 @@ fibo(int index) {
     return a;
 }
 
+int
+many(int x, int y, int z, int p, int q, int r, int m, int n) {
+    return x + y + z + p + q + r + m + n;
+}
+
 void
 foo() {
     return;
