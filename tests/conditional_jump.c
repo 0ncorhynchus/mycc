@@ -38,6 +38,7 @@ main() {
     for (i = 0; i < 10; i = i + 1) {
         sum = sum + i + 1;
     }
+
     assert_int(10, i);
     assert_int(55, sum);
 
@@ -45,6 +46,21 @@ main() {
     for (; i < 10;)
         i = i + 1;
     assert_int(10, i);
+
+    x = 0;
+    while (i < 10) {
+        assert_int(0, x);
+        int x = i;
+        assert_int(i, x);
+        i = i + 1;
+    }
+    assert_int(0, x);
+
+    for (i = 0; i < 10; i = i + 1) {
+        assert_int(0, x);
+        int x = i;
+        assert_int(i, x);
+    }
 
     return summary();
 }
