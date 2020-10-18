@@ -108,7 +108,7 @@ declare_fn(Env *env, Var *var) {
     }
 }
 
-bool
+static bool
 declare_enum_const(Env *env, Var *var, int value) {
     if (find_var(env, var->ident)) {
         return false;
@@ -129,6 +129,27 @@ declare_enum_const(Env *env, Var *var, int value) {
     env->vars = new;
 
     return true;
+}
+
+void
+declare_enum(Env *env, const Type *ty) {
+    if (ty->ty != ENUM || !is_global(env)) {
+        error("Internal compiler error at %s:%d", __FILE__, __LINE__);
+    }
+
+    TagList *new = calloc(1, sizeof(TagList));
+    new->next = env->enums;
+    new->tag = ty->enum_ty->tag;
+    env->enums = new;
+
+    const String *head = ty->enum_ty->consts;
+    while (head) {
+        Var *var = calloc(1, sizeof(Var));
+        var->ty = ty;
+        var->ident = head->ident;
+        declare_enum_const(env, var, head->index);
+        head = head->next;
+    }
 }
 
 Env *

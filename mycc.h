@@ -172,11 +172,18 @@ struct String {
     const char *ident;
 };
 
+typedef struct TagList TagList;
+struct TagList {
+    TagList *next;
+    const char *tag;
+};
+
 typedef struct Env Env;
 struct Env {
     Env *parent;
     VarList *vars;
     String *strings;
+    TagList *enums;
     int maximum_offset;
     int maximum_strings;
     unsigned int num_args;
@@ -186,19 +193,21 @@ struct Env {
 
 static inline Env
 init_env() {
-    Env env = {NULL, NULL, NULL, 0, 0, 0, 0, false};
+    Env env = {};
     return env;
 }
 
 static inline Env
 make_scope(Env *parent) {
-    Env env = {parent, NULL, NULL, 0, 0, 0, 8, false};
+    Env env = {parent};
+    env.maximum_arg_offset = 8;
     return env;
 }
 
 static inline Env
 make_block_scope(Env *parent) {
-    Env env = {parent, NULL, NULL, 0, 0, 0, 0, true};
+    Env env = {parent};
+    env.is_block_scope = true;
     return env;
 }
 
@@ -250,8 +259,8 @@ bool
 declare_var(Env *env, Var *var);
 void
 declare_fn(Env *env, Var *var);
-bool
-declare_enum_const(Env *env, Var *var, int value);
+void
+declare_enum(Env *env, const Type *ty);
 const String *
 push_string(Env *env, const char *ident);
 

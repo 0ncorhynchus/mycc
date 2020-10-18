@@ -899,18 +899,6 @@ stmt(const Token **rest, const Token *tok, Env *env) {
     return node;
 }
 
-static void
-declare_enum_consts(Env *env, const Type *ty) {
-    const String *head = ty->enum_ty->consts;
-    while (head) {
-        Var *var = calloc(1, sizeof(Var));
-        var->ty = ty;
-        var->ident = head->ident;
-        declare_enum_const(env, var, head->index);
-        head = head->next;
-    }
-}
-
 //
 //  program = ( function | declaration )*
 //
@@ -929,7 +917,7 @@ program(const Token *token, Env *env, Unit *code[]) {
         const Declaration *decl = declaration(&token, token, env);
         if (decl) {
             if (decl->type_decl) {
-                declare_enum_consts(env, decl->type_decl);
+                declare_enum(env, decl->type_decl);
             } else {
                 code[i++]->declaration = decl;
             }
