@@ -383,14 +383,12 @@ gen_add(Node *node, char *op) {
 
             gen(node->rhs);
             pop("rax");
-            switch (node->rhs->ty->ty) {
-            case (INT):
-                printf("  movsx rax, eax\n");
-                break;
-            case (CHAR):
+            switch (sizeof_ty(node->rhs->ty)) {
+            case 1:
                 printf("  movsx rax, al\n");
                 break;
-            default:
+            case 4:
+                printf("  movsx rax, eax\n");
                 break;
             }
             printf("  mov rdi, %zu\n", size);
@@ -402,14 +400,12 @@ gen_add(Node *node, char *op) {
             size_t size = sizeof_ty(node->rhs->ty->ptr_to);
             gen(node->lhs);
             pop("rax");
-            switch (node->lhs->ty->ty) {
-            case (INT):
-                printf("  movsx rax, eax\n");
-                break;
-            case (CHAR):
+            switch (sizeof_ty(node->lhs->ty)) {
+            case 1:
                 printf("  movsx rax, al\n");
                 break;
-            default:
+            case 4:
+                printf("  movsx rax, eax\n");
                 break;
             }
             printf("  mov rdi, %zu\n", size);
@@ -420,28 +416,24 @@ gen_add(Node *node, char *op) {
         } else {
             gen(node->lhs);
             pop("rax");
-            switch (node->lhs->ty->ty) {
-            case (INT):
-                printf("  movsx rax, eax\n");
-                break;
-            case (CHAR):
+            switch (sizeof_ty(node->lhs->ty)) {
+            case 1:
                 printf("  movsx rax, al\n");
                 break;
-            default:
+            case 4:
+                printf("  movsx rax, eax\n");
                 break;
             }
             push("rax");
 
             gen(node->rhs);
             pop("rax");
-            switch (node->rhs->ty->ty) {
-            case (INT):
-                printf("  movsx rax, eax\n");
-                break;
-            case (CHAR):
+            switch (sizeof_ty(node->rhs->ty)) {
+            case 1:
                 printf("  movsx rax, al\n");
                 break;
-            default:
+            case 4:
+                printf("  movsx rax, eax\n");
                 break;
             }
             push("rax");
@@ -510,12 +502,12 @@ gen(Node *node) {
     case ND_DEREF:
         gen(node->lhs);
         pop("rax");
-        switch (node->lhs->ty->ptr_to->ty) {
-        case INT:
-            printf("  movsx rax, WORD PTR [rax]\n");
-            break;
-        case CHAR:
+        switch (sizeof_ty(node->lhs->ty->ptr_to)) {
+        case (1):
             printf("  movsx rax, BYTE PTR [rax]\n");
+            break;
+        case (4):
+            printf("  movsx rax, WORD PTR [rax]\n");
             break;
         default:
             printf("  mov rax, [rax]\n");
