@@ -663,7 +663,12 @@ function(const Token **rest, const Token *tok, Env *parent) {
 
     int argument_offset = env.maximum_offset;
 
-    fn->body = block(&tok, tok, &env);
+    Node *body = block(&tok, tok, &env);
+    if (body == NULL) {
+        free(fn);
+        return NULL;
+    }
+    fn->body = body;
     fn->lvar_offset = env.maximum_offset - argument_offset;
 
     *rest = tok;
@@ -738,7 +743,7 @@ declaration(const Token **rest, const Token *tok, Env *env) {
         return NULL;
     }
     Declaration *decl = declarator(&tok, tok, ty);
-    if (decl == NULL || decl->ty->ty == FUNCTION) {
+    if (decl == NULL) {
         return NULL;
     }
     if (consume(&tok, tok, "=")) {

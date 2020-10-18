@@ -309,6 +309,9 @@ eval_constexpr(const Node *node, int *val) {
 
 static void
 gen_declare(const Declaration *decl) {
+    if (decl->ty->ty == FUNCTION) {
+        return;
+    }
     printf(".global %s\n", decl->ident);
     if (decl->init == NULL) {
         printf(".bss\n");
