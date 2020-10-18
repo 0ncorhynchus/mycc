@@ -123,10 +123,10 @@ declarator(const Token **rest, const Token *tok, const Type *ty);
 //      declaration_specifiers declarator
 //      declaration_specifiers abstract_declarator?
 //
-static const Declaration *
+static Declaration *
 param_decl(const Token **rest, const Token *tok) {
     const Type *base = declspec(&tok, tok);
-    const Declaration *retval = declarator(&tok, tok, base);
+    Declaration *retval = declarator(&tok, tok, base);
     *rest = tok;
     return retval;
 }
@@ -137,7 +137,7 @@ param_decl(const Token **rest, const Token *tok) {
 //
 static ParamList *
 param_list(const Token **rest, const Token *tok) {
-    const Declaration *decl = param_decl(&tok, tok);
+    Declaration *decl = param_decl(&tok, tok);
     if (decl == NULL)
         return NULL;
 
@@ -578,29 +578,6 @@ expr(const Token **rest, const Token *tok, Env *env) {
 static Node *
 stmt(const Token **rest, const Token *tok, Env *env);
 
-// try to parse a type and an ident.
-// For parse a function and a declare.
-static Node *
-type_ident(const Token **rest, const Token *tok) {
-    const Type *ty = type(&tok, tok);
-    if (ty == NULL) {
-        return NULL;
-    }
-
-    Node *node = calloc(1, sizeof(Node));
-    node->ty = ty;
-    const Token *ident = consume_ident(&tok, tok);
-
-    if (ident == NULL) {
-        unexpected("an ident", tok);
-    }
-
-    node->ident = ident->span;
-
-    *rest = tok;
-    return node;
-}
-
 static Node *
 block(const Token **rest, const Token *tok, Env *env) {
     if (!consume(&tok, tok, "{")) {
@@ -651,9 +628,11 @@ function(const Token **rest, const Token *tok, Env *parent) {
     Env env = make_scope(parent);
     const ParamList *arg = fn->args;
     while (arg) {
-        const Declaration *decl = arg->decl;
+        Declaration *decl = arg->decl;
         const Span span = {decl->ident, strlen(decl->ident)};
-        declare_arg(&env, decl->ty, &span);
+        const Var *var = declare_arg(&env, decl->ty, &span);
+        decl->vkind = var->kind;
+        decl->offset = var->offset;
         fn->num_args++;
         arg = arg->next;
     }
@@ -673,54 +652,51 @@ function(const Token **rest, const Token *tok, Env *parent) {
 }
 
 //
-//  init = expr | "{" init ( "," init )* "}"
-//
-static Node *
-init(const Token **rest, const Token *tok, Env *env) {
-    if (consume(&tok, tok, "{")) {
-        Node *node = calloc(1, sizeof(Node));
-        node->kind = ND_INIT;
-        node->next = init(&tok, tok, env);
-        node->num_initializers = 1;
-        Node *n = node->next;
-        while (consume(&tok, tok, ",")) {
-            n->next = init(&tok, tok, env);
-            n = n->next;
-            node->num_initializers++;
-        }
-        expect(&tok, tok, "}");
-        *rest = tok;
-        return node;
-    }
-
-    *rest = tok;
-    return expr(rest, tok, env);
-}
-
-typedef struct {
-    Node *expr;
-} Initializer;
-
-//
 //  initializer =
 //      assignment_expression
 //      "{" initializer_list ","? "}"
 //  initializer_list = designation? initializer ( "," designation? initializer)*
-//  designation = designator_list "="
-//  designator_list = designator+
+//
+//  designation = designator_list "=" designator_list = designator+
 //  designator =
 //      "[" constant_expression "]"
 //      "." identifier
 //
 static const Initializer *
 initializer(const Token **rest, const Token *tok, Env *env) {
-    Initializer *init;
-    Node *e = expr(&tok, tok, env);
-    if (e) {
-        init = calloc(1, sizeof(Initializer));
-        init->expr = e;
+    if (consume(&tok, tok, "{")) {
+        Initializer *init = calloc(1, sizeof(Initializer));
+        init->num_initializers = 1;
+        init->list = calloc(1, sizeof(InitList));
+        init->list->inner = initializer(&tok, tok, env);
+        if (init->list->inner == NULL) {
+            error_at(&tok->span, "Failed to parse initializer.");
+        }
+        InitList *last = init->list;
+
+        while (consume(&tok, tok, ",")) {
+            const Initializer *inner = initializer(&tok, tok, env);
+            if (inner) {
+                last->next = calloc(1, sizeof(InitList));
+                last->next->inner = inner;
+                last = last->next;
+                init->num_initializers++;
+            } else {
+                break;
+            }
+        }
+        expect(&tok, tok, "}");
+
         *rest = tok;
         return init;
+    } else {
+        Node *e = expr(&tok, tok, env);
+        if (e) {
+            Initializer *init = calloc(1, sizeof(Initializer));
+            init->expr = as_ptr(e);
+            *rest = tok;
+            return init;
+        }
     }
     return NULL;
 }
@@ -749,14 +725,11 @@ declaration(const Token **rest, const Token *tok, Env *env) {
         }
         if (decl->ty->ty == ARRAY && decl->ty->array_size == -1) {
             int array_size = -1;
-            switch (init->expr->kind) {
-            case (ND_INIT):
-                array_size = init->expr->num_initializers;
-                break;
-            case (ND_STRING):
+            if (init->expr && init->expr->kind == ND_STRING) {
                 array_size = init->expr->ident.len + 1;
-                break;
-            default:
+            } else if (init->list) {
+                array_size = init->num_initializers;
+            } else {
                 error("array must be initialized with a brace-enclosed "
                       "initializer");
             }
@@ -764,68 +737,22 @@ declaration(const Token **rest, const Token *tok, Env *env) {
             // due to const Type*.
             decl->ty = mk_array(decl->ty->ptr_to, array_size);
         }
-        decl->init = init->expr;
+        decl->init = init;
     }
     expect(&tok, tok, ";");
 
     const Span span = {decl->ident, strlen(decl->ident)};
-    declare_var(env, decl->ty, &span);
+    const Var *var = declare_var(env, decl->ty, &span);
+    decl->vkind = var->kind;
+    decl->offset = var->offset;
 
     *rest = tok;
     return decl;
 }
 
 //
-//  declare = type ident ( "[" num "]" )? ( "=" init )? ";"
-//
-static Node *
-declare(const Token **rest, const Token *tok, Env *env, Node *node) {
-    node->kind = ND_DECLARE;
-
-    bool is_array = false;
-    bool is_known_size = false;
-    int array_size = 0;
-
-    if (consume(&tok, tok, "[")) {
-        is_array = true;
-        is_known_size = number(&tok, tok, &array_size);
-        expect(&tok, tok, "]");
-    }
-
-    if (consume(&tok, tok, "=")) {
-        node->init = as_ptr(init(&tok, tok, env));
-        if (is_array && !is_known_size) {
-            switch (node->init->kind) {
-            case (ND_INIT):
-                array_size = node->init->num_initializers;
-                break;
-            case (ND_STRING):
-                array_size = node->init->ident.len + 1;
-                break;
-            default:
-                error("array must be initialized with a brace-enclosed "
-                      "initializer");
-            }
-        }
-    }
-
-    if (is_array) {
-        node->ty = mk_array(node->ty, array_size);
-    }
-
-    const Var *var = declare_var(env, node->ty, &node->ident);
-    node->vkind = var->kind;
-    node->offset = var->offset;
-
-    expect(&tok, tok, ";");
-    *rest = tok;
-
-    return node;
-}
-
-//
 //  stmt =  expr ";"
-//       | declare
+//       | declaration
 //       | "{" stmt* "}"
 //       | "if" "(" expr ")" stmt ( "else" stmt )?
 //       | "while" "(" expr ")" stmt
@@ -887,11 +814,12 @@ stmt(const Token **rest, const Token *tok, Env *env) {
     } else if ((node = block(&tok, tok, env))) {
         ;
     } else {
-        node = type_ident(&tok, tok);
-        if (node) {
-            node = declare(&tok, tok, env, node);
+        node = calloc(1, sizeof(Node));
+        const Declaration *decl = declaration(&tok, tok, env);
+        if (decl) {
+            node->kind = ND_DECLARE;
+            node->decl = decl;
         } else {
-            node = calloc(1, sizeof(Node));
             node->kind = ND_SEMICOLON;
             node->lhs = expr(&tok, tok, env);
             expect(&tok, tok, ";");
@@ -904,7 +832,7 @@ stmt(const Token **rest, const Token *tok, Env *env) {
 }
 
 //
-//  program = ( function | declare )*
+//  program = ( function | declaration )*
 //
 void
 program(const Token *token, Env *env, Unit *code[]) {

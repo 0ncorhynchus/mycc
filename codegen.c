@@ -312,6 +312,7 @@ gen_declare(const Declaration *decl) {
     if (decl->ty->ty == FUNCTION) {
         return;
     }
+
     printf(".global %s\n", decl->ident);
     if (decl->init == NULL) {
         printf(".bss\n");
@@ -327,31 +328,34 @@ gen_declare(const Declaration *decl) {
         return;
     }
 
+    if (decl->init->expr == NULL) {
+        error("Not supported global variables with an initializer list yet.");
+        return;
+    }
+
+    const Node *init = decl->init->expr;
+
     int val;
-    if (eval_constexpr(decl->init, &val)) {
+    if (eval_constexpr(init, &val)) {
         printf("  .long %d\n", val);
         return;
     }
 
-    switch (decl->init->kind) {
+    switch (init->kind) {
     case (ND_STRING):
-        printf("  .ascii \"%.*s\\0\"\n", decl->init->ident.len,
-               decl->init->ident.ptr);
+        printf("  .ascii \"%.*s\\0\"\n", init->ident.len, init->ident.ptr);
         return;
     case (ND_ADDR):
-        if (decl->init->lhs->kind == ND_LVAR &&
-            decl->init->lhs->vkind == VGLOBAL) {
-            printf("  .quad %.*s\n", decl->init->lhs->ident.len,
-                   decl->init->lhs->ident.ptr);
+        if (init->lhs->kind == ND_LVAR && init->lhs->vkind == VGLOBAL) {
+            printf("  .quad %.*s\n", init->lhs->ident.len,
+                   init->lhs->ident.ptr);
             return;
         }
     case (ND_ADD):
-        if (decl->init->lhs->kind == ND_ADDR &&
-            decl->init->lhs->lhs->kind == ND_LVAR &&
-            decl->init->lhs->lhs->vkind == VGLOBAL &&
-            decl->init->rhs->kind == ND_NUM) {
-            printf("  .quad %.*s + %d\n", decl->init->lhs->lhs->ident.len,
-                   decl->init->lhs->lhs->ident.ptr, decl->init->rhs->val);
+        if (init->lhs->kind == ND_ADDR && init->lhs->lhs->kind == ND_LVAR &&
+            init->lhs->lhs->vkind == VGLOBAL && init->rhs->kind == ND_NUM) {
+            printf("  .quad %.*s + %d\n", init->lhs->lhs->ident.len,
+                   init->lhs->lhs->ident.ptr, init->rhs->val);
             return;
         }
     default:
@@ -446,7 +450,7 @@ gen_add(Node *node, char *op) {
     push("rax");
 }
 
-Node *
+static Node *
 new_assign(Node *lhs, Node *rhs) {
     const Type *ty = lhs->ty;
     Node *node = new_node(ND_ASSIGN, lhs, rhs);
@@ -519,51 +523,59 @@ gen(Node *node) {
         gen_lval(node->lhs);
         return;
     case ND_DECLARE:
-        if (node->vkind == VLOCAL && node->init != NULL) {
-            Node *var = calloc(1, sizeof(Node));
-            var->kind = ND_LVAR;
-            var->ty = node->ty;
-            var->offset = node->offset;
-            var->vkind = node->vkind;
-            var->ident = node->ident;
-
-            if (node->ty->ty == ARRAY) {
-                var = as_ptr(var);
-                Node *init = node->init->next;
-                switch (node->init->kind) {
-                case (ND_INIT):
-                    for (int index = 0; index < node->ty->array_size; index++) {
-                        Node *idx = new_node_num(index);
-                        Node *lhs = deref_offset_ptr(var, idx);
-                        if (init) {
-                            gen(new_assign(lhs, init));
-                            init = init->next;
-                        } else {
-                            gen(new_assign(lhs, new_node_num(0)));
-                        }
-                        pop("rax");
-                    }
-                    return;
-                case (ND_STRING):
-                    for (int index = 0; index < node->ty->array_size; index++) {
-                        Node *idx = new_node_num(index);
-                        Node *lhs = deref_offset_ptr(var, idx);
-                        Node *rhs = deref_offset_ptr(node->init, idx);
-                        gen(new_assign(lhs, rhs));
-                        pop("rax");
-                    }
-                    return;
-                default:
-                    error("Internal compiler error: unreachable at %s:%d",
-                          __FILE__, __LINE__);
-                }
-            }
-
-            gen(new_assign(var, node->init));
-            pop("rax");
-
+        if (node->decl->vkind != VLOCAL || node->decl->init == NULL) {
             return;
         }
+
+        Node *var = calloc(1, sizeof(Node));
+        var->kind = ND_LVAR;
+        var->ty = node->decl->ty;
+        var->offset = node->decl->offset;
+        var->vkind = node->decl->vkind;
+        // var->ident = node->ident; TODO
+
+        const Initializer *init = node->decl->init;
+        if (node->decl->ty->ty == ARRAY) {
+            if (init->expr && init->expr->kind == ND_STRING) {
+                for (int index = 0; index < node->decl->ty->array_size;
+                     index++) {
+                    Node *idx = new_node_num(index);
+                    Node *lhs = deref_offset_ptr(as_ptr(var), idx);
+                    Node *rhs = deref_offset_ptr(init->expr, idx);
+                    gen(new_assign(lhs, rhs));
+                    pop("rax");
+                }
+                return;
+            } else if (init->list) {
+                const InitList *list = init->list;
+                for (int index = 0; index < node->decl->ty->array_size;
+                     index++) {
+                    Node *idx = new_node_num(index);
+                    Node *lhs = deref_offset_ptr(as_ptr(var), idx);
+                    if (list && list->inner) {
+                        if (list->inner->expr == NULL) {
+                            error("Not supported nested initilizer lists.");
+                        }
+                        gen(new_assign(lhs, list->inner->expr));
+                        list = list->next;
+                    } else {
+                        gen(new_assign(lhs, new_node_num(0)));
+                    }
+                    pop("rax");
+                }
+                return;
+            } else {
+                error("Internal compiler error: unreachable at %s:%d", __FILE__,
+                      __LINE__);
+            }
+        }
+
+        if (init->expr == NULL) {
+            error("Not supported initializer lists for not array varaibles");
+        }
+
+        gen(new_assign(var, init->expr));
+        pop("rax");
         return;
     case ND_ADD:
         gen_add(node, "add");

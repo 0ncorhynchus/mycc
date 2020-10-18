@@ -27,16 +27,37 @@ struct Token {
 typedef struct Type Type;
 typedef struct Node Node;
 
+typedef enum {
+    VLOCAL,
+    VGLOBAL,
+} VarKind;
+
+typedef struct Initializer Initializer;
+
+typedef struct InitList InitList;
+struct InitList {
+    InitList *next;
+    const Initializer *inner;
+};
+
+struct Initializer {
+    Node *expr;
+    InitList *list;
+    unsigned num_initializers;
+};
+
 typedef struct {
     const Type *ty;
     const char *ident;
-    const Node *init;
+    const Initializer *init;
+    VarKind vkind;
+    int offset;
 } Declaration;
 
 typedef struct ParamList ParamList;
 struct ParamList {
     ParamList *next;
-    const Declaration *decl;
+    Declaration *decl;
 };
 
 struct Type {
@@ -55,11 +76,6 @@ struct Type {
 extern const Type INT_T;
 extern const Type CHAR_T;
 extern const Type VOID_T;
-
-typedef enum {
-    VLOCAL,
-    VGLOBAL,
-} VarKind;
 
 typedef enum {
     ND_ADD,       // "+"
@@ -90,7 +106,6 @@ typedef enum {
     ND_DECLARE,
     ND_STRING,
     ND_SEMICOLON,
-    ND_INIT,
 } NodeKind;
 
 typedef struct NodeList NodeList;
@@ -112,12 +127,12 @@ struct Node {
     // For ND_LVAR, ND_FUNC, ND_CALL
     Span ident;
 
-    // For ND_DECLARE
     VarKind vkind;
-    Node *init; // initial value
+
+    // For ND_DECLARE
+    const Declaration *decl;
 
     Node *next; // For the inner of ND_INIT
-    int num_initializers;
 
     // For ND_BODY
     NodeList *inner;
