@@ -309,7 +309,7 @@ primary(const Token **rest, const Token *tok, Env *env) {
 
         // function call
         if (consume(&tok, tok, "(")) {
-            node->ident = tmp->span;
+            node->fn = char_from_span(&tmp->span);
             node->kind = ND_CALL;
             if (consume(&tok, tok, ")")) {
                 *rest = tok;

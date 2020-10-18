@@ -128,15 +128,13 @@ struct Node {
     const Var *var;
 
     // For ND_CALL
-    Span ident;
+    const char *fn;
 
     // For ND_STRING
     const char *str;
 
     // For ND_DECLARE
     const Declaration *decl;
-
-    Node *next; // For the inner of ND_INIT
 
     // For ND_BODY
     NodeList *inner;

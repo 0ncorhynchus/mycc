@@ -204,7 +204,7 @@ gen_call(Node *node) {
         pop(arg_registers[i]);
     }
 
-    printf("  call %.*s\n", node->ident.len, node->ident.ptr);
+    printf("  call %s\n", node->fn);
 
     for (int i = 6; i < num_args; i++) {
         pop("rdi"); // consume remained arguments
