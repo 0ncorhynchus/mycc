@@ -108,6 +108,29 @@ declare_fn(Env *env, Var *var) {
     }
 }
 
+bool
+declare_enum_const(Env *env, Var *var, int value) {
+    if (find_var(env, var->ident)) {
+        return false;
+    }
+
+    if (is_global(env)) {
+        var->kind = VGLOBAL;
+    } else {
+        error("Not supported: %s:%d", __FILE__, __LINE__);
+    }
+
+    var->is_const = true;
+    var->enum_val = value;
+
+    VarList *new = calloc(1, sizeof(VarList));
+    new->next = env->vars;
+    new->var = var;
+    env->vars = new;
+
+    return true;
+}
+
 Env *
 get_global(Env *env) {
     while (!is_global(env)) {

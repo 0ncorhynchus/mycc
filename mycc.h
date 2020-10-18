@@ -39,6 +39,8 @@ struct Var {
     int offset;
     const char *ident;
     bool is_body_defined;
+    bool is_const;
+    int enum_val;
 };
 
 typedef struct Initializer Initializer;
@@ -55,9 +57,17 @@ struct Initializer {
     unsigned num_initializers;
 };
 
+typedef struct String String;
+
+typedef struct {
+    const char *tag;
+    String *consts;
+} Enum;
+
 typedef struct {
     Var *var;
     const Initializer *init;
+    const Type *type_decl;
 } Declaration;
 
 typedef struct ParamList ParamList;
@@ -67,7 +77,7 @@ struct ParamList {
 };
 
 struct Type {
-    enum { INTEGER, PTR, ARRAY, VOID, FUNCTION } ty;
+    enum { INTEGER, PTR, ARRAY, VOID, FUNCTION, ENUM } ty;
 
     enum { CHAR, INT } ikind;
 
@@ -77,6 +87,9 @@ struct Type {
     // For FUNCTION
     const Type *retty;
     const ParamList *args;
+
+    // For ENUM
+    const Enum *enum_ty;
 };
 
 extern const Type INT_T;
@@ -153,7 +166,6 @@ struct VarList {
     Var *var;
 };
 
-typedef struct String String;
 struct String {
     String *next;
     int index;
@@ -220,9 +232,10 @@ const Type *
 mk_array(const Type *base, int array_size);
 const Type *
 mk_func(const Type *retty, const ParamList *args);
+
 size_t
 sizeof_ty(const Type *ty);
-char *
+const char *
 type_to_str(const Type *ty);
 bool
 is_same_type(const Type *lhs, const Type *rhs);
@@ -237,6 +250,8 @@ bool
 declare_var(Env *env, Var *var);
 void
 declare_fn(Env *env, Var *var);
+bool
+declare_enum_const(Env *env, Var *var, int value);
 const String *
 push_string(Env *env, const char *ident);
 

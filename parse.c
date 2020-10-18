@@ -59,6 +59,83 @@ at_eof(const Token *tok) {
     return tok->kind == TK_EOF;
 }
 
+const char *
+char_from_span(const Span *span) {
+    char *c = malloc(span->len + 1);
+    memcpy(c, span->ptr, span->len);
+    c[span->len] = '\0';
+    return c;
+}
+
+//
+//  enum_specifier =
+//      "enum" identifier? "{" enumerator_list ","? "}"
+//      "enum" identifier
+//
+//  enumerator_list = enumerator ( "," enumerator )*
+//  enumerator =
+//      enumeration_constant
+//      enumeration_constant = constant_expression
+//
+static const Type *
+enum_specifier(const Token **rest, const Token *tok) {
+    if (!consume(&tok, tok, "enum")) {
+        return NULL;
+    }
+    const Token *ident = consume_ident(&tok, tok);
+    if (ident == NULL) {
+        error("TODO: %s:%d", __FILE__, __LINE__);
+    }
+
+    Enum *e = calloc(1, sizeof(Enum));
+    e->tag = char_from_span(&ident->span);
+
+    if (consume(&tok, tok, "{")) {
+        int val = 0;
+        const Token *constant = consume_ident(&tok, tok);
+        if (constant == NULL) {
+            error_at(&tok->span, "Failed to parse enum");
+        }
+        e->consts = calloc(1, sizeof(String));
+        e->consts->index = val;
+        e->consts->ident = char_from_span(&constant->span);
+
+        String *last = e->consts;
+        while (!consume(&tok, tok, "}")) {
+            expect(&tok, tok, ",");
+
+            constant = consume_ident(&tok, tok);
+            if (constant == NULL) {
+                expect(&tok, tok, "}");
+                break;
+            }
+
+            val++;
+            last->next = calloc(1, sizeof(String));
+            last->next->index = val;
+            last->next->ident = char_from_span(&constant->span);
+            last = last->next;
+        }
+    } else if (ident == NULL) {
+        error("enum requires an identifier or a block at least");
+    }
+
+    Type *ty = calloc(1, sizeof(Type));
+    ty->ty = ENUM;
+    ty->enum_ty = e;
+
+    *rest = tok;
+    return ty;
+}
+
+//
+//  type_specifier = "void" | "char" | "short" | "int" | "long" | float" |
+//      "double" | "signed" | "unsigned" | "_Bool" | "_Complex" |
+//      atomic_type_specifier |
+//      struct_or_union_specifier |
+//      enum_specifier |
+//      typedef_name
+//
 const Type *
 type_specifier(const Token **rest, const Token *tok) {
     if (consume(rest, tok, "int")) {
@@ -70,6 +147,12 @@ type_specifier(const Token **rest, const Token *tok) {
     if (consume(rest, tok, "void")) {
         return &VOID_T;
     }
+
+    const Type *ty = enum_specifier(rest, tok);
+    if (ty) {
+        return ty;
+    }
+
     return NULL;
 }
 
@@ -81,24 +164,6 @@ pointer(const Token **rest, const Token *tok) {
     }
     *rest = tok;
     return num_ptrs;
-}
-
-//
-//  type = type "*" | "int" | "char" | "void"
-//
-const Type *
-type(const Token **rest, const Token *tok) {
-    const Type *ty = type_specifier(&tok, tok);
-    if (ty == NULL) {
-        return NULL;
-    }
-
-    for (int i = 0; i < pointer(&tok, tok); i++) {
-        ty = mk_ptr(ty);
-    }
-
-    *rest = tok;
-    return ty;
 }
 
 //
@@ -164,14 +229,6 @@ param_list(const Token **rest, const Token *tok) {
 
     *rest = tok;
     return top;
-}
-
-const char *
-char_from_span(const Span *span) {
-    char *c = malloc(span->len + 1);
-    memcpy(c, span->ptr, span->len);
-    c[span->len] = '\0';
-    return c;
 }
 
 //
@@ -716,7 +773,17 @@ declaration(const Token **rest, const Token *tok, Env *env) {
     }
     Declaration *decl = declarator(&tok, tok, ty);
     if (decl == NULL) {
-        return NULL;
+        expect(&tok, tok, ";");
+
+        if (ty->ty == ENUM) {
+            decl = calloc(1, sizeof(Declaration));
+            decl->type_decl = ty;
+        } else {
+            return NULL;
+        }
+
+        *rest = tok;
+        return decl;
     }
     if (consume(&tok, tok, "=")) {
         const Initializer *init = initializer(&tok, tok, env);
@@ -832,6 +899,18 @@ stmt(const Token **rest, const Token *tok, Env *env) {
     return node;
 }
 
+static void
+declare_enum_consts(Env *env, const Type *ty) {
+    const String *head = ty->enum_ty->consts;
+    while (head) {
+        Var *var = calloc(1, sizeof(Var));
+        var->ty = ty;
+        var->ident = head->ident;
+        declare_enum_const(env, var, head->index);
+        head = head->next;
+    }
+}
+
 //
 //  program = ( function | declaration )*
 //
@@ -849,7 +928,11 @@ program(const Token *token, Env *env, Unit *code[]) {
 
         const Declaration *decl = declaration(&token, token, env);
         if (decl) {
-            code[i++]->declaration = decl;
+            if (decl->type_decl) {
+                declare_enum_consts(env, decl->type_decl);
+            } else {
+                code[i++]->declaration = decl;
+            }
             continue;
         }
 

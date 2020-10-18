@@ -82,16 +82,20 @@ gen_lval(Node *node) {
     switch (node->kind) {
     case ND_LVAR:
         var = node->var;
-        switch (var->kind) {
-        case VLOCAL:
-            printf("  mov rax, rbp\n");
-            printf("  sub rax, %d /* %s */\n", var->offset, var->ident);
-            break;
-        case VGLOBAL:
-            printf("  lea rax, %s[rip]\n", var->ident);
-            break;
+        if (var->is_const) {
+            error("Error at %s:%d", __FILE__, __LINE__);
+        } else {
+            switch (var->kind) {
+            case VLOCAL:
+                printf("  mov rax, rbp\n");
+                printf("  sub rax, %d /* %s */\n", var->offset, var->ident);
+                break;
+            case VGLOBAL:
+                printf("  lea rax, %s[rip]\n", var->ident);
+                break;
+            }
+            push("rax");
         }
-        push("rax");
         break;
     case ND_DEREF:
         gen(node->lhs);
@@ -467,10 +471,14 @@ gen(Node *node) {
         push_val(node->val);
         return;
     case ND_LVAR:
-        gen_lval(node);
-        pop("rax");
-        printf("  mov rax, [rax]\n");
-        push("rax");
+        if (node->var->is_const) {
+            push_val(node->var->enum_val);
+        } else {
+            gen_lval(node);
+            pop("rax");
+            printf("  mov rax, [rax]\n");
+            push("rax");
+        }
         return;
     case ND_ASSIGN:
         gen_lval(node->lhs);

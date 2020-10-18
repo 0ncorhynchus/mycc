@@ -1,4 +1,5 @@
 #include "mycc.h"
+#include <stdio.h>
 #include <string.h>
 
 const Type INT_T = {INTEGER, INT};
@@ -53,15 +54,27 @@ sizeof_ty(const Type *ty) {
     case VOID:
         error("sizeof(void) is not allowed.");
         return 1; // GNU compatible.
+    case ENUM:
+        return 4;
     default:
         error("The size of %s is unknown.", type_to_str(ty));
         return 0;
     }
 }
 
-char *
+static const char *
+revstr(const char *str) {
+    int len = strlen(str);
+    char *reversed = calloc(len + 1, 1);
+    for (int i = 0; i < len; i++)
+        reversed[i] = str[len - i - 1];
+    return reversed;
+}
+
+const char *
 type_to_str(const Type *ty) {
     char *buffer = calloc(256, 1);
+    char *c;
 
     const Type *tmp;
     for (tmp = ty; tmp; tmp = tmp->ptr_to) {
@@ -94,16 +107,18 @@ type_to_str(const Type *ty) {
         case VOID:
             strcat(buffer, "doiv");
             break;
+        case ENUM:
+            c = calloc(5 + strlen(ty->enum_ty->tag), 1);
+            sprintf(c, "enum %s", ty->enum_ty->tag);
+            strcat(buffer, revstr(c));
+            free(c);
+            break;
         default:
             error("Not implemented for this type: type_to_str()");
         }
     }
 
-    int len = strlen(buffer);
-    char *retval = calloc(len + 1, 1);
-    for (int i = 0; i < len; i++) {
-        retval[i] = buffer[len - i - 1];
-    }
+    const char *retval = revstr(buffer);
     free(buffer);
 
     return retval;

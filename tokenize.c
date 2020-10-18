@@ -9,7 +9,8 @@ static const char *filename;
 static const char *user_input;
 
 const char *reserved[] = {"if",  "else",   "while", "for",  "return",
-                          "int", "sizeof", "char",  "void", NULL};
+                          "int", "sizeof", "char",  "void", "enum"};
+const size_t num_reserved = sizeof(reserved) / sizeof(const char *);
 
 void
 error_at(const Span *span, char *fmt, ...) {
@@ -215,7 +216,7 @@ tokenize(const char *path) {
             int len = p - first;
             TokenKind kind = TK_IDENT;
 
-            for (int i = 0; reserved[i]; i++) {
+            for (int i = 0; i < num_reserved; i++) {
                 if (len == strlen(reserved[i]) &&
                     strncmp(first, reserved[i], len) == 0) {
                     kind = TK_RESERVED;
