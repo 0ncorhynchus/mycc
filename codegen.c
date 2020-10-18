@@ -576,8 +576,10 @@ gen(Node *node) {
         push("rax");
         return;
     case ND_SEMICOLON:
-        gen(node->lhs);
-        pop("rax");
+        if (node->lhs) {
+            gen(node->lhs);
+            pop("rax");
+        }
         return;
     default:
         break;

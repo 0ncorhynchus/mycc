@@ -4,6 +4,9 @@ main() {
 
     {} // check compile is passed
     {
+        ; // check compile is passed
+    }
+    {
         x = 0;
         { // nested block
             x = 1;
