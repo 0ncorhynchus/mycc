@@ -28,6 +28,11 @@ get_var(Env *env, const char *ident) {
     return NULL;
 }
 
+size_t
+expand_for_align(size_t size) {
+    return ((size - 1) / 8 + 1) * 8;
+}
+
 bool
 declare_arg(Env *env, Var *var) {
     if (find_var(env, var->ident)) {
@@ -39,7 +44,7 @@ declare_arg(Env *env, Var *var) {
     } else {
         var->kind = VLOCAL;
         env->num_args++;
-        size_t size = ((sizeof_ty(var->ty) - 1) / 8 + 1) * 8;
+        size_t size = expand_for_align(sizeof_ty(var->ty));
         if (env->num_args > 6) {
             env->maximum_arg_offset += size;
             var->offset = -env->maximum_arg_offset;
@@ -75,7 +80,7 @@ declare_var(Env *env, Var *var) {
         var->kind = VGLOBAL;
     } else {
         var->kind = VLOCAL;
-        size_t size = ((sizeof_ty(var->ty) - 1) / 8 + 1) * 8;
+        size_t size = expand_for_align(sizeof_ty(var->ty));
         Env *top = get_block_top(env);
         top->maximum_offset += size;
         var->offset = top->maximum_offset;
@@ -168,13 +173,23 @@ declare_enum_const(Env *env, Var *var, int value) {
 }
 
 static const Type *
-find_tag(Env *env, const char *ident) {
-    int count = 0;
+find_tag(const Env *env, const char *ident) {
     for (TagList *head = env->tags; head; head = head->next) {
         if (strcmp(ident, head->tag) == 0) {
             return head->ty;
         }
-        count++;
+    }
+    return NULL;
+}
+
+const Type *
+get_tag(const Env *env, const char *tag) {
+    while (env) {
+        const Type *ty = find_tag(env, tag);
+        if (ty) {
+            return ty;
+        }
+        env = env->parent;
     }
     return NULL;
 }

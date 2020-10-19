@@ -56,8 +56,10 @@ sizeof_ty(const Type *ty) {
         return 1; // GNU compatible.
     case ENUM:
         return sizeof_ty(&INT_T);
+    case STRUCT:
+        return ty->struct_ty->size;
     default:
-        error("The size of %s is unknown.", type_to_str(ty));
+        error("The size of '%s' is unknown.", type_to_str(ty));
         return 0;
     }
 }
@@ -108,10 +110,24 @@ type_to_str(const Type *ty) {
             strcat(buffer, "doiv");
             break;
         case ENUM:
-            c = calloc(5 + strlen(ty->enum_ty->tag), 1);
-            sprintf(c, "enum %s", ty->enum_ty->tag);
-            strcat(buffer, revstr(c));
-            free(c);
+            if (ty->enum_ty->tag) {
+                c = calloc(6 + strlen(ty->enum_ty->tag), 1);
+                sprintf(c, "enum %s", ty->enum_ty->tag);
+                strcat(buffer, revstr(c));
+                free(c);
+            } else {
+                strcat(buffer, "mune");
+            }
+            break;
+        case STRUCT:
+            if (ty->struct_ty->tag) {
+                c = calloc(8 + strlen(ty->struct_ty->tag), 1);
+                sprintf(c, "struct %s", ty->struct_ty->tag);
+                strcat(buffer, revstr(c));
+                free(c);
+            } else {
+                strcat(buffer, "tcurts");
+            }
             break;
         default:
             error("Not implemented for this type: type_to_str()");

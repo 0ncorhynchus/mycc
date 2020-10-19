@@ -168,7 +168,7 @@ struct_union_spec(const Token **rest, const Token *tok, const Env *env) {
         const Declaration *decl = declarator(&tok, tok, env, ty);
         members = calloc(1, sizeof(Members));
         members->member = decl->var;
-        size += sizeof_ty(decl->var->ty);
+        size += expand_for_align(sizeof_ty(decl->var->ty));
         expect(&tok, tok, ";");
 
         while (!consume(&tok, tok, "}")) {
@@ -177,7 +177,7 @@ struct_union_spec(const Token **rest, const Token *tok, const Env *env) {
             members->next = calloc(1, sizeof(Members));
             members = members->next;
             members->member = decl->var;
-            size += sizeof_ty(decl->var->ty);
+            size += expand_for_align(sizeof_ty(decl->var->ty));
             expect(&tok, tok, ";");
         }
     } else if (tag == NULL) {
@@ -221,11 +221,23 @@ type_specifier(const Token **rest, const Token *tok, const Env *env) {
     const Type *ty;
     ty = struct_union_spec(rest, tok, env);
     if (ty) {
+        if (ty->struct_ty->members == NULL) {
+            const Type *orig = get_tag(env, ty->struct_ty->tag);
+            if (orig) {
+                return orig;
+            }
+        }
         return ty;
     }
 
     ty = enum_specifier(rest, tok);
     if (ty) {
+        if (ty->enum_ty->consts == NULL) {
+            const Type *orig = get_tag(env, ty->enum_ty->tag);
+            if (orig) {
+                return orig;
+            }
+        }
         return ty;
     }
 
@@ -233,6 +245,7 @@ type_specifier(const Token **rest, const Token *tok, const Env *env) {
     if (typedef_name) {
         const Type *ty = get_typedef(env, char_from_span(&typedef_name->span));
         if (ty) {
+            debug("sizeof(%s) = %d", type_to_str(ty), sizeof_ty(ty));
             *rest = tok;
             return ty;
         }

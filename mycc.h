@@ -267,6 +267,9 @@ is_same_type(const Type *lhs, const Type *rhs);
 const Type *
 get_type(const Node *lhs, const Node *rhs);
 
+size_t
+expand_for_align(size_t t);
+
 const Var *
 get_var(Env *env, const char *ident);
 bool
@@ -283,6 +286,8 @@ get_typedef(const Env *env, const char *ident);
 
 bool
 declare_tag(Env *env, const Type *ty);
+const Type *
+get_tag(const Env *env, const char *tag);
 
 const String *
 push_string(Env *env, const char *ident);
