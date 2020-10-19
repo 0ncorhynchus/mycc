@@ -126,6 +126,76 @@ enum_specifier(const Token **rest, const Token *tok) {
     *rest = tok;
     return ty;
 }
+static const Type *
+type_specifier(const Token **rest, const Token *tok, const Env *env);
+
+static Declaration *
+declarator(const Token **rest, const Token *tok, const Env *env,
+           const Type *ty);
+
+//
+//  specifier_qualifier_list = ( type_specifier | type_qualifier )+
+//
+static const Type *
+spec_qual_list(const Token **rest, const Token *tok, const Env *env) {
+    return type_specifier(rest, tok, env);
+}
+
+//
+//  struct_or_union_specifier =
+//      ( "struct" | "union" ) identifier? "{" struct_declaration+ "}"
+//      ( "struct" | "union" ) identifier
+//  struct_declaration =
+//      specifier_qualifier_list struct_declarator_list? ";"
+//      static_assert_declaration
+//  struct_declarator_list =
+//      struct_declarator ( "," struct_declarator )*
+//  struct_declarator =
+//      declarator
+//      declarator? ":" constant_expression
+//
+const Type *
+struct_union_spec(const Token **rest, const Token *tok, const Env *env) {
+    if (!consume(&tok, tok, "struct")) {
+        return NULL;
+    }
+
+    const Token *tag = consume_ident(&tok, tok);
+    size_t size = 0;
+    Members *members = NULL;
+    if (consume(&tok, tok, "{")) {
+        const Type *ty = spec_qual_list(&tok, tok, env);
+        const Declaration *decl = declarator(&tok, tok, env, ty);
+        members = calloc(1, sizeof(Members));
+        members->member = decl->var;
+        size += sizeof_ty(decl->var->ty);
+        expect(&tok, tok, ";");
+
+        while (!consume(&tok, tok, "}")) {
+            const Type *ty = spec_qual_list(&tok, tok, env);
+            const Declaration *decl = declarator(&tok, tok, env, ty);
+            members->next = calloc(1, sizeof(Members));
+            members = members->next;
+            members->member = decl->var;
+            size += sizeof_ty(decl->var->ty);
+            expect(&tok, tok, ";");
+        }
+    } else if (tag == NULL) {
+        error("struct requires an identifier or a block at least");
+    }
+
+    Struct *st = calloc(1, sizeof(Struct));
+    st->tag = char_from_span(&tag->span);
+    st->size = size;
+    st->members = members;
+
+    Type *ty = calloc(1, sizeof(Type));
+    ty->ty = STRUCT;
+    ty->struct_ty = st;
+
+    *rest = tok;
+    return ty;
+}
 
 //
 //  type_specifier = "void" | "char" | "short" | "int" | "long" | float" |
@@ -136,7 +206,7 @@ enum_specifier(const Token **rest, const Token *tok) {
 //      typedef_name
 //  typedef_name = identifier
 //
-const Type *
+static const Type *
 type_specifier(const Token **rest, const Token *tok, const Env *env) {
     if (consume(rest, tok, "int")) {
         return &INT_T;
@@ -148,7 +218,13 @@ type_specifier(const Token **rest, const Token *tok, const Env *env) {
         return &VOID_T;
     }
 
-    const Type *ty = enum_specifier(rest, tok);
+    const Type *ty;
+    ty = struct_union_spec(rest, tok, env);
+    if (ty) {
+        return ty;
+    }
+
+    ty = enum_specifier(rest, tok);
     if (ty) {
         return ty;
     }
@@ -259,9 +335,6 @@ declspec(const Token **rest, const Token *tok, const Env *env) {
     return spec;
 }
 
-static Declaration *
-declarator(const Token **rest, const Token *tok, const Env *env,
-           const Type *ty);
 //
 //  parameter_declaration =
 //      declaration_specifiers declarator
@@ -860,9 +933,7 @@ declaration(const Token **rest, const Token *tok, Env *env) {
     if (decl == NULL) {
         expect(&tok, tok, ";");
 
-        if (spec.ty->ty == ENUM) {
-            declare_enum(env, spec.ty);
-
+        if (declare_tag(env, spec.ty)) {
             *rest = tok;
             decl = calloc(1, sizeof(Declaration));
             return decl;

@@ -65,6 +65,18 @@ typedef struct {
     String *consts;
 } Enum;
 
+typedef struct Members Members;
+struct Members {
+    Members *next;
+    const Var *member;
+};
+
+typedef struct {
+    const char *tag;
+    const Members *members;
+    size_t size;
+} Struct;
+
 typedef struct {
     Var *var;
     const Initializer *init;
@@ -77,7 +89,7 @@ struct ParamList {
 };
 
 struct Type {
-    enum { INTEGER, PTR, ARRAY, VOID, FUNCTION, ENUM } ty;
+    enum { INTEGER, PTR, ARRAY, VOID, FUNCTION, ENUM, STRUCT } ty;
 
     enum { CHAR, INT } ikind;
 
@@ -90,6 +102,8 @@ struct Type {
 
     // For ENUM
     const Enum *enum_ty;
+    // For STRUCT
+    const Struct *struct_ty;
 };
 
 extern const Type INT_T;
@@ -185,7 +199,7 @@ struct Env {
     Env *parent;
     VarList *vars;
     String *strings;
-    TagList *enums;
+    TagList *tags;
     int maximum_offset;
     int maximum_strings;
     unsigned int num_args;
@@ -267,8 +281,9 @@ declare_typedef(Env *env, Var *var);
 const Type *
 get_typedef(const Env *env, const char *ident);
 
-void
-declare_enum(Env *env, const Type *ty);
+bool
+declare_tag(Env *env, const Type *ty);
+
 const String *
 push_string(Env *env, const char *ident);
 

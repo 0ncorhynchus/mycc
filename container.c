@@ -121,7 +121,7 @@ declare_typedef(Env *env, Var *var) {
     env->vars = new;
 
     if (var->ty->enum_ty) {
-        declare_enum(env, var->ty);
+        declare_tag(env, var->ty);
     }
 }
 
@@ -170,7 +170,7 @@ declare_enum_const(Env *env, Var *var, int value) {
 static const Type *
 find_tag(Env *env, const char *ident) {
     int count = 0;
-    for (TagList *head = env->enums; head; head = head->next) {
+    for (TagList *head = env->tags; head; head = head->next) {
         if (strcmp(ident, head->tag) == 0) {
             return head->ty;
         }
@@ -179,14 +179,10 @@ find_tag(Env *env, const char *ident) {
     return NULL;
 }
 
-void
+static bool
 declare_enum(Env *env, const Type *ty) {
-    if (ty->ty != ENUM) {
-        error("Internal compiler error at %s:%d", __FILE__, __LINE__);
-    }
-
     if (ty->enum_ty->consts == NULL) {
-        return;
+        return false;
     }
 
     if (ty->enum_ty->tag) {
@@ -195,10 +191,10 @@ declare_enum(Env *env, const Type *ty) {
         }
 
         TagList *new = calloc(1, sizeof(TagList));
-        new->next = env->enums;
+        new->next = env->tags;
         new->tag = ty->enum_ty->tag;
         new->ty = ty;
-        env->enums = new;
+        env->tags = new;
     }
 
     const String *head = ty->enum_ty->consts;
@@ -209,6 +205,40 @@ declare_enum(Env *env, const Type *ty) {
         declare_enum_const(env, var, head->index);
         head = head->next;
     }
+
+    return true;
+}
+
+static bool
+declare_struct(Env *env, const Type *ty) {
+    if (ty->struct_ty->tag) {
+        if (find_tag(env, ty->struct_ty->tag)) {
+            error("'%s' is already defined as a tag");
+        }
+
+        TagList *new = calloc(1, sizeof(TagList));
+        new->tag = ty->struct_ty->tag;
+        new->ty = ty;
+        env->tags = new;
+    }
+
+    return true;
+}
+
+bool
+declare_tag(Env *env, const Type *ty) {
+    switch (ty->ty) {
+    case ENUM:
+        return declare_enum(env, ty);
+    case STRUCT:
+        return declare_struct(env, ty);
+        break;
+    default:
+        error("Internal compiler error at %s:%d", __FILE__, __LINE__);
+        break;
+    }
+
+    return false;
 }
 
 Env *
