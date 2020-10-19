@@ -7,6 +7,7 @@ struct Span {
     const char *ptr;
     int len;
 };
+
 typedef enum {
     TK_RESERVED,
     TK_IDENT,
@@ -176,6 +177,7 @@ typedef struct TagList TagList;
 struct TagList {
     TagList *next;
     const char *tag;
+    const Type *ty;
 };
 
 typedef struct Env Env;

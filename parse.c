@@ -82,13 +82,12 @@ enum_specifier(const Token **rest, const Token *tok) {
     if (!consume(&tok, tok, "enum")) {
         return NULL;
     }
-    const Token *ident = consume_ident(&tok, tok);
-    if (ident == NULL) {
-        error("TODO: %s:%d", __FILE__, __LINE__);
-    }
 
     Enum *e = calloc(1, sizeof(Enum));
-    e->tag = char_from_span(&ident->span);
+    const Token *tag = consume_ident(&tok, tok);
+    if (tag) {
+        e->tag = char_from_span(&tag->span);
+    }
 
     if (consume(&tok, tok, "{")) {
         int val = 0;
@@ -116,7 +115,7 @@ enum_specifier(const Token **rest, const Token *tok) {
             last->next->ident = char_from_span(&constant->span);
             last = last->next;
         }
-    } else if (ident == NULL) {
+    } else if (tag == NULL) {
         error("enum requires an identifier or a block at least");
     }
 

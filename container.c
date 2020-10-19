@@ -111,7 +111,7 @@ declare_fn(Env *env, Var *var) {
 void
 declare_typedef(Env *env, Var *var) {
     if (find_var(env, var->ident)) {
-        return;
+        error("'%s' is already defined.", var->ident);
     }
 
     VarList *new = calloc(1, sizeof(VarList));
@@ -119,6 +119,10 @@ declare_typedef(Env *env, Var *var) {
     new->var = var;
     new->is_typedef = true;
     env->vars = new;
+
+    if (var->ty->enum_ty) {
+        declare_enum(env, var->ty);
+    }
 }
 
 static const Type *
@@ -142,10 +146,10 @@ get_typedef(const Env *env, const char *ident) {
     return NULL;
 }
 
-static bool
+static void
 declare_enum_const(Env *env, Var *var, int value) {
     if (find_var(env, var->ident)) {
-        return false;
+        error("'%s' is already defined.", var->ident);
     }
 
     if (is_global(env)) {
@@ -161,8 +165,18 @@ declare_enum_const(Env *env, Var *var, int value) {
     new->next = env->vars;
     new->var = var;
     env->vars = new;
+}
 
-    return true;
+static const Type *
+find_tag(Env *env, const char *ident) {
+    int count = 0;
+    for (TagList *head = env->enums; head; head = head->next) {
+        if (strcmp(ident, head->tag) == 0) {
+            return head->ty;
+        }
+        count++;
+    }
+    return NULL;
 }
 
 void
@@ -171,10 +185,21 @@ declare_enum(Env *env, const Type *ty) {
         error("Internal compiler error at %s:%d", __FILE__, __LINE__);
     }
 
-    TagList *new = calloc(1, sizeof(TagList));
-    new->next = env->enums;
-    new->tag = ty->enum_ty->tag;
-    env->enums = new;
+    if (ty->enum_ty->consts == NULL) {
+        return;
+    }
+
+    if (ty->enum_ty->tag) {
+        if (find_tag(env, ty->enum_ty->tag)) {
+            error("'%s' is already defined as a tag");
+        }
+
+        TagList *new = calloc(1, sizeof(TagList));
+        new->next = env->enums;
+        new->tag = ty->enum_ty->tag;
+        new->ty = ty;
+        env->enums = new;
+    }
 
     const String *head = ty->enum_ty->consts;
     while (head) {
