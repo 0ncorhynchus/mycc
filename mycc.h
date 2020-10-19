@@ -67,7 +67,6 @@ typedef struct {
 typedef struct {
     Var *var;
     const Initializer *init;
-    const Type *type_decl;
 } Declaration;
 
 typedef struct ParamList ParamList;

@@ -862,9 +862,10 @@ declaration(const Token **rest, const Token *tok, Env *env) {
         expect(&tok, tok, ";");
 
         if (spec.ty->ty == ENUM) {
-            decl = calloc(1, sizeof(Declaration));
-            decl->type_decl = spec.ty;
+            declare_enum(env, spec.ty);
+
             *rest = tok;
+            decl = calloc(1, sizeof(Declaration));
             return decl;
         }
         return NULL;
@@ -1010,9 +1011,7 @@ program(const Token *token, Env *env, Unit *code[]) {
 
         const Declaration *decl = declaration(&token, token, env);
         if (decl) {
-            if (decl->type_decl) {
-                declare_enum(env, decl->type_decl);
-            } else if (decl->var) {
+            if (decl->var) {
                 code[i] = calloc(1, sizeof(Unit));
                 code[i]->declaration = decl;
                 i++;
