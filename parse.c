@@ -166,6 +166,7 @@ struct_union_spec(const Token **rest, const Token *tok, const Env *env) {
     if (consume(&tok, tok, "{")) {
         const Type *ty = spec_qual_list(&tok, tok, env);
         const Declaration *decl = declarator(&tok, tok, env, ty);
+        decl->var->offset = size;
         members = calloc(1, sizeof(Members));
         members->member = decl->var;
         size += expand_for_align(sizeof_ty(decl->var->ty));
@@ -174,6 +175,7 @@ struct_union_spec(const Token **rest, const Token *tok, const Env *env) {
         while (!consume(&tok, tok, "}")) {
             const Type *ty = spec_qual_list(&tok, tok, env);
             const Declaration *decl = declarator(&tok, tok, env, ty);
+            decl->var->offset = size;
             members->next = calloc(1, sizeof(Members));
             members = members->next;
             members->member = decl->var;

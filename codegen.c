@@ -458,10 +458,97 @@ gen_add(Node *node, char *op) {
 
 static Node *
 new_assign(Node *lhs, Node *rhs) {
-    const Type *ty = lhs->ty;
-    Node *node = new_node(ND_ASSIGN, lhs, rhs);
-    node->ty = ty;
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_ASSIGN;
+    node->ty = lhs->ty;
+    node->lhs = lhs;
+    node->rhs = rhs;
     return node;
+}
+
+static void
+gen_local_declare(const Declaration *decl) {
+    if (decl->var == NULL || decl->var->kind != VLOCAL || decl->init == NULL) {
+        return;
+    }
+
+    Node *var = calloc(1, sizeof(Node));
+    var->kind = ND_LVAR;
+    var->var = decl->var;
+    var->ty = var->var->ty;
+
+    const Type *ty = decl->var->ty;
+    const Initializer *init = decl->init;
+    switch (ty->ty) {
+    case ARRAY:
+        if (init->expr && init->expr->kind == ND_STRING) {
+            for (int index = 0; index < ty->array_size; index++) {
+                Node *idx = new_node_num(index);
+                Node *lhs = deref_offset_ptr(as_ptr(var), idx);
+                Node *rhs = deref_offset_ptr(init->expr, idx);
+                gen(new_assign(lhs, rhs));
+                pop("rax");
+            }
+            return;
+        } else if (init->list) {
+            const InitList *list = init->list;
+            for (int index = 0; index < ty->array_size; index++) {
+                Node *idx = new_node_num(index);
+                Node *lhs = deref_offset_ptr(as_ptr(var), idx);
+                if (list && list->inner) {
+                    if (list->inner->expr == NULL) {
+                        error("Not supported nested initilizer lists.");
+                    }
+                    gen(new_assign(lhs, list->inner->expr));
+                    list = list->next;
+                } else {
+                    gen(new_assign(lhs, new_node_num(0)));
+                }
+                pop("rax");
+            }
+            return;
+        } else {
+            error("Internal compiler error: unreachable at %s:%d", __FILE__,
+                  __LINE__);
+        }
+    case STRUCT:
+        if (init->list) {
+            const Members *member = ty->struct_ty->members;
+            const InitList *list = init->list;
+            for (; member; member = member->next, list = list->next) {
+                Var *mvar = calloc(1, sizeof(Var));
+                mvar->ty = member->member->ty;
+                mvar->offset = var->var->offset + member->member->offset;
+
+                Node *lhs = calloc(1, sizeof(Node));
+                lhs->kind = ND_LVAR;
+                lhs->var = mvar;
+                lhs->ty = lhs->var->ty;
+                if (list && list->inner) {
+                    if (list->inner->expr == NULL) {
+                        error("Not supported nested initilizer lists.");
+                    }
+                    debug("lhs: %s", type_to_str(mvar->ty));
+                    debug("rhs: %s", type_to_str(list->inner->expr->ty));
+                    gen(new_assign(lhs, list->inner->expr));
+                    list = list->next;
+                } else {
+                    gen(new_assign(lhs, new_node_num(0)));
+                }
+                pop("rax");
+            }
+        } else {
+            error("Not supported an initializer expression for struct.");
+        }
+        break;
+    default:
+        // check if `init` is an initializer list
+        if (init->expr == NULL) {
+            error("Not supported initializer lists");
+        }
+        gen(new_assign(var, init->expr));
+        pop("rax");
+    }
 }
 
 void
@@ -530,58 +617,7 @@ gen(Node *node) {
         gen_lval(node->lhs);
         return;
     case ND_DECLARE:
-        if (node->decl->var == NULL || node->decl->var->kind != VLOCAL ||
-            node->decl->init == NULL) {
-            return;
-        }
-
-        Node *var = calloc(1, sizeof(Node));
-        var->kind = ND_LVAR;
-        var->var = node->decl->var;
-        var->ty = var->var->ty;
-
-        const Initializer *init = node->decl->init;
-        if (node->decl->var->ty->ty == ARRAY) {
-            if (init->expr && init->expr->kind == ND_STRING) {
-                for (int index = 0; index < node->decl->var->ty->array_size;
-                     index++) {
-                    Node *idx = new_node_num(index);
-                    Node *lhs = deref_offset_ptr(as_ptr(var), idx);
-                    Node *rhs = deref_offset_ptr(init->expr, idx);
-                    gen(new_assign(lhs, rhs));
-                    pop("rax");
-                }
-                return;
-            } else if (init->list) {
-                const InitList *list = init->list;
-                for (int index = 0; index < node->decl->var->ty->array_size;
-                     index++) {
-                    Node *idx = new_node_num(index);
-                    Node *lhs = deref_offset_ptr(as_ptr(var), idx);
-                    if (list && list->inner) {
-                        if (list->inner->expr == NULL) {
-                            error("Not supported nested initilizer lists.");
-                        }
-                        gen(new_assign(lhs, list->inner->expr));
-                        list = list->next;
-                    } else {
-                        gen(new_assign(lhs, new_node_num(0)));
-                    }
-                    pop("rax");
-                }
-                return;
-            } else {
-                error("Internal compiler error: unreachable at %s:%d", __FILE__,
-                      __LINE__);
-            }
-        }
-
-        if (init->expr == NULL) {
-            error("Not supported initializer lists for not array varaibles");
-        }
-
-        gen(new_assign(var, init->expr));
-        pop("rax");
+        gen_local_declare(node->decl);
         return;
     case ND_ADD:
         gen_add(node, "add");
