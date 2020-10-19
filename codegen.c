@@ -530,7 +530,8 @@ gen(Node *node) {
         gen_lval(node->lhs);
         return;
     case ND_DECLARE:
-        if (node->decl->var->kind != VLOCAL || node->decl->init == NULL) {
+        if (node->decl->var == NULL || node->decl->var->kind != VLOCAL ||
+            node->decl->init == NULL) {
             return;
         }
 

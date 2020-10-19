@@ -25,5 +25,9 @@ main() {
 
     assert_int(1, A + 1);
 
+    enum Real { Float, Double };
+    assert_int(0, Float);
+    assert_int(1, Double);
+
     return summary();
 }

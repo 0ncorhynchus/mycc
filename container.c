@@ -155,7 +155,7 @@ declare_enum_const(Env *env, Var *var, int value) {
     if (is_global(env)) {
         var->kind = VGLOBAL;
     } else {
-        error("Not supported: %s:%d", __FILE__, __LINE__);
+        var->kind = VLOCAL;
     }
 
     var->is_const = true;
@@ -181,7 +181,7 @@ find_tag(Env *env, const char *ident) {
 
 void
 declare_enum(Env *env, const Type *ty) {
-    if (ty->ty != ENUM || !is_global(env)) {
+    if (ty->ty != ENUM) {
         error("Internal compiler error at %s:%d", __FILE__, __LINE__);
     }
 

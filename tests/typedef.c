@@ -15,6 +15,8 @@ typedef enum { Char, Short, Int, Long, LongLong } Integer;
 
 int
 main() {
+    typedef enum Oct { o0, o1, o2, o3, o4, o5, o6, o7 } Oct;
+
     integer i = 1;
 
     assert_int(1, i);
@@ -38,6 +40,12 @@ main() {
     Integer *y;
     y = &x;
     assert_int(Int, *y);
+
+    assert_int(0, o0);
+    assert_int(1, o1);
+    assert_int(2, o2);
+    assert_int(3, o3);
+    assert_int(4, o4);
 
     return summary();
 }
