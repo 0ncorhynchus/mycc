@@ -172,13 +172,14 @@ struct_union_spec(const Token **rest, const Token *tok, const Env *env) {
         size += expand_for_align(sizeof_ty(decl->var->ty));
         expect(&tok, tok, ";");
 
+        Members *last = members;
         while (!consume(&tok, tok, "}")) {
             const Type *ty = spec_qual_list(&tok, tok, env);
             const Declaration *decl = declarator(&tok, tok, env, ty);
             decl->var->offset = size;
-            members->next = calloc(1, sizeof(Members));
-            members = members->next;
-            members->member = decl->var;
+            last->next = calloc(1, sizeof(Members));
+            last = last->next;
+            last->member = decl->var;
             size += expand_for_align(sizeof_ty(decl->var->ty));
             expect(&tok, tok, ";");
         }
@@ -631,7 +632,32 @@ postfix(const Token **rest, const Token *tok, Env *env) {
             continue;
         }
         if (consume(&tok, tok, ".")) {
-            error_at(&tok->span, "Not implemented yet.");
+            const Token *ident_token = consume_ident(&tok, tok);
+            const char *ident = char_from_span(&ident_token->span);
+            const Members *members = node->ty->struct_ty->members;
+
+            const Var *m = NULL;
+            while (members) {
+                if (strcmp(members->member->ident, ident) == 0) {
+                    m = members->member;
+                    break;
+                }
+                members = members->next;
+            }
+            if (m == NULL) {
+                error_at(&ident_token->span, "Invalid member");
+            }
+
+            Var *mvar = calloc(1, sizeof(Var));
+            mvar->ident = m->ident;
+            mvar->ty = m->ty;
+            mvar->offset = node->var->offset - m->offset;
+
+            node = calloc(1, sizeof(Node));
+            node->kind = ND_LVAR;
+            node->var = mvar;
+            node->ty = mvar->ty;
+            continue;
         }
         if (consume(&tok, tok, "->")) {
             error_at(&tok->span, "Not implemented yet.");

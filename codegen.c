@@ -515,10 +515,11 @@ gen_local_declare(const Declaration *decl) {
         if (init->list) {
             const Members *member = ty->struct_ty->members;
             const InitList *list = init->list;
-            for (; member; member = member->next, list = list->next) {
+            for (; member; member = member->next) {
                 Var *mvar = calloc(1, sizeof(Var));
+                mvar->ident = member->member->ident;
                 mvar->ty = member->member->ty;
-                mvar->offset = var->var->offset + member->member->offset;
+                mvar->offset = var->var->offset - member->member->offset;
 
                 Node *lhs = calloc(1, sizeof(Node));
                 lhs->kind = ND_LVAR;
@@ -528,8 +529,6 @@ gen_local_declare(const Declaration *decl) {
                     if (list->inner->expr == NULL) {
                         error("Not supported nested initilizer lists.");
                     }
-                    debug("lhs: %s", type_to_str(mvar->ty));
-                    debug("rhs: %s", type_to_str(list->inner->expr->ty));
                     gen(new_assign(lhs, list->inner->expr));
                     list = list->next;
                 } else {
