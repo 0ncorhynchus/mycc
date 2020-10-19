@@ -513,53 +513,28 @@ static Node *
 expr(const Token **rest, const Token *tok, Env *env);
 
 //
-//  primary = num
-//          | ident ( "(" ( expr ( "," expr )* )? ")" )?
-//          | "(" expr ")"
-//          | string
+//  primary_expression =
+//      identifier
+//      constant
+//      string_literal
+//      "(" expression ")"
+//      generic_selection
 //
 static Node *
 primary(const Token **rest, const Token *tok, Env *env) {
-    if (consume(&tok, tok, "(")) {
-        Node *node = expr(&tok, tok, env);
-        expect(&tok, tok, ")");
+    const Token *tmp = consume_ident(&tok, tok);
+    if (tmp) {
+        Node *node = calloc(1, sizeof(Node));
+        node->kind = ND_LVAR;
+        node->var = get_var(env, char_from_span(&tmp->span));
+        node->ty = node->var->ty;
         *rest = tok;
         return node;
     }
 
-    const Token *tmp = consume_ident(&tok, tok);
-    if (tmp) {
-        Node *node = calloc(1, sizeof(Node));
-
-        // function call
-        if (consume(&tok, tok, "(")) {
-            node->fn = char_from_span(&tmp->span);
-            node->kind = ND_CALL;
-            if (consume(&tok, tok, ")")) {
-                *rest = tok;
-                return node;
-            }
-
-            node->lhs = calloc(1, sizeof(Node));
-            Node *current = node->lhs;
-            current->kind = ND_ARGS;
-            current->lhs = expr(&tok, tok, env);
-            while (!consume(&tok, tok, ")")) {
-                expect(&tok, tok, ",");
-                current->rhs = calloc(1, sizeof(Node));
-                current = current->rhs;
-                current->kind = ND_ARGS;
-                current->lhs = expr(&tok, tok, env);
-            }
-
-        } else {
-            node->kind = ND_LVAR;
-            node->var = get_var(env, char_from_span(&tmp->span));
-            node->ty = node->var->ty;
-        }
-
-        *rest = tok;
-        return node;
+    int val;
+    if (number(rest, tok, &val)) {
+        return new_node_num(val);
     }
 
     tmp = consume_string(&tok, tok);
@@ -580,10 +555,11 @@ primary(const Token **rest, const Token *tok, Env *env) {
         return node;
     }
 
-    int val;
-    if (number(&tok, tok, &val)) {
+    if (consume(&tok, tok, "(")) {
+        Node *node = expr(&tok, tok, env);
+        expect(&tok, tok, ")");
         *rest = tok;
-        return new_node_num(val);
+        return node;
     }
 
     return NULL;
@@ -601,44 +577,112 @@ deref_offset_ptr(Node *ptr, Node *index) {
     return new;
 }
 
-// parse primary ("[" expr "]")?
+//
+//  postfix_expression = postfix_head postfix_tail*
+//  postfix_head =
+//      primary_expression
+//      "(" typename ")" "{" initializer_list "}"
+//      "(" typename ")" "{" initializer_list "," "}"
+//  postfix_tail =
+//      "[" expression "]"
+//      "(" argument_expression_list? ")"
+//      "." identifier
+//      "->" identifier
+//      "++"
+//      "--"
+//  argument_expression_list =
+//      assign ( "," assign )*
+//
 static Node *
-desugar_index(const Token **rest, const Token *tok, Env *env) {
+postfix(const Token **rest, const Token *tok, Env *env) {
     Node *node = primary(&tok, tok, env);
-    if (consume(&tok, tok, "[")) {
-        Node *index = expr(&tok, tok, env);
-        expect(&tok, tok, "]");
-        *rest = tok;
-        return deref_offset_ptr(as_ptr(node), index);
+    for (;;) {
+        if (consume(&tok, tok, "[")) {
+            Node *index = expr(&tok, tok, env);
+            expect(&tok, tok, "]");
+            *rest = tok;
+            node = deref_offset_ptr(as_ptr(node), index);
+            continue;
+        }
+        if (consume(&tok, tok, "(")) {
+            if (node->kind == ND_LVAR) {
+                node->fn = node->var->ident;
+            }
+            node->kind = ND_CALL;
+            if (consume(&tok, tok, ")")) {
+                continue;
+            }
+            node->lhs = calloc(1, sizeof(Node));
+            Node *current = node->lhs;
+            current->kind = ND_ARGS;
+            current->lhs = expr(&tok, tok, env);
+            if (current->lhs == NULL) {
+                error_at(&tok->span, "Error at %s:%d", __FILE__, __LINE__);
+            }
+            while (!consume(&tok, tok, ")")) {
+                expect(&tok, tok, ",");
+                current->rhs = calloc(1, sizeof(Node));
+                current = current->rhs;
+                current->kind = ND_ARGS;
+                current->lhs = expr(&tok, tok, env);
+            }
+            continue;
+        }
+        if (consume(&tok, tok, ".")) {
+            error_at(&tok->span, "Not implemented yet.");
+        }
+        if (consume(&tok, tok, "->")) {
+            error_at(&tok->span, "Not implemented yet.");
+        }
+        if (consume(&tok, tok, "++")) {
+            error_at(&tok->span, "Not implemented yet.");
+        }
+        if (consume(&tok, tok, "--")) {
+            error_at(&tok->span, "Not implemented yet.");
+        }
+        break;
     }
+
     *rest = tok;
     return node;
 }
 
+static Node *
+unary(const Token **rest, const Token *tok, Env *env);
+
 //
-//  unary = ( "+" | "-" )? primary ( "[" expr "]" )?
-//        | ( "*" | "&" | "sizeof" ) unary
-//        | "sizeof" "(" typename ")"
+//  cast_expression = ( "(" type_name ")" )* unary_expression
+//
+static Node *
+cast(const Token **rest, const Token *tok, Env *env) {
+    for (;;) {
+        if (consume(&tok, tok, "(")) {
+            error_at(&tok->span, "cast is implemented yet.");
+            expect(&tok, tok, ")");
+        }
+        break;
+    }
+    return unary(rest, tok, env);
+}
+
+//
+//  unary_expression =
+//      postfix_expression
+//      "++" unary_expression
+//      "--" unary_expression
+//      unary_operator cast_expression
+//      "sizeof" unary_expression
+//      "sizeof" "(" type_name ")"
+//      "_Alignof" "(" type_name ")"
+//  unary_operator = "&" | "*" | "+" | "-" | "~" | "!"
 //
 static Node *
 unary(const Token **rest, const Token *tok, Env *env) {
-    if (consume(&tok, tok, "+")) {
-        return desugar_index(rest, tok, env);
+    if (consume(&tok, tok, "++")) {
+        error_at(&tok->span, "Not implemented yet.");
     }
-    if (consume(&tok, tok, "-")) {
-        return new_node(ND_SUB, new_node_num(0), desugar_index(rest, tok, env));
-    }
-    if (consume(&tok, tok, "*")) {
-        Node *node = calloc(1, sizeof(Node));
-        node->kind = ND_DEREF;
-        Node *inner = as_ptr(unary(&tok, tok, env));
-        if (inner->ty && inner->ty->ty == PTR) {
-            node->lhs = inner;
-            node->ty = inner->ty->ptr_to;
-            *rest = tok;
-            return node;
-        }
-        error("Cannot deref: '%s'", type_to_str(inner->ty));
+    if (consume(&tok, tok, "--")) {
+        error_at(&tok->span, "Not implemented yet.");
     }
     if (consume(&tok, tok, "&")) {
         Node *node = calloc(1, sizeof(Node));
@@ -652,6 +696,30 @@ unary(const Token **rest, const Token *tok, Env *env) {
         error("Internal compile error: try to obtain the address to an "
               "unknown "
               "type");
+    }
+    if (consume(&tok, tok, "*")) {
+        Node *node = calloc(1, sizeof(Node));
+        node->kind = ND_DEREF;
+        Node *inner = as_ptr(unary(&tok, tok, env));
+        if (inner->ty && inner->ty->ty == PTR) {
+            node->lhs = inner;
+            node->ty = inner->ty->ptr_to;
+            *rest = tok;
+            return node;
+        }
+        error("Cannot deref: '%s'", type_to_str(inner->ty));
+    }
+    if (consume(&tok, tok, "+")) {
+        return cast(rest, tok, env);
+    }
+    if (consume(&tok, tok, "-")) {
+        return new_node(ND_SUB, new_node_num(0), cast(rest, tok, env));
+    }
+    if (consume(&tok, tok, "~")) {
+        error_at(&tok->span, "Not implemented yet.");
+    }
+    if (consume(&tok, tok, "!")) {
+        error_at(&tok->span, "Not implemented yet.");
     }
     if (consume(&tok, tok, "sizeof")) {
         if (consume(&tok, tok, "(")) {
@@ -678,8 +746,10 @@ unary(const Token **rest, const Token *tok, Env *env) {
         error("Internal compile error: try to obtain the size of an unknown "
               "type");
     }
-
-    return desugar_index(rest, tok, env);
+    if (consume(&tok, tok, "_Alignof")) {
+        error_at(&tok->span, "Not implemented yet.");
+    }
+    return postfix(rest, tok, env);
 }
 
 //
