@@ -245,7 +245,6 @@ type_specifier(const Token **rest, const Token *tok, const Env *env) {
     if (typedef_name) {
         const Type *ty = get_typedef(env, char_from_span(&typedef_name->span));
         if (ty) {
-            debug("sizeof(%s) = %d", type_to_str(ty), sizeof_ty(ty));
             *rest = tok;
             return ty;
         }
@@ -946,12 +945,10 @@ declaration(const Token **rest, const Token *tok, Env *env) {
     if (decl == NULL) {
         expect(&tok, tok, ";");
 
-        if (declare_tag(env, spec.ty)) {
-            *rest = tok;
-            decl = calloc(1, sizeof(Declaration));
-            return decl;
-        }
-        return NULL;
+        declare_tag(env, spec.ty);
+        *rest = tok;
+        decl = calloc(1, sizeof(Declaration));
+        return decl;
     }
 
     // typedef

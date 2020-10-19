@@ -101,9 +101,9 @@ struct Type {
     const ParamList *args;
 
     // For ENUM
-    const Enum *enum_ty;
+    Enum *enum_ty;
     // For STRUCT
-    const Struct *struct_ty;
+    Struct *struct_ty;
 };
 
 extern const Type INT_T;
@@ -191,7 +191,7 @@ typedef struct TagList TagList;
 struct TagList {
     TagList *next;
     const char *tag;
-    const Type *ty;
+    Type *ty;
 };
 
 typedef struct Env Env;
@@ -280,11 +280,11 @@ void
 declare_fn(Env *env, Var *var);
 
 void
-declare_typedef(Env *env, Var *var);
+declare_typedef(Env *env, const Var *var);
 const Type *
 get_typedef(const Env *env, const char *ident);
 
-bool
+void
 declare_tag(Env *env, const Type *ty);
 const Type *
 get_tag(const Env *env, const char *tag);

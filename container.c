@@ -113,23 +113,6 @@ declare_fn(Env *env, Var *var) {
     }
 }
 
-void
-declare_typedef(Env *env, Var *var) {
-    if (find_var(env, var->ident)) {
-        error("'%s' is already defined.", var->ident);
-    }
-
-    VarList *new = calloc(1, sizeof(VarList));
-    new->next = env->vars;
-    new->var = var;
-    new->is_typedef = true;
-    env->vars = new;
-
-    if (var->ty->enum_ty) {
-        declare_tag(env, var->ty);
-    }
-}
-
 static const Type *
 find_typedef(const Env *env, const char *ident) {
     for (VarList *next = env->vars; next; next = next->next) {
@@ -172,7 +155,7 @@ declare_enum_const(Env *env, Var *var, int value) {
     env->vars = new;
 }
 
-static const Type *
+static Type *
 find_tag(const Env *env, const char *ident) {
     for (TagList *head = env->tags; head; head = head->next) {
         if (strcmp(ident, head->tag) == 0) {
@@ -194,22 +177,27 @@ get_tag(const Env *env, const char *tag) {
     return NULL;
 }
 
-static bool
+static const Type *
 declare_enum(Env *env, const Type *ty) {
-    if (ty->enum_ty->consts == NULL) {
-        return false;
-    }
-
     if (ty->enum_ty->tag) {
-        if (find_tag(env, ty->enum_ty->tag)) {
-            error("'%s' is already defined as a tag");
-        }
+        Type *defined = find_tag(env, ty->enum_ty->tag);
+        if (defined) {
+            if (defined->ty != ENUM || defined->enum_ty->consts) {
+                error("'%s' is already defined as a tag");
+            }
+            defined->enum_ty->consts = ty->enum_ty->consts;
+        } else {
+            defined = calloc(1, sizeof(Type));
+            defined->ty = ty->ty;
+            defined->enum_ty = ty->enum_ty;
 
-        TagList *new = calloc(1, sizeof(TagList));
-        new->next = env->tags;
-        new->tag = ty->enum_ty->tag;
-        new->ty = ty;
-        env->tags = new;
+            TagList *new = calloc(1, sizeof(TagList));
+            new->next = env->tags;
+            new->tag = ty->enum_ty->tag;
+            new->ty = defined;
+            env->tags = new;
+        }
+        ty = defined;
     }
 
     const String *head = ty->enum_ty->consts;
@@ -221,39 +209,74 @@ declare_enum(Env *env, const Type *ty) {
         head = head->next;
     }
 
-    return true;
+    return ty;
 }
 
-static bool
+static const Type *
 declare_struct(Env *env, const Type *ty) {
-    if (ty->struct_ty->tag) {
-        if (find_tag(env, ty->struct_ty->tag)) {
-            error("'%s' is already defined as a tag");
-        }
-
-        TagList *new = calloc(1, sizeof(TagList));
-        new->tag = ty->struct_ty->tag;
-        new->ty = ty;
-        env->tags = new;
+    if (ty->struct_ty->tag == NULL) {
+        return ty;
     }
 
-    return true;
+    Type *declared = find_tag(env, ty->struct_ty->tag);
+    if (declared) {
+        if (declared->ty != STRUCT || declared->struct_ty->members) {
+            error("'%s' is already defined as a tag");
+        }
+        declared->struct_ty->members = ty->struct_ty->members;
+        declared->struct_ty->size = ty->struct_ty->size;
+        return declared;
+    }
+
+    TagList *new = calloc(1, sizeof(TagList));
+    new->tag = ty->struct_ty->tag;
+    new->ty = calloc(1, sizeof(Type));
+    new->ty->ty = ty->ty;
+    new->ty->struct_ty = ty->struct_ty;
+    env->tags = new;
+
+    return new->ty;
 }
 
-bool
+void
 declare_tag(Env *env, const Type *ty) {
     switch (ty->ty) {
     case ENUM:
-        return declare_enum(env, ty);
+        declare_enum(env, ty);
+        return;
     case STRUCT:
-        return declare_struct(env, ty);
-        break;
+        declare_struct(env, ty);
+        return;
     default:
         error("Internal compiler error at %s:%d", __FILE__, __LINE__);
         break;
     }
+}
 
-    return false;
+void
+declare_typedef(Env *env, const Var *var) {
+    if (find_var(env, var->ident)) {
+        error("'%s' is already defined.", var->ident);
+    }
+
+    Var *redefined = calloc(1, sizeof(Var));
+    redefined->ident = var->ident;
+    switch (var->ty->ty) {
+    case ENUM:
+        redefined->ty = declare_enum(env, var->ty);
+        break;
+    case STRUCT:
+        redefined->ty = declare_struct(env, var->ty);
+        break;
+    default:
+        redefined->ty = var->ty;
+    }
+
+    VarList *new = calloc(1, sizeof(VarList));
+    new->next = env->vars;
+    new->var = redefined;
+    new->is_typedef = true;
+    env->vars = new;
 }
 
 Env *
