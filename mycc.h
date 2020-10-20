@@ -111,29 +111,25 @@ extern const Type CHAR_T;
 extern const Type VOID_T;
 
 typedef enum {
-    ND_ADD,      // "+"
-    ND_SUB,      // "-"
-    ND_MUL,      // "*"
-    ND_DIV,      // "/"
-    ND_NUM,      // [0-9]+
-    ND_LT,       // "<"
-    ND_LE,       // "<="
-    ND_EQ,       // "=="
-    ND_NE,       // "!="
-    ND_ASSIGN,   // "="
-    ND_LVAR,     // [a-zA-Z_][a-zA-Z0-9_]*
-    ND_RETURN,   // "return"
-    ND_IF_COND,  // "if" "(" expr ")"
-    ND_IF_BODY,  // stmt ("else" stmt)?
-    ND_WHILE,    // "while"
-    ND_FOR_INIT, // "for" "(" expr?;
-    ND_FOR_COND, // expr?;
-    ND_FOR_BODY, // expr?; ")" stmt
-    ND_BLOCK,    // "{" stmt* "}"
-    ND_CALL,     // <function call>
-    ND_ARGS,     // function call arguments
-    ND_ADDR,     // "&"
-    ND_DEREF,    // "*"
+    ND_ADD,    // "+"
+    ND_SUB,    // "-"
+    ND_MUL,    // "*"
+    ND_DIV,    // "/"
+    ND_NUM,    // [0-9]+
+    ND_LT,     // "<"
+    ND_LE,     // "<="
+    ND_EQ,     // "=="
+    ND_NE,     // "!="
+    ND_ASSIGN, // "="
+    ND_LVAR,   // [a-zA-Z_][a-zA-Z0-9_]*
+    ND_RETURN, // "return"
+    ND_IF,
+    ND_WHILE, // "while"
+    ND_FOR,
+    ND_BLOCK, // "{" stmt* "}"
+    ND_CALL,  // <function call>
+    ND_ADDR,  // "&"
+    ND_DEREF, // "*"
     ND_DECLARE,
     ND_STRING,
     ND_SEMICOLON,
@@ -159,6 +155,7 @@ struct Node {
 
     // For ND_CALL
     const char *fn;
+    NodeList *args; // reversed for simplifying pushing args to the stack
 
     // For ND_STRING
     const char *str;
@@ -166,10 +163,21 @@ struct Node {
     // For ND_DECLARE
     const Declaration *decl;
 
-    // For ND_BODY
+    // For ND_BLOCK
     NodeList *inner;
 
-    // For ND_IF_BODY, ND_WHILE and ND_FOR_INIT
+    // For ND_IF
+    Node *cond;
+    Node *then_body;
+    Node *else_body;
+
+    Node *body;
+
+    Node *for_init;
+    Node *for_cond;
+    Node *for_end;
+
+    // For ND_IF, ND_WHILE and ND_FOR_INIT
     int jump_index;
 };
 

@@ -103,25 +103,6 @@ gen_lval(Node *node) {
     }
 }
 
-static void
-gen_if_body(Node *node) {
-    assert(node->kind == ND_IF_BODY);
-    const int jump_index = node->jump_index;
-
-    if (node->rhs) {
-        printf("  je .Lelse%d\n", jump_index);
-        gen(node->lhs);
-        printf("  jmp .Lend%d\n", jump_index);
-        printf(".Lelse%d:\n", jump_index);
-        gen(node->rhs);
-    } else {
-        printf("  je .Lend%d\n", jump_index);
-        gen(node->lhs);
-    }
-
-    printf(".Lend%d:\n", jump_index);
-}
-
 void
 gen_while(Node *node) {
     const int jump_index = node->jump_index;
@@ -139,29 +120,25 @@ gen_while(Node *node) {
 void
 gen_for(Node *node) {
     const int jump_index = node->jump_index;
-    if (node->lhs) {
-        gen(node->lhs);
+
+    if (node->for_init) {
+        gen(node->for_init);
         pop("rax"); // consume the retval
     }
     printf(".Lbegin%d:\n", jump_index);
 
-    node = node->rhs;
-    if (node->kind != ND_FOR_COND)
-        error("Expected ND_FOR_COND");
-    if (node->lhs) {
-        gen(node->lhs);
+    if (node->for_cond) {
+        gen(node->for_cond);
         pop("rax");
         printf("  cmp rax, 0\n");
         printf("  je .Lend%d\n", jump_index);
     }
 
-    node = node->rhs;
-    assert(node->kind == ND_FOR_BODY);
-    gen(node->rhs);
+    gen(node->body);
 
     printf(".Lcontin%d:\n", jump_index);
-    if (node->lhs) {
-        gen(node->lhs);
+    if (node->for_end) {
+        gen(node->for_end);
         pop("rax"); // consume the retval
     }
     printf("  jmp .Lbegin%d\n", jump_index);
@@ -179,31 +156,17 @@ gen_block(const NodeList *list) {
 void
 gen_call(Node *node) {
     int num_args = 0;
-    Node *arg = node->lhs;
-    NodeList *args = NULL;
+    NodeList *args = node->args;
     bool is_shifted = (stack + num_vars) % 2 == 1;
 
     if (is_shifted) {
         push_val(0); // align stack
     }
 
-    while (arg) {
-        if (arg->kind != ND_ARGS)
-            error("Expected ND_ARGS");
-
-        NodeList *tmp = calloc(1, sizeof(NodeList));
-        tmp->node = arg->lhs;
-        tmp->next = args;
-
-        args = tmp;
-        arg = arg->rhs;
-
-        num_args++;
-    }
-
     while (args) {
         gen(args->node);
         args = args->next;
+        num_args++;
     }
 
     for (int i = 0; i < num_args && i < 6; ++i) {
@@ -552,6 +515,24 @@ gen_local_declare(const Declaration *decl) {
     }
 }
 
+static void
+gen_if(const Node *node) {
+    gen(node->cond);
+    pop("rax");
+    printf("  cmp rax, 0\n");
+    if (node->else_body) {
+        printf("  je .Lelse%d\n", node->jump_index);
+        gen(node->then_body);
+        printf("  jmp .Lend%d\n", node->jump_index);
+        printf(".Lelse%d:\n", node->jump_index);
+        gen(node->else_body);
+    } else {
+        printf("  je .Lend%d\n", node->jump_index);
+        gen(node->then_body);
+    }
+    printf(".Lend%d:\n", node->jump_index);
+}
+
 void
 gen(Node *node) {
     size_t size;
@@ -579,16 +560,13 @@ gen(Node *node) {
         printf("  mov [rax], %s\n", di(sizeof_ty(node->lhs->ty)));
         push("rdi");
         break;
-    case ND_IF_COND:
-        gen(node->lhs);
-        pop("rax");
-        printf("  cmp rax, 0\n");
-        gen_if_body(node->rhs);
+    case ND_IF:
+        gen_if(node);
         break;
     case ND_WHILE:
         gen_while(node);
         break;
-    case ND_FOR_INIT:
+    case ND_FOR:
         gen_for(node);
         break;
     case ND_RETURN:
@@ -705,8 +683,6 @@ gen(Node *node) {
     case ND_CONTINUE:
         printf("  jmp .Lcontin%d\n", node->jump_index);
         break;
-    default:
-        error("Invalid node is given to codegen: %d", node->kind);
     }
 }
 

@@ -589,6 +589,37 @@ deref_offset_ptr(Node *ptr, Node *index) {
     return new;
 }
 
+static Node *
+assign(const Token **rest, const Token *tok, Env *env);
+
+//
+//  argument_expression_list? = ( assign ( "," assign )* )?
+//
+static NodeList *
+argexprlist(const Token **rest, const Token *tok, Env *env) {
+    Node *node = assign(&tok, tok, env);
+    if (!node) {
+        return NULL;
+    }
+
+    NodeList *list = calloc(1, sizeof(NodeList));
+    list->node = node;
+
+    while (consume(&tok, tok, ",")) {
+        node = assign(&tok, tok, env);
+        if (node == NULL) {
+            error("Invalid argument");
+        }
+        NodeList *new = calloc(1, sizeof(NodeList));
+        new->next = list;
+        new->node = node;
+        list = new;
+    }
+
+    *rest = tok;
+    return list;
+}
+
 //
 //  postfix_expression = postfix_head postfix_tail*
 //  postfix_head =
@@ -602,8 +633,6 @@ deref_offset_ptr(Node *ptr, Node *index) {
 //      "->" identifier
 //      "++"
 //      "--"
-//  argument_expression_list =
-//      assign ( "," assign )*
 //
 static Node *
 postfix(const Token **rest, const Token *tok, Env *env) {
@@ -621,22 +650,9 @@ postfix(const Token **rest, const Token *tok, Env *env) {
                 node->fn = node->var->ident;
             }
             node->kind = ND_CALL;
+            node->args = argexprlist(&tok, tok, env);
             if (consume(&tok, tok, ")")) {
                 continue;
-            }
-            node->lhs = calloc(1, sizeof(Node));
-            Node *current = node->lhs;
-            current->kind = ND_ARGS;
-            current->lhs = expr(&tok, tok, env);
-            if (current->lhs == NULL) {
-                error_at(&tok->span, "Error at %s:%d", __FILE__, __LINE__);
-            }
-            while (!consume(&tok, tok, ")")) {
-                expect(&tok, tok, ",");
-                current->rhs = calloc(1, sizeof(Node));
-                current = current->rhs;
-                current->kind = ND_ARGS;
-                current->lhs = expr(&tok, tok, env);
             }
             continue;
         }
@@ -1152,22 +1168,23 @@ stmt(const Token **rest, const Token *tok, Env *env) {
     Node *node = NULL;
 
     if (consume(&tok, tok, "if")) {
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_IF_COND;
-        expect(&tok, tok, "(");
-        node->lhs = expr(&tok, tok, env);
-        expect(&tok, tok, ")");
-
-        // used for only jump_index
         const Env new = make_jump_scope(env);
 
-        node->rhs = calloc(1, sizeof(Node));
-        node->rhs->kind = ND_IF_BODY;
-        node->rhs->lhs = stmt(&tok, tok, env);
-        node->rhs->jump_index = new.jump_index;
+        expect(&tok, tok, "(");
+        Node *cond = expr(&tok, tok, env);
+        expect(&tok, tok, ")");
+        Node *then_body = stmt(&tok, tok, env);
+        Node *else_body = NULL;
         if (consume(&tok, tok, "else")) {
-            node->rhs->rhs = stmt(&tok, tok, env);
+            else_body = stmt(&tok, tok, env);
         }
+
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_IF;
+        node->jump_index = new.jump_index;
+        node->cond = cond;
+        node->then_body = then_body;
+        node->else_body = else_body;
     } else if (consume(&tok, tok, "while")) {
         Env new = make_jump_scope(env);
 
@@ -1181,29 +1198,32 @@ stmt(const Token **rest, const Token *tok, Env *env) {
     } else if (consume(&tok, tok, "for")) {
         Env new = make_jump_scope(env);
 
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_FOR_INIT;
-        node->jump_index = new.jump_index;
+        Node *for_init = NULL;
+        Node *for_cond = NULL;
+        Node *for_end = NULL;
+
         expect(&tok, tok, "(");
         if (!consume(&tok, tok, ";")) {
-            node->lhs = expr(&tok, tok, &new);
+            for_init = expr(&tok, tok, &new);
             expect(&tok, tok, ";");
         }
-
-        node->rhs = calloc(1, sizeof(Node));
-        node->rhs->kind = ND_FOR_COND;
         if (!consume(&tok, tok, ";")) {
-            node->rhs->lhs = expr(&tok, tok, &new);
+            for_cond = expr(&tok, tok, &new);
             expect(&tok, tok, ";");
         }
-
-        node->rhs->rhs = calloc(1, sizeof(Node));
-        node->rhs->rhs->kind = ND_FOR_BODY;
         if (!consume(&tok, tok, ")")) {
-            node->rhs->rhs->lhs = expr(&tok, tok, &new);
+            for_end = expr(&tok, tok, &new);
             expect(&tok, tok, ")");
         }
-        node->rhs->rhs->rhs = stmt(&tok, tok, &new);
+        Node *body = stmt(&tok, tok, &new);
+
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_FOR;
+        node->jump_index = new.jump_index;
+        node->for_init = for_init;
+        node->for_cond = for_cond;
+        node->for_end = for_end;
+        node->body = body;
     } else if ((node = jump(&tok, tok, env))) {
     } else {
         Env new = make_block_scope(env);
