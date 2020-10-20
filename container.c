@@ -177,6 +177,15 @@ get_tag(const Env *env, const char *tag) {
     return NULL;
 }
 
+static void
+push_tag(Env *env, const char *tag, Type *ty) {
+    TagList *new = calloc(1, sizeof(TagList));
+    new->tag = tag;
+    new->ty = ty;
+    new->next = env->tags;
+    env->tags = new;
+}
+
 static const Type *
 declare_enum(Env *env, const Type *ty) {
     if (ty->enum_ty->tag) {
@@ -190,12 +199,7 @@ declare_enum(Env *env, const Type *ty) {
             defined = calloc(1, sizeof(Type));
             defined->ty = ty->ty;
             defined->enum_ty = ty->enum_ty;
-
-            TagList *new = calloc(1, sizeof(TagList));
-            new->next = env->tags;
-            new->tag = ty->enum_ty->tag;
-            new->ty = defined;
-            env->tags = new;
+            push_tag(env, ty->enum_ty->tag, defined);
         }
         ty = defined;
     }
@@ -228,14 +232,13 @@ declare_struct(Env *env, const Type *ty) {
         return declared;
     }
 
-    TagList *new = calloc(1, sizeof(TagList));
-    new->tag = ty->struct_ty->tag;
-    new->ty = calloc(1, sizeof(Type));
-    new->ty->ty = ty->ty;
-    new->ty->struct_ty = ty->struct_ty;
-    env->tags = new;
+    Type *new_type = calloc(1, sizeof(Type));
+    new_type->ty = ty->ty;
+    new_type->struct_ty = ty->struct_ty;
 
-    return new->ty;
+    push_tag(env, ty->struct_ty->tag, new_type);
+
+    return new_type;
 }
 
 void

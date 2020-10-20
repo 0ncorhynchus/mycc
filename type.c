@@ -57,6 +57,10 @@ sizeof_ty(const Type *ty) {
     case ENUM:
         return sizeof_ty(&INT_T);
     case STRUCT:
+        if (ty->struct_ty->size == 0) {
+            error("storage size of struct '%s' is not known",
+                  ty->struct_ty->tag);
+        }
         return ty->struct_ty->size;
     default:
         error("The size of '%s' is unknown.", type_to_str(ty));
