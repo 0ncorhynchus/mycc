@@ -7,6 +7,15 @@ unexpected(const char *expected, const Token *got) {
              expected, got->span.len, got->span.ptr);
 }
 
+static void
+not_implemented(const Span *span, const char *name) {
+    if (name) {
+        error_at(span, "%s is not implemented yet.", name);
+    } else {
+        error_at(span, "Not implemented yet.");
+    }
+}
+
 static bool
 consume(const Token **rest, const Token *tok, const char *op) {
     if (tok->kind != TK_RESERVED || strlen(op) != tok->span.len ||
@@ -660,13 +669,13 @@ postfix(const Token **rest, const Token *tok, Env *env) {
             continue;
         }
         if (consume(&tok, tok, "->")) {
-            error_at(&tok->span, "Not implemented yet.");
+            not_implemented(&tok->span, NULL);
         }
         if (consume(&tok, tok, "++")) {
-            error_at(&tok->span, "Not implemented yet.");
+            not_implemented(&tok->span, NULL);
         }
         if (consume(&tok, tok, "--")) {
-            error_at(&tok->span, "Not implemented yet.");
+            not_implemented(&tok->span, NULL);
         }
         break;
     }
@@ -685,7 +694,7 @@ static Node *
 cast(const Token **rest, const Token *tok, Env *env) {
     for (;;) {
         if (consume(&tok, tok, "(")) {
-            error_at(&tok->span, "cast is implemented yet.");
+            not_implemented(&tok->span, "cast");
             expect(&tok, tok, ")");
         }
         break;
@@ -707,10 +716,10 @@ cast(const Token **rest, const Token *tok, Env *env) {
 static Node *
 unary(const Token **rest, const Token *tok, Env *env) {
     if (consume(&tok, tok, "++")) {
-        error_at(&tok->span, "Not implemented yet.");
+        not_implemented(&tok->span, NULL);
     }
     if (consume(&tok, tok, "--")) {
-        error_at(&tok->span, "Not implemented yet.");
+        not_implemented(&tok->span, NULL);
     }
     if (consume(&tok, tok, "&")) {
         Node *node = calloc(1, sizeof(Node));
@@ -744,10 +753,10 @@ unary(const Token **rest, const Token *tok, Env *env) {
         return new_node(ND_SUB, new_node_num(0), cast(rest, tok, env));
     }
     if (consume(&tok, tok, "~")) {
-        error_at(&tok->span, "Not implemented yet.");
+        not_implemented(&tok->span, NULL);
     }
     if (consume(&tok, tok, "!")) {
-        error_at(&tok->span, "Not implemented yet.");
+        not_implemented(&tok->span, NULL);
     }
     if (consume(&tok, tok, "sizeof")) {
         if (consume(&tok, tok, "(")) {
@@ -775,7 +784,7 @@ unary(const Token **rest, const Token *tok, Env *env) {
               "type");
     }
     if (consume(&tok, tok, "_Alignof")) {
-        error_at(&tok->span, "Not implemented yet.");
+        not_implemented(&tok->span, NULL);
     }
     return postfix(rest, tok, env);
 }
