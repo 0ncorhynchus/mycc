@@ -137,6 +137,8 @@ typedef enum {
     ND_DECLARE,
     ND_STRING,
     ND_SEMICOLON,
+    ND_BREAK,
+    ND_CONTINUE,
 } NodeKind;
 
 typedef struct NodeList NodeList;

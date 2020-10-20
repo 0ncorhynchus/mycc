@@ -1099,13 +1099,51 @@ declaration(const Token **rest, const Token *tok, Env *env) {
 }
 
 //
-//  stmt =  expr ";"
-//       | declaration
-//       | "{" stmt* "}"
-//       | "if" "(" expr ")" stmt ( "else" stmt )?
-//       | "while" "(" expr ")" stmt
-//       | "for" "(" expr? ";" expr? ";" expr? ")" stmt
-//       | "return" expr? ";"
+//  jump_statemant =
+//      "goto" identifier ";"
+//      "continue" ";"
+//      "break" ";"
+//      "return" expression? ";"
+//
+static Node *
+jump(const Token **rest, const Token *tok, Env *env) {
+    if (consume(&tok, tok, "goto")) {
+        not_implemented(&tok->span, "goto");
+    }
+    if (consume(&tok, tok, "continue")) {
+        expect(rest, tok, ";");
+        Node *node = calloc(1, sizeof(Node));
+        node->kind = ND_CONTINUE;
+        return node;
+    }
+    if (consume(&tok, tok, "break")) {
+        expect(rest, tok, ";");
+        Node *node = calloc(1, sizeof(Node));
+        node->kind = ND_BREAK;
+        return node;
+    }
+    if (consume(&tok, tok, "return")) {
+        Node *retval = as_ptr(expr(&tok, tok, env));
+        expect(rest, tok, ";");
+
+        Node *node = calloc(1, sizeof(Node));
+        node->kind = ND_RETURN;
+        node->lhs = retval;
+
+        return node;
+    }
+    return NULL;
+}
+
+//
+//  stmt =
+//      expr ";"
+//      declaration
+//      "{" stmt* "}"
+//      "if" "(" expr ")" stmt ( "else" stmt )?
+//      "while" "(" expr ")" stmt
+//      "for" "(" expr? ";" expr? ";" expr? ")" stmt
+//      jump_statement
 //
 static Node *
 stmt(const Token **rest, const Token *tok, Env *env) {
@@ -1154,11 +1192,7 @@ stmt(const Token **rest, const Token *tok, Env *env) {
             expect(&tok, tok, ")");
         }
         node->rhs->rhs->rhs = stmt(&tok, tok, env);
-    } else if (consume(&tok, tok, "return")) {
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_RETURN;
-        node->lhs = as_ptr(expr(&tok, tok, env));
-        expect(&tok, tok, ";");
+    } else if ((node = jump(&tok, tok, env))) {
     } else {
         Env new = make_block_scope(env);
         node = block(&tok, tok, &new);
