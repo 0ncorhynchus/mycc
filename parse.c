@@ -1099,7 +1099,7 @@ declaration(const Token **rest, const Token *tok, Env *env) {
 }
 
 //
-//  jump_statemant =
+//  jump_statement =
 //      "goto" identifier ";"
 //      "continue" ";"
 //      "break" ";"
@@ -1114,12 +1114,14 @@ jump(const Token **rest, const Token *tok, Env *env) {
         expect(rest, tok, ";");
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_CONTINUE;
+        node->jump_index = env->jump_index;
         return node;
     }
     if (consume(&tok, tok, "break")) {
         expect(rest, tok, ";");
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_BREAK;
+        node->jump_index = env->jump_index;
         return node;
     }
     if (consume(&tok, tok, "return")) {

@@ -131,6 +131,7 @@ gen_while(Node *node) {
     printf("  cmp rax, 0\n");
     printf("  je .Lend%d\n", jump_index);
     gen(node->rhs);
+    printf(".Lcontin%d:\n", jump_index);
     printf("  jmp .Lbegin%d\n", jump_index);
     printf(".Lend%d:\n", jump_index);
 }
@@ -155,9 +156,10 @@ gen_for(Node *node) {
     }
 
     node = node->rhs;
-    if (node->kind != ND_FOR_BODY)
-        error("Expected ND_FOR_BODY");
+    assert(node->kind == ND_FOR_BODY);
     gen(node->rhs);
+
+    printf(".Lcontin%d:\n", jump_index);
     if (node->lhs) {
         gen(node->lhs);
         pop("rax"); // consume the retval
@@ -696,6 +698,12 @@ gen(Node *node) {
         printf("  setne al\n");
         printf("  movzb rax, al\n");
         push("rax");
+        break;
+    case ND_BREAK:
+        printf("  jmp .Lend%d\n", node->jump_index);
+        break;
+    case ND_CONTINUE:
+        printf("  jmp .Lcontin%d\n", node->jump_index);
         break;
     default:
         error("Invalid node is given to codegen: %d", node->kind);

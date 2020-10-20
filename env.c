@@ -12,6 +12,7 @@ Env
 make_scope(Env *parent) {
     Env env = {parent};
     env.maximum_arg_offset = 8;
+    env.jump_index = parent->jump_index;
     return env;
 }
 
@@ -19,6 +20,7 @@ Env
 make_block_scope(Env *parent) {
     Env env = {parent};
     env.is_block_scope = true;
+    env.jump_index = parent->jump_index;
     return env;
 }
 

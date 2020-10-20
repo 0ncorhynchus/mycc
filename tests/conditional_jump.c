@@ -62,5 +62,20 @@ main() {
         assert_int(i, x);
     }
 
+    for (i = 0; i < 10; i = i + 1) {
+        if (i == 6) {
+            break;
+        }
+    }
+    assert_int(6, i);
+
+    for (i = 0; i < 10; i = i + 1) {
+        if (i < 6) {
+            continue;
+        }
+        break;
+    }
+    assert_int(6, i);
+
     return summary();
 }
