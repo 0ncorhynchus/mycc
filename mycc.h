@@ -110,6 +110,18 @@ extern const Type INT_T;
 extern const Type CHAR_T;
 extern const Type VOID_T;
 
+typedef struct {
+    enum { CASE, DEFAULT } kind;
+    int jump_index;
+    int val;
+} Label;
+
+typedef struct LabelList LabelList;
+struct LabelList {
+    LabelList *next;
+    const Label *label;
+};
+
 typedef enum {
     ND_ADD,    // "+"
     ND_SUB,    // "-"
@@ -135,6 +147,8 @@ typedef enum {
     ND_SEMICOLON,
     ND_BREAK,
     ND_CONTINUE,
+    ND_SWITCH,
+    ND_LABEL,
 } NodeKind;
 
 typedef struct NodeList NodeList;
@@ -171,14 +185,24 @@ struct Node {
     Node *then_body;
     Node *else_body;
 
+    // For ND_FOR and ND_SWITCH
     Node *body;
 
     Node *for_init;
     Node *for_cond;
     Node *for_end;
 
-    // For ND_IF, ND_WHILE and ND_FOR_INIT
+    // For ND_SWITCH
+    Node *value;
+
+    // For ND_IF, ND_WHILE, ND_FOR_INIT, ND_SWITCH and ND_LABEL
     int jump_index;
+
+    // For ND_SWITCH
+    LabelList *labels;
+
+    // For ND_LABEL,
+    Label label;
 };
 
 struct NodeList {
@@ -213,11 +237,13 @@ struct Env {
     VarList *vars;
     String *strings;
     TagList *tags;
+    LabelList *labels;
     int maximum_offset;
     int maximum_strings;
     unsigned int num_args;
     unsigned int maximum_arg_offset;
     bool is_block_scope;
+    bool is_switch_scope;
     int jump_index;
 };
 
@@ -229,6 +255,8 @@ Env
 make_block_scope(Env *parent);
 Env
 make_jump_scope(Env *parent);
+Env
+make_switch_scope(Env *parent);
 
 typedef struct Function Function;
 struct Function {
@@ -294,6 +322,9 @@ get_tag(const Env *env, const char *tag);
 
 const String *
 push_string(Env *env, const char *ident);
+
+void
+push_label(Env *env, const Label *label);
 
 void
 program(const Token *token, Env *env, Unit *code[]);

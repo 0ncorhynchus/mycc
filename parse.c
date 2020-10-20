@@ -1115,6 +1115,111 @@ declaration(const Token **rest, const Token *tok, Env *env) {
 }
 
 //
+//  labeled_statement =
+//      identifier ":" statement
+//      "case" constant_expression ":" statement
+//      "default" ":" statement
+//
+static Node *
+labeled(const Token **rest, const Token *tok, Env *env) {
+    if (consume(&tok, tok, "case")) {
+        const int jump_index = make_jump_scope(env).jump_index;
+
+        int val;
+        if (!number(&tok, tok, &val)) {
+            error("a number is expected after case");
+        }
+        expect(&tok, tok, ":");
+        Node *body = stmt(&tok, tok, env);
+        if (body == NULL) {
+            error("a statement is expected after a case label");
+        }
+
+        Label label = {CASE, jump_index};
+        label.val = val;
+
+        Node *node = calloc(1, sizeof(Node));
+        node->kind = ND_LABEL;
+        node->label = label;
+        node->body = body;
+
+        push_label(env, &node->label);
+
+        *rest = tok;
+        return node;
+    } else if (consume(&tok, tok, "default")) {
+        const int jump_index = make_jump_scope(env).jump_index;
+        expect(&tok, tok, ":");
+        Node *body = stmt(&tok, tok, env);
+        if (body == NULL) {
+            error("a statement is expected after a default label");
+        }
+
+        Label label = {DEFAULT, jump_index};
+
+        Node *node = calloc(1, sizeof(Node));
+        node->kind = ND_LABEL;
+        node->label = label;
+        node->body = body;
+
+        push_label(env, &node->label);
+
+        *rest = tok;
+        return node;
+    } else {
+    }
+
+    return NULL;
+}
+
+//
+//  selection_statement =
+//      "if" "(" expression ")" statement ( "else" statement )?
+//      "switch" "(" expression ")" statement
+//
+static Node *
+selection(const Token **rest, const Token *tok, Env *env) {
+    Node *node = NULL;
+
+    if (consume(&tok, tok, "if")) {
+        const Env new = make_jump_scope(env);
+
+        expect(&tok, tok, "(");
+        Node *cond = expr(&tok, tok, env);
+        expect(&tok, tok, ")");
+        Node *then_body = stmt(&tok, tok, env);
+        Node *else_body = NULL;
+        if (consume(&tok, tok, "else")) {
+            else_body = stmt(&tok, tok, env);
+        }
+
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_IF;
+        node->jump_index = new.jump_index;
+        node->cond = cond;
+        node->then_body = then_body;
+        node->else_body = else_body;
+    } else if (consume(&tok, tok, "switch")) {
+        Env new = make_switch_scope(env);
+        expect(&tok, tok, "(");
+        Node *value = expr(&tok, tok, env);
+        expect(&tok, tok, ")");
+        Node *body = stmt(&tok, tok, &new);
+
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_SWITCH;
+        node->value = value;
+        node->body = body;
+        node->labels = new.labels;
+    } else {
+        return NULL;
+    }
+
+    *rest = tok;
+    return node;
+}
+
+//
 //  jump_statement =
 //      "goto" identifier ";"
 //      "continue" ";"
@@ -1154,11 +1259,12 @@ jump(const Token **rest, const Token *tok, Env *env) {
 }
 
 //
-//  stmt =
+//  statement =
+//      labeled_statement
 //      expr ";"
 //      declaration
 //      "{" stmt* "}"
-//      "if" "(" expr ")" stmt ( "else" stmt )?
+//      selection_statement
 //      "while" "(" expr ")" stmt
 //      "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //      jump_statement
@@ -1167,24 +1273,8 @@ static Node *
 stmt(const Token **rest, const Token *tok, Env *env) {
     Node *node = NULL;
 
-    if (consume(&tok, tok, "if")) {
-        const Env new = make_jump_scope(env);
-
-        expect(&tok, tok, "(");
-        Node *cond = expr(&tok, tok, env);
-        expect(&tok, tok, ")");
-        Node *then_body = stmt(&tok, tok, env);
-        Node *else_body = NULL;
-        if (consume(&tok, tok, "else")) {
-            else_body = stmt(&tok, tok, env);
-        }
-
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_IF;
-        node->jump_index = new.jump_index;
-        node->cond = cond;
-        node->then_body = then_body;
-        node->else_body = else_body;
+    if ((node = labeled(&tok, tok, env))) {
+    } else if ((node = selection(&tok, tok, env))) {
     } else if (consume(&tok, tok, "while")) {
         Env new = make_jump_scope(env);
 

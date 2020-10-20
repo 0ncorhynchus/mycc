@@ -533,6 +533,34 @@ gen_if(const Node *node) {
     printf(".Lend%d:\n", node->jump_index);
 }
 
+static void
+gen_switch(const Node *node) {
+    gen(node->value);
+    pop("rax");
+
+    const int *default_jump_index = NULL;
+    LabelList *labels = node->labels;
+    while (labels) {
+        const Label *label = labels->label;
+        switch (label->kind) {
+        case CASE:
+            printf("  cmp %s, %d\n", ax(4), label->val);
+            printf("  je .L%d\n", label->jump_index);
+            break;
+        case DEFAULT:
+            default_jump_index = &label->jump_index;
+            break;
+        }
+        labels = labels->next;
+    }
+    if (default_jump_index) {
+        printf("  jmp .L%d\n", *default_jump_index);
+    }
+
+    gen(node->body);
+    printf(".Lend%d:\n", node->jump_index);
+}
+
 void
 gen(Node *node) {
     size_t size;
@@ -682,6 +710,13 @@ gen(Node *node) {
         break;
     case ND_CONTINUE:
         printf("  jmp .Lcontin%d\n", node->jump_index);
+        break;
+    case ND_SWITCH:
+        gen_switch(node);
+        break;
+    case ND_LABEL:
+        printf(".L%d:\n", node->label.jump_index);
+        gen(node->body);
         break;
     }
 }

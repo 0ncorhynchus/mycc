@@ -32,6 +32,15 @@ make_jump_scope(Env *parent) {
     return env;
 }
 
+Env
+make_switch_scope(Env *parent) {
+    Env env = {parent};
+    env.is_block_scope = true;
+    env.is_switch_scope = true;
+    env.jump_index = jump_index++;
+    return env;
+}
+
 bool
 is_global(const Env *env) {
     return env->parent == NULL;
@@ -328,4 +337,45 @@ push_string(Env *env, const char *ident) {
     global->strings = str;
 
     return str;
+}
+
+static bool
+find_label(const Env *env, const Label *label) {
+    const LabelList *labels = env->labels;
+    while (labels) {
+        switch (labels->label->kind) {
+        case CASE:
+            if (label->kind == CASE && labels->label->val == label->val) {
+                return true;
+            }
+            break;
+        case DEFAULT:
+            if (label->kind == DEFAULT) {
+                return true;
+            }
+            break;
+        }
+        labels = labels->next;
+    }
+    return false;
+}
+
+void
+push_label(Env *env, const Label *label) {
+    while (env && !env->is_switch_scope) {
+        env = env->parent;
+    }
+
+    if (env == NULL) {
+        error("Not within a switch statement");
+    }
+
+    if (find_label(env, label)) {
+        error("Duplicated labels");
+    }
+
+    LabelList *new = calloc(1, sizeof(LabelList));
+    new->label = label;
+    new->next = env->labels;
+    env->labels = new;
 }
