@@ -34,8 +34,6 @@ di(size_t size) {
     }
 }
 
-static int label_index;
-
 static int stack = 0;
 static int num_args = 0;
 static int num_vars = 0;
@@ -105,44 +103,46 @@ gen_lval(Node *node) {
     }
 }
 
-void
-gen_if_body(Node *node, int l_index) {
-    if (node->kind != ND_IF_BODY)
-        error("Expected ND_IF_BODY");
+static void
+gen_if_body(Node *node) {
+    assert(node->kind == ND_IF_BODY);
+    const int jump_index = node->jump_index;
 
     if (node->rhs) {
-        printf("  je .Lelse%d\n", l_index);
+        printf("  je .Lelse%d\n", jump_index);
         gen(node->lhs);
-        printf("  jmp .Lend%d\n", l_index);
-        printf(".Lelse%d:\n", l_index);
+        printf("  jmp .Lend%d\n", jump_index);
+        printf(".Lelse%d:\n", jump_index);
         gen(node->rhs);
     } else {
-        printf("  je .Lend%d\n", l_index);
+        printf("  je .Lend%d\n", jump_index);
         gen(node->lhs);
     }
 
-    printf(".Lend%d:\n", l_index);
+    printf(".Lend%d:\n", jump_index);
 }
 
 void
-gen_while(Node *node, int l_index) {
-    printf(".Lbegin%d:\n", l_index);
+gen_while(Node *node) {
+    const int jump_index = node->jump_index;
+    printf(".Lbegin%d:\n", jump_index);
     gen(node->lhs);
     pop("rax");
     printf("  cmp rax, 0\n");
-    printf("  je .Lend%d\n", l_index);
+    printf("  je .Lend%d\n", jump_index);
     gen(node->rhs);
-    printf("  jmp .Lbegin%d\n", l_index);
-    printf(".Lend%d:\n", l_index);
+    printf("  jmp .Lbegin%d\n", jump_index);
+    printf(".Lend%d:\n", jump_index);
 }
 
 void
-gen_for(Node *node, int l_index) {
+gen_for(Node *node) {
+    const int jump_index = node->jump_index;
     if (node->lhs) {
         gen(node->lhs);
         pop("rax"); // consume the retval
     }
-    printf(".Lbegin%d:\n", l_index);
+    printf(".Lbegin%d:\n", jump_index);
 
     node = node->rhs;
     if (node->kind != ND_FOR_COND)
@@ -151,7 +151,7 @@ gen_for(Node *node, int l_index) {
         gen(node->lhs);
         pop("rax");
         printf("  cmp rax, 0\n");
-        printf("  je .Lend%d\n", l_index);
+        printf("  je .Lend%d\n", jump_index);
     }
 
     node = node->rhs;
@@ -162,8 +162,8 @@ gen_for(Node *node, int l_index) {
         gen(node->lhs);
         pop("rax"); // consume the retval
     }
-    printf("  jmp .Lbegin%d\n", l_index);
-    printf(".Lend%d:\n", l_index);
+    printf("  jmp .Lbegin%d\n", jump_index);
+    printf(".Lend%d:\n", jump_index);
 }
 
 static void
@@ -581,13 +581,13 @@ gen(Node *node) {
         gen(node->lhs);
         pop("rax");
         printf("  cmp rax, 0\n");
-        gen_if_body(node->rhs, label_index++);
+        gen_if_body(node->rhs);
         break;
     case ND_WHILE:
-        gen_while(node, label_index++);
+        gen_while(node);
         break;
     case ND_FOR_INIT:
-        gen_for(node, label_index++);
+        gen_for(node);
         break;
     case ND_RETURN:
         epilogue(node->lhs);

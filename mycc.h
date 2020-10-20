@@ -168,6 +168,9 @@ struct Node {
 
     // For ND_BODY
     NodeList *inner;
+
+    // For ND_IF_BODY, ND_WHILE and ND_FOR_INIT
+    int jump_index;
 };
 
 struct NodeList {
@@ -207,27 +210,17 @@ struct Env {
     unsigned int num_args;
     unsigned int maximum_arg_offset;
     bool is_block_scope;
+    int jump_index;
 };
 
-static inline Env
-init_env() {
-    Env env = {};
-    return env;
-}
-
-static inline Env
-make_scope(Env *parent) {
-    Env env = {parent};
-    env.maximum_arg_offset = 8;
-    return env;
-}
-
-static inline Env
-make_block_scope(Env *parent) {
-    Env env = {parent};
-    env.is_block_scope = true;
-    return env;
-}
+Env
+init_env();
+Env
+make_scope(Env *parent);
+Env
+make_block_scope(Env *parent);
+Env
+make_jump_scope(Env *parent);
 
 typedef struct Function Function;
 struct Function {

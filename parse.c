@@ -1156,42 +1156,52 @@ stmt(const Token **rest, const Token *tok, Env *env) {
         node->lhs = expr(&tok, tok, env);
         expect(&tok, tok, ")");
 
+        // used for only jump_index
+        const Env new = make_jump_scope(env);
+
         node->rhs = calloc(1, sizeof(Node));
         node->rhs->kind = ND_IF_BODY;
         node->rhs->lhs = stmt(&tok, tok, env);
+        node->rhs->jump_index = new.jump_index;
         if (consume(&tok, tok, "else")) {
             node->rhs->rhs = stmt(&tok, tok, env);
         }
     } else if (consume(&tok, tok, "while")) {
+        Env new = make_jump_scope(env);
+
         node = calloc(1, sizeof(Node));
         node->kind = ND_WHILE;
+        node->jump_index = new.jump_index;
         expect(&tok, tok, "(");
-        node->lhs = expr(&tok, tok, env);
+        node->lhs = expr(&tok, tok, &new);
         expect(&tok, tok, ")");
-        node->rhs = stmt(&tok, tok, env);
+        node->rhs = stmt(&tok, tok, &new);
     } else if (consume(&tok, tok, "for")) {
+        Env new = make_jump_scope(env);
+
         node = calloc(1, sizeof(Node));
         node->kind = ND_FOR_INIT;
+        node->jump_index = new.jump_index;
         expect(&tok, tok, "(");
         if (!consume(&tok, tok, ";")) {
-            node->lhs = expr(&tok, tok, env);
+            node->lhs = expr(&tok, tok, &new);
             expect(&tok, tok, ";");
         }
 
         node->rhs = calloc(1, sizeof(Node));
         node->rhs->kind = ND_FOR_COND;
         if (!consume(&tok, tok, ";")) {
-            node->rhs->lhs = expr(&tok, tok, env);
+            node->rhs->lhs = expr(&tok, tok, &new);
             expect(&tok, tok, ";");
         }
 
         node->rhs->rhs = calloc(1, sizeof(Node));
         node->rhs->rhs->kind = ND_FOR_BODY;
         if (!consume(&tok, tok, ")")) {
-            node->rhs->rhs->lhs = expr(&tok, tok, env);
+            node->rhs->rhs->lhs = expr(&tok, tok, &new);
             expect(&tok, tok, ")");
         }
-        node->rhs->rhs->rhs = stmt(&tok, tok, env);
+        node->rhs->rhs->rhs = stmt(&tok, tok, &new);
     } else if ((node = jump(&tok, tok, env))) {
     } else {
         Env new = make_block_scope(env);

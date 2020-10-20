@@ -1,6 +1,35 @@
 #include "mycc.h"
 #include <string.h>
 
+static int jump_index = 0;
+
+Env
+init_env() {
+    return (Env){};
+}
+
+Env
+make_scope(Env *parent) {
+    Env env = {parent};
+    env.maximum_arg_offset = 8;
+    return env;
+}
+
+Env
+make_block_scope(Env *parent) {
+    Env env = {parent};
+    env.is_block_scope = true;
+    return env;
+}
+
+Env
+make_jump_scope(Env *parent) {
+    Env env = {parent};
+    env.is_block_scope = true;
+    env.jump_index = jump_index++;
+    return env;
+}
+
 bool
 is_global(const Env *env) {
     return env->parent == NULL;
