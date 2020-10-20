@@ -552,10 +552,12 @@ gen_local_declare(const Declaration *decl) {
 
 void
 gen(Node *node) {
+    size_t size;
+
     switch (node->kind) {
     case ND_NUM:
         push_val(node->val);
-        return;
+        break;
     case ND_LVAR:
         if (node->var->is_const) {
             push_val(node->var->enum_val);
@@ -565,7 +567,7 @@ gen(Node *node) {
             printf("  mov rax, [rax]\n");
             push("rax");
         }
-        return;
+        break;
     case ND_ASSIGN:
         gen_lval(node->lhs);
         gen(node->rhs);
@@ -574,28 +576,28 @@ gen(Node *node) {
         pop("rax");
         printf("  mov [rax], %s\n", di(sizeof_ty(node->lhs->ty)));
         push("rdi");
-        return;
+        break;
     case ND_IF_COND:
         gen(node->lhs);
         pop("rax");
         printf("  cmp rax, 0\n");
         gen_if_body(node->rhs, label_index++);
-        return;
+        break;
     case ND_WHILE:
         gen_while(node, label_index++);
-        return;
+        break;
     case ND_FOR_INIT:
         gen_for(node, label_index++);
-        return;
+        break;
     case ND_RETURN:
         epilogue(node->lhs);
-        return;
+        break;
     case ND_BLOCK:
         gen_block(node->inner);
-        return;
+        break;
     case ND_CALL:
         gen_call(node);
-        return;
+        break;
     case ND_DEREF:
         gen(node->lhs);
         pop("rax");
@@ -611,73 +613,93 @@ gen(Node *node) {
             break;
         }
         push("rax");
-        return;
+        break;
     case ND_ADDR:
         gen_lval(node->lhs);
-        return;
+        break;
     case ND_DECLARE:
         gen_local_declare(node->decl);
-        return;
+        break;
     case ND_ADD:
         gen_add(node, "add");
-        return;
+        break;
     case ND_SUB:
         gen_add(node, "sub");
-        return;
+        break;
     case ND_STRING:
         printf("  lea rax, .LC%d[rip]\n", node->val);
         push("rax");
-        return;
+        break;
     case ND_SEMICOLON:
         if (node->lhs) {
             gen(node->lhs);
             pop("rax");
         }
-        return;
-    default:
         break;
-    }
-
-    gen(node->lhs);
-    gen(node->rhs);
-    pop("rdi");
-    pop("rax");
-
-    size_t size = sizeof_ty(node->lhs->ty);
-
-    switch (node->kind) {
     case ND_MUL:
+        gen(node->lhs);
+        gen(node->rhs);
+        pop("rdi");
+        pop("rax");
         printf("  imul rax, rdi\n");
+        push("rax");
         break;
     case ND_DIV:
+        gen(node->lhs);
+        gen(node->rhs);
+        pop("rdi");
+        pop("rax");
         printf("  cqo\n");
         printf("  idiv rdi\n");
+        push("rax");
         break;
     case ND_LT:
+        gen(node->lhs);
+        gen(node->rhs);
+        pop("rdi");
+        pop("rax");
+        size = sizeof_ty(node->lhs->ty);
         printf("  cmp %s, %s\n", ax(size), di(size));
         printf("  setl al\n");
         printf("  movzb rax, al\n");
+        push("rax");
         break;
     case ND_LE:
+        gen(node->lhs);
+        gen(node->rhs);
+        pop("rdi");
+        pop("rax");
+        size = sizeof_ty(node->lhs->ty);
         printf("  cmp %s, %s\n", ax(size), di(size));
         printf("  setle al\n");
         printf("  movzb rax, al\n");
+        push("rax");
         break;
     case ND_EQ:
+        gen(node->lhs);
+        gen(node->rhs);
+        pop("rdi");
+        pop("rax");
+        size = sizeof_ty(node->lhs->ty);
         printf("  cmp %s, %s\n", ax(size), di(size));
         printf("  sete al\n");
         printf("  movzb rax, al\n");
+        push("rax");
         break;
     case ND_NE:
+        gen(node->lhs);
+        gen(node->rhs);
+        pop("rdi");
+        pop("rax");
+        size = sizeof_ty(node->lhs->ty);
         printf("  cmp %s, %s\n", ax(size), di(size));
         printf("  setne al\n");
         printf("  movzb rax, al\n");
+        push("rax");
         break;
     default:
-        break;
+        error("Invalid node is given to codegen: %d", node->kind);
     }
-
-    push("rax");
 }
 
 void
