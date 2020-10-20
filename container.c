@@ -28,6 +28,15 @@ get_var(Env *env, const char *ident) {
     return NULL;
 }
 
+static VarList *
+push_var(Env *env, Var *var) {
+    VarList *new = calloc(1, sizeof(VarList));
+    new->var = var;
+    new->next = env->vars;
+    env->vars = new;
+    return new;
+}
+
 size_t
 expand_for_align(size_t size) {
     return ((size - 1) / 8 + 1) * 8;
@@ -54,10 +63,7 @@ declare_arg(Env *env, Var *var) {
         }
     }
 
-    VarList *new = calloc(1, sizeof(VarList));
-    new->next = env->vars;
-    new->var = var;
-    env->vars = new;
+    push_var(env, var);
 
     return true;
 }
@@ -86,10 +92,7 @@ declare_var(Env *env, Var *var) {
         var->offset = top->maximum_offset;
     }
 
-    VarList *new = calloc(1, sizeof(VarList));
-    new->next = env->vars;
-    new->var = var;
-    env->vars = new;
+    push_var(env, var);
 
     return true;
 }
@@ -106,10 +109,7 @@ declare_fn(Env *env, Var *var) {
         }
         defined->is_body_defined = true;
     } else {
-        VarList *new = calloc(1, sizeof(VarList));
-        new->next = env->vars;
-        new->var = var;
-        env->vars = new;
+        push_var(env, var);
     }
 }
 
@@ -149,10 +149,7 @@ declare_enum_const(Env *env, Var *var, int value) {
     var->is_const = true;
     var->enum_val = value;
 
-    VarList *new = calloc(1, sizeof(VarList));
-    new->next = env->vars;
-    new->var = var;
-    env->vars = new;
+    push_var(env, var);
 }
 
 static Type *
@@ -275,11 +272,8 @@ declare_typedef(Env *env, const Var *var) {
         redefined->ty = var->ty;
     }
 
-    VarList *new = calloc(1, sizeof(VarList));
-    new->next = env->vars;
-    new->var = redefined;
+    VarList *new = push_var(env, redefined);
     new->is_typedef = true;
-    env->vars = new;
 }
 
 Env *
