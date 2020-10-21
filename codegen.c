@@ -123,7 +123,9 @@ gen_for(Node *node) {
 
     if (node->for_init) {
         gen(node->for_init);
-        pop("rax"); // consume the retval
+        if (node->for_init->kind != ND_DECLARE) {
+            pop("rax"); // consume the retval
+        }
     }
     printf(".Lbegin%d:\n", jump_index);
 

@@ -1220,6 +1220,70 @@ selection(const Token **rest, const Token *tok, Env *env) {
 }
 
 //
+//  iteration_statement =
+//      while "(" expression ")" statement
+//      "do" statement "while" "(" expression ")" ";"
+//      "for" "(" expression? ";" expression? ";" expression? ")" statement
+//      "for" "(" declaration expression? ":" expression? ")" statement
+//
+static Node *
+iteration(const Token **rest, const Token *tok, Env *env) {
+    Node *node = NULL;
+    if (consume(&tok, tok, "while")) {
+        Env new = make_jump_scope(env);
+
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_WHILE;
+        node->jump_index = new.jump_index;
+        expect(&tok, tok, "(");
+        node->lhs = expr(&tok, tok, &new);
+        expect(&tok, tok, ")");
+        node->rhs = stmt(&tok, tok, &new);
+    } else if (consume(&tok, tok, "do")) {
+        not_implemented(&tok->span, "do");
+    } else if (consume(&tok, tok, "for")) {
+        Env new = make_jump_scope(env);
+
+        Node *for_init = NULL;
+        Node *for_cond = NULL;
+        Node *for_end = NULL;
+
+        expect(&tok, tok, "(");
+        if (!consume(&tok, tok, ";")) {
+            const Declaration *decl = declaration(&tok, tok, &new);
+            if (decl) {
+                for_init = calloc(1, sizeof(Node));
+                for_init->kind = ND_DECLARE;
+                for_init->decl = decl;
+            } else if ((for_init = expr(&tok, tok, &new))) {
+                expect(&tok, tok, ";");
+            } else {
+                unexpected("expression or declaration", tok);
+            }
+        }
+        if (!consume(&tok, tok, ";")) {
+            for_cond = expr(&tok, tok, &new);
+            expect(&tok, tok, ";");
+        }
+        if (!consume(&tok, tok, ")")) {
+            for_end = expr(&tok, tok, &new);
+            expect(&tok, tok, ")");
+        }
+        Node *body = stmt(&tok, tok, &new);
+
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_FOR;
+        node->jump_index = new.jump_index;
+        node->for_init = for_init;
+        node->for_cond = for_cond;
+        node->for_end = for_end;
+        node->body = body;
+    }
+    *rest = tok;
+    return node;
+}
+
+//
 //  jump_statement =
 //      "goto" identifier ";"
 //      "continue" ";"
@@ -1265,8 +1329,7 @@ jump(const Token **rest, const Token *tok, Env *env) {
 //      declaration
 //      "{" stmt* "}"
 //      selection_statement
-//      "while" "(" expr ")" stmt
-//      "for" "(" expr? ";" expr? ";" expr? ")" stmt
+//      iteration_statement
 //      jump_statement
 //
 static Node *
@@ -1275,45 +1338,7 @@ stmt(const Token **rest, const Token *tok, Env *env) {
 
     if ((node = labeled(&tok, tok, env))) {
     } else if ((node = selection(&tok, tok, env))) {
-    } else if (consume(&tok, tok, "while")) {
-        Env new = make_jump_scope(env);
-
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_WHILE;
-        node->jump_index = new.jump_index;
-        expect(&tok, tok, "(");
-        node->lhs = expr(&tok, tok, &new);
-        expect(&tok, tok, ")");
-        node->rhs = stmt(&tok, tok, &new);
-    } else if (consume(&tok, tok, "for")) {
-        Env new = make_jump_scope(env);
-
-        Node *for_init = NULL;
-        Node *for_cond = NULL;
-        Node *for_end = NULL;
-
-        expect(&tok, tok, "(");
-        if (!consume(&tok, tok, ";")) {
-            for_init = expr(&tok, tok, &new);
-            expect(&tok, tok, ";");
-        }
-        if (!consume(&tok, tok, ";")) {
-            for_cond = expr(&tok, tok, &new);
-            expect(&tok, tok, ";");
-        }
-        if (!consume(&tok, tok, ")")) {
-            for_end = expr(&tok, tok, &new);
-            expect(&tok, tok, ")");
-        }
-        Node *body = stmt(&tok, tok, &new);
-
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_FOR;
-        node->jump_index = new.jump_index;
-        node->for_init = for_init;
-        node->for_cond = for_cond;
-        node->for_end = for_end;
-        node->body = body;
+    } else if ((node = iteration(&tok, tok, env))) {
     } else if ((node = jump(&tok, tok, env))) {
     } else {
         Env new = make_block_scope(env);

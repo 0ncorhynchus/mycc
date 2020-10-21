@@ -77,5 +77,14 @@ main() {
     }
     assert_int(6, i);
 
+    for (int j = 0; j < 10; j = j + 1) {
+        i = j;
+    }
+    assert_int(9, i);
+
+    for (int i = 0; i < 10; i = i + 1) {
+    }
+    assert_int(9, i);
+
     return summary();
 }
