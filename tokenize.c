@@ -7,6 +7,8 @@
 
 static const char *filename;
 static const char *user_input;
+static int line_number = 1;
+static const char *line_head;
 
 const char *reserved[] = {
     "auto",       "break",     "case",           "char",
@@ -32,27 +34,16 @@ const size_t num_punctuators = sizeof(punctuators) / sizeof(const char *);
 
 void
 error_at(const Span *span, char *fmt, ...) {
-    const char *line = span->ptr;
-    while (user_input < line && line[-1] != '\n') {
-        line--;
-    }
-
+    const char *begin = span->ptr - span->offset;
     const char *end = span->ptr;
     while (*end != '\n') {
         end++;
     }
 
-    int line_num = 1;
-    for (const char *p = user_input; p < line; p++) {
-        if (*p == '\n') {
-            line_num++;
-        }
-    }
+    int indent = fprintf(stderr, "%s:%d: ", span->file, span->line);
+    fprintf(stderr, "%.*s\n", (int)(end - begin), begin);
 
-    int indent = fprintf(stderr, "%s:%d: ", filename, line_num);
-    fprintf(stderr, "%.*s\n", (int)(end - line), line);
-
-    int pos = span->ptr - line + indent;
+    int pos = span->offset + indent;
     fprintf(stderr, "%*s", pos, "");
     for (int i = 0; i < span->len; i++)
         fprintf(stderr, "^");
@@ -68,29 +59,56 @@ error_at(const Span *span, char *fmt, ...) {
 
 static char *
 read_file(const char *path) {
-    FILE *fp = fopen(path, "r");
-    if (!fp) {
-        error("cannot open %s: %s", path, strerror(errno));
+    char *buf;
+    if (strcmp(path, "-") == 0) {
+        int offset = 0;
+        int size = 128;
+        buf = calloc(1, size);
+        char *line = calloc(1, 128);
+
+        while (fgets(line, sizeof(line), stdin) != NULL) {
+            int len = strlen(line);
+            if (size < offset + len) {
+                while ((size *= 2) < (offset + len)) {
+                }
+                char *tmp;
+                if ((tmp = realloc(buf, size)) == NULL) {
+                    error("failed to realloc\n");
+                    break;
+                } else {
+                    buf = tmp;
+                }
+            }
+            memcpy(buf + offset, line, len);
+            offset += len;
+        }
+    } else {
+        FILE *fp = fopen(path, "r");
+
+        if (!fp) {
+            error("cannot open %s: %s", path, strerror(errno));
+        }
+
+        if (fseek(fp, 0, SEEK_END) == -1) {
+            error("%s: fseek: %s", path, strerror(errno));
+        }
+
+        size_t size = ftell(fp);
+        if (fseek(fp, 0, SEEK_SET) == -1) {
+            error("%s: fseek: %s", path, strerror(errno));
+        }
+
+        buf = calloc(1, size + 2);
+        fread(buf, size, 1, fp);
+
+        if (size == 0 || buf[size - 1] != '\n') {
+            buf[size++] = '\n';
+        }
+
+        buf[size] = '\0';
+        fclose(fp);
     }
 
-    if (fseek(fp, 0, SEEK_END) == -1) {
-        error("%s: fseek: %s", path, strerror(errno));
-    }
-
-    size_t size = ftell(fp);
-    if (fseek(fp, 0, SEEK_SET) == -1) {
-        error("%s: fseek: %s", path, strerror(errno));
-    }
-
-    char *buf = calloc(1, size + 2);
-    fread(buf, size, 1, fp);
-
-    if (size == 0 || buf[size - 1] != '\n') {
-        buf[size++] = '\n';
-    }
-
-    buf[size] = '\0';
-    fclose(fp);
     return buf;
 }
 
@@ -100,20 +118,78 @@ is_alnum(char c) {
            ('0' <= c && c <= '9') || (c == '_');
 }
 
+static Span
+make_span(const char *ptr, int len) {
+    Span span = {};
+    span.ptr = ptr;
+    span.len = len;
+    span.file = filename;
+    span.line = line_number;
+    span.offset = ptr - line_head;
+    return span;
+}
+
 static Token *
 new_token(TokenKind kind, Token *cur, const char *str, int len) {
     Token *tok = calloc(1, sizeof(Token));
     tok->kind = kind;
-    tok->span.ptr = str;
-    tok->span.len = len;
+    tok->span = make_span(str, len);
     cur->next = tok;
     return tok;
+}
+
+static void
+skip_space(const char **p) {
+    while (**p != '\n' && isspace(**p)) {
+        (*p)++;
+    }
+}
+
+static void
+skip_to_break(const char **p) {
+    while (**p != '\n') {
+        (*p)++;
+    }
+    (*p)++;
+    line_head = *p;
+}
+
+static void
+process_macro(const char **p) {
+    int line = 0;
+    skip_space(p);
+    if (isdigit(**p)) {
+        char *end;
+        line = strtol(*p, &end, 10);
+        *p = end;
+    } else {
+        skip_to_break(p);
+        return;
+    }
+    skip_space(p);
+    if (**p == '"') {
+        (*p)++;
+        const char *end = *p;
+        while (*end != '\n' && *end != '"') {
+            end++;
+        }
+        if (*end == '\n') {
+            return;
+        }
+        int len = end - *p;
+        char *f = calloc(len + 1, sizeof(char));
+        memcpy(f, *p, len);
+        filename = f;
+        line_number = line;
+    }
+    skip_to_break(p);
 }
 
 const Token *
 tokenize(const char *path) {
     filename = path;
     user_input = read_file(filename);
+    line_head = user_input;
     const char *p = user_input;
 
     Token head;
@@ -121,6 +197,13 @@ tokenize(const char *path) {
     Token *cur = &head;
 
     while (*p) {
+        if (*p == '\n') {
+            p++;
+            line_number++;
+            line_head = p;
+            continue;
+        }
+
         if (isspace(*p)) {
             p++;
             continue;
@@ -129,9 +212,7 @@ tokenize(const char *path) {
         // Macro
         if (strncmp(p, "#", 1) == 0) {
             p++;
-            while (*p != '\n') {
-                p++;
-            }
+            process_macro(&p);
             continue;
         }
 
@@ -148,7 +229,7 @@ tokenize(const char *path) {
         if (strncmp(p, "/*", 2) == 0) {
             char *q = strstr(p + 2, "*/");
             if (!q) {
-                const Span span = {p, 1};
+                const Span span = make_span(p, 1);
                 error_at(&span, "Unclosed comment");
             }
             p = q + 2;
@@ -217,7 +298,7 @@ tokenize(const char *path) {
             continue;
         }
 
-        Span span = {p, 1};
+        const Span span = make_span(p, 1);
         error_at(&span, "Failed to tokenize");
     }
 

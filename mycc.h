@@ -4,6 +4,9 @@
 
 typedef struct Span Span;
 struct Span {
+    const char *file;
+    int line;
+    int offset;
     const char *ptr;
     int len;
 };
