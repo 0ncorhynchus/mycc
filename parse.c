@@ -620,6 +620,36 @@ argexprlist(const Token **rest, const Token *tok, Env *env) {
     return list;
 }
 
+static Node *
+member(const Node *var, const Token *ident_token) {
+    const char *ident = char_from_span(&ident_token->span);
+    const Members *members = var->ty->struct_ty->members;
+
+    const Var *m = NULL;
+    while (members) {
+        if (strcmp(members->member->ident, ident) == 0) {
+            m = members->member;
+            break;
+        }
+        members = members->next;
+    }
+    if (m == NULL) {
+        error_at(&ident_token->span, "Invalid member");
+    }
+
+    Var *mvar = calloc(1, sizeof(Var));
+    mvar->ident = m->ident;
+    mvar->ty = m->ty;
+    mvar->offset = var->var->offset - m->offset;
+
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_LVAR;
+    node->var = mvar;
+    node->ty = mvar->ty;
+
+    return node;
+}
+
 //
 //  postfix_expression = postfix_head postfix_tail*
 //  postfix_head =
@@ -658,30 +688,7 @@ postfix(const Token **rest, const Token *tok, Env *env) {
         }
         if (consume(&tok, tok, ".")) {
             const Token *ident_token = consume_ident(&tok, tok);
-            const char *ident = char_from_span(&ident_token->span);
-            const Members *members = node->ty->struct_ty->members;
-
-            const Var *m = NULL;
-            while (members) {
-                if (strcmp(members->member->ident, ident) == 0) {
-                    m = members->member;
-                    break;
-                }
-                members = members->next;
-            }
-            if (m == NULL) {
-                error_at(&ident_token->span, "Invalid member");
-            }
-
-            Var *mvar = calloc(1, sizeof(Var));
-            mvar->ident = m->ident;
-            mvar->ty = m->ty;
-            mvar->offset = node->var->offset - m->offset;
-
-            node = calloc(1, sizeof(Node));
-            node->kind = ND_LVAR;
-            node->var = mvar;
-            node->ty = mvar->ty;
+            node = member(node, ident_token);
             continue;
         }
         if (consume(&tok, tok, "->")) {
