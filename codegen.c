@@ -104,14 +104,14 @@ gen_lval(Node *node) {
 }
 
 void
-gen_while(Node *node) {
-    const int jump_index = node->jump_index;
+gen_while(const Statement *statement) {
+    const int jump_index = statement->jump_index;
     printf(".Lbegin%d:\n", jump_index);
-    gen(node->lhs);
+    gen(statement->cond);
     pop("rax");
     printf("  cmp rax, 0\n");
     printf("  je .Lend%d\n", jump_index);
-    gen(node->rhs);
+    gen(statement->body);
     printf(".Lcontin%d:\n", jump_index);
     printf("  jmp .Lbegin%d\n", jump_index);
     printf(".Lend%d:\n", jump_index);
@@ -579,6 +579,9 @@ gen_statement(const Statement *statement) {
             pop("rax");
         }
         break;
+    case ST_WHILE:
+        gen_while(statement);
+        break;
     case ST_CONTINUE:
         printf("  jmp .Lcontin%d\n", statement->jump_index);
         break;
@@ -620,9 +623,6 @@ gen(Node *node) {
         break;
     case ND_IF:
         gen_if(node);
-        break;
-    case ND_WHILE:
-        gen_while(node);
         break;
     case ND_FOR:
         gen_for(node);

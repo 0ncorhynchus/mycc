@@ -1261,13 +1261,20 @@ iteration(const Token **rest, const Token *tok, Env *env) {
     if (consume(&tok, tok, "while")) {
         Env new = make_jump_scope(env);
 
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_WHILE;
-        node->jump_index = new.jump_index;
         expect(&tok, tok, "(");
-        node->lhs = expr(&tok, tok, &new);
+        Node *cond = expr(&tok, tok, &new);
         expect(&tok, tok, ")");
-        node->rhs = stmt(&tok, tok, &new);
+        Node *body = stmt(&tok, tok, &new);
+
+        Statement *statement = calloc(1, sizeof(Statement));
+        statement->kind = ST_WHILE;
+        statement->jump_index = new.jump_index;
+        statement->cond = cond;
+        statement->body = body;
+
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_STATEMENT;
+        node->statement = statement;
     } else if (consume(&tok, tok, "do")) {
         not_implemented(&tok->span, "do");
     } else if (consume(&tok, tok, "for")) {
