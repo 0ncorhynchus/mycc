@@ -1206,9 +1206,9 @@ labeled(const Token **rest, const Token *tok, Env *env) {
 //      "if" "(" expression ")" statement ( "else" statement )?
 //      "switch" "(" expression ")" statement
 //
-static Node *
+static Statement *
 selection(const Token **rest, const Token *tok, Env *env) {
-    Node *node = NULL;
+    Statement *statement = NULL;
 
     if (consume(&tok, tok, "if")) {
         const Env new = make_jump_scope(env);
@@ -1222,12 +1222,12 @@ selection(const Token **rest, const Token *tok, Env *env) {
             else_body = stmt(&tok, tok, env);
         }
 
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_IF;
-        node->jump_index = new.jump_index;
-        node->cond = cond;
-        node->then_body = then_body;
-        node->else_body = else_body;
+        statement = calloc(1, sizeof(Statement));
+        statement->kind = ST_IF;
+        statement->jump_index = new.jump_index;
+        statement->cond = cond;
+        statement->then_body = then_body;
+        statement->else_body = else_body;
     } else if (consume(&tok, tok, "switch")) {
         Env new = make_switch_scope(env);
         expect(&tok, tok, "(");
@@ -1235,17 +1235,17 @@ selection(const Token **rest, const Token *tok, Env *env) {
         expect(&tok, tok, ")");
         Node *body = stmt(&tok, tok, &new);
 
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_SWITCH;
-        node->value = value;
-        node->body = body;
-        node->labels = new.labels;
-    } else {
-        return NULL;
+        statement = calloc(1, sizeof(Statement));
+        statement->kind = ST_SWITCH;
+        statement->value = value;
+        statement->body = body;
+        statement->labels = new.labels;
     }
 
-    *rest = tok;
-    return node;
+    if (statement) {
+        *rest = tok;
+    }
+    return statement;
 }
 
 //
@@ -1403,7 +1403,10 @@ stmt(const Token **rest, const Token *tok, Env *env) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_STATEMENT;
         node->statement = statement;
-    } else if ((node = selection(&tok, tok, env))) {
+    } else if ((statement = selection(&tok, tok, env))) {
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_STATEMENT;
+        node->statement = statement;
     } else if ((statement = iteration(&tok, tok, env))) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_STATEMENT;

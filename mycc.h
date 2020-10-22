@@ -137,13 +137,11 @@ typedef enum {
     ND_NE,     // "!="
     ND_ASSIGN, // "="
     ND_LVAR,   // [a-zA-Z_][a-zA-Z0-9_]*
-    ND_IF,
-    ND_CALL,  // <function call>
-    ND_ADDR,  // "&"
-    ND_DEREF, // "*"
+    ND_CALL,   // <function call>
+    ND_ADDR,   // "&"
+    ND_DEREF,  // "*"
     ND_DECLARE,
     ND_STRING,
-    ND_SWITCH,
     ND_STATEMENT,
 } NodeKind;
 
@@ -174,27 +172,6 @@ struct Node {
     // For ND_DECLARE
     const Declaration *decl;
 
-    // For ND_IF
-    Node *cond;
-    Node *then_body;
-    Node *else_body;
-
-    // For ND_SWITCH
-    Node *body;
-
-    Node *for_init;
-    Node *for_cond;
-    Node *for_end;
-
-    // For ND_SWITCH
-    Node *value;
-
-    // For ND_IF and ND_SWITCH
-    int jump_index;
-
-    // For ND_SWITCH
-    LabelList *labels;
-
     // For ND_STATEMENT
     Statement *statement;
 };
@@ -208,6 +185,10 @@ typedef enum {
     ST_LABEL,
     ST_COMPOUND,
     ST_EXPRESSION,
+
+    // Selection
+    ST_IF,
+    ST_SWITCH,
 
     // Iteration
     ST_WHILE,
@@ -225,10 +206,10 @@ struct Statement {
     // ST_LABEL
     Label label;
 
-    // ST_LABEL, ST_WHILE, ST_CONTINUE, ST_BREAK
+    // ST_LABEL, ST_IF, ST_SWITCH, ST_WHILE, ST_CONTINUE, ST_BREAK
     int jump_index;
 
-    // ST_LABEL, ST_WHILE, ST_FOR
+    // ST_LABEL, ST_SWITCH, ST_WHILE, ST_FOR
     Node *body;
 
     // ST_COMPOUND
@@ -237,8 +218,16 @@ struct Statement {
     // ST_EXPRESSION
     Node *expression;
 
-    // ST_WHILE, ST_FOR
+    // ST_IF, ST_WHILE, ST_FOR
     Node *cond;
+
+    // ST_IF
+    Node *then_body;
+    Node *else_body;
+
+    // ST_SWITCH
+    Node *value;
+    LabelList *labels;
 
     // ST_FOR
     Node *init;
