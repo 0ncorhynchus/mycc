@@ -943,14 +943,6 @@ stmt(const Token **rest, const Token *tok, Env *env);
 static const Declaration *
 declaration(const Token **rest, const Token *tok, Env *env);
 
-static Statement *
-declare_statement(const Declaration *decl) {
-    Statement *statement = calloc(1, sizeof(Statement));
-    statement->kind = ST_DECLARATION;
-    statement->declaration = decl;
-    return statement;
-}
-
 //
 //  compound_statement =
 //      "{" ( declaration | statement )* "}"
@@ -965,20 +957,14 @@ compound(const Token **rest, const Token *tok, Env *env) {
     Statement *comp = calloc(1, sizeof(Statement));
     comp->kind = ST_COMPOUND;
 
-    NodeList *body = NULL;
+    BlockItems *body = NULL;
     while (!consume(&tok, tok, "}")) {
-        NodeList *next = calloc(1, sizeof(NodeList));
+        BlockItems *next = calloc(1, sizeof(BlockItems));
         const Declaration *decl = declaration(&tok, tok, &new);
         if (decl) {
-            Node *node = calloc(1, sizeof(Node));
-            node->kind = ND_STATEMENT;
-            node->statement = declare_statement(decl);
-            next->node = node;
+            next->declaration = decl;
         } else {
-            Node *node = calloc(1, sizeof(Node));
-            node->kind = ND_STATEMENT;
-            node->statement = stmt(&tok, tok, &new);
-            next->node = node;
+            next->statement = stmt(&tok, tok, &new);
         }
         if (body) {
             body->next = next;

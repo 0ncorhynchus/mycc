@@ -153,9 +153,15 @@ gen_for(const Statement *statement) {
 }
 
 static void
-gen_block(const NodeList *list) {
+gen_block(const BlockItems *list) {
     while (list) {
-        gen(list->node);
+        if (list->declaration) {
+            gen_local_declare(list->declaration);
+        } else if (list->statement) {
+            gen_statement(list->statement);
+        } else {
+            error("Internal compiler error");
+        }
         list = list->next;
     }
 }
@@ -605,9 +611,6 @@ gen_statement(const Statement *statement) {
     case ST_RETURN:
         epilogue(statement->retval);
         break;
-    case ST_DECLARATION:
-        gen_local_declare(statement->declaration);
-        break;
     }
 }
 
@@ -730,9 +733,6 @@ gen(Node *node) {
         printf("  setne al\n");
         printf("  movzb rax, al\n");
         push("rax");
-        break;
-    case ND_STATEMENT:
-        gen_statement(node->statement);
         break;
     }
 }

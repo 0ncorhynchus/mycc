@@ -141,11 +141,9 @@ typedef enum {
     ND_ADDR,   // "&"
     ND_DEREF,  // "*"
     ND_STRING,
-    ND_STATEMENT,
 } NodeKind;
 
 typedef struct NodeList NodeList;
-typedef struct Statement Statement;
 
 struct Node {
     NodeKind kind;
@@ -167,14 +165,20 @@ struct Node {
 
     // For ND_STRING
     const char *str;
-
-    // For ND_STATEMENT
-    Statement *statement;
 };
 
 struct NodeList {
     NodeList *next;
     Node *node;
+};
+
+typedef struct Statement Statement;
+
+typedef struct BlockItems BlockItems;
+struct BlockItems {
+    BlockItems *next;
+    const Declaration *declaration;
+    Statement *statement;
 };
 
 typedef enum {
@@ -194,8 +198,6 @@ typedef enum {
     ST_CONTINUE,
     ST_BREAK,
     ST_RETURN,
-
-    ST_DECLARATION,
 } StatementKind;
 
 struct Statement {
@@ -211,7 +213,7 @@ struct Statement {
     Statement *body;
 
     // ST_COMPOUND
-    NodeList *block;
+    BlockItems *block;
 
     // ST_EXPRESSION
     Node *expression;
@@ -227,10 +229,8 @@ struct Statement {
     Node *value;
     LabelList *labels;
 
-    // ST_FOR, ST_DECLARATION
-    const Declaration *declaration;
-
     // ST_FOR
+    const Declaration *declaration;
     Node *init;
     Node *end;
 
