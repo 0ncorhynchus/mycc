@@ -940,8 +940,16 @@ expr(const Token **rest, const Token *tok, Env *env) {
 static Node *
 stmt(const Token **rest, const Token *tok, Env *env);
 
+static const Declaration *
+declaration(const Token **rest, const Token *tok, Env *env);
+
+//
+//  compound_statement =
+//      "{" ( declaration | statement )* "}"
+//
 static Node *
-block(const Token **rest, const Token *tok, Env *env) {
+compound(const Token **rest, const Token *tok, Env *env) {
+    Env new = make_block_scope(env);
     if (!consume(&tok, tok, "{")) {
         return NULL;
     }
@@ -952,7 +960,15 @@ block(const Token **rest, const Token *tok, Env *env) {
     NodeList *body = NULL;
     while (!consume(&tok, tok, "}")) {
         NodeList *next = calloc(1, sizeof(NodeList));
-        next->node = stmt(&tok, tok, env);
+        const Declaration *decl = declaration(&tok, tok, &new);
+        if (decl) {
+            Node *node = calloc(1, sizeof(Node));
+            node->kind = ND_DECLARE;
+            node->decl = decl;
+            next->node = node;
+        } else {
+            next->node = stmt(&tok, tok, &new);
+        }
         if (body) {
             body->next = next;
             body = body->next;
@@ -963,13 +979,12 @@ block(const Token **rest, const Token *tok, Env *env) {
     }
 
     *rest = tok;
-
     return node;
 }
 
 //
-//  function_definition = declaration_specifiers declarator declartion_list?
-//      compound_statement
+//  function_definition =
+//      declaration_specifiers declarator declartion_list? compound_statement
 //
 static Function *
 function(const Token **rest, const Token *tok, Env *parent) {
@@ -998,7 +1013,7 @@ function(const Token **rest, const Token *tok, Env *parent) {
     }
     const int argument_offset = env.maximum_offset;
 
-    Node *body = block(&tok, tok, &env);
+    Node *body = compound(&tok, tok, &env);
     if (body == NULL) {
         free(fn);
         return NULL;
@@ -1338,11 +1353,28 @@ jump(const Token **rest, const Token *tok, Env *env) {
 }
 
 //
+//  expression_statement =
+//      expression? ";"
+//
+static Node *
+expr_stmt(const Token **rest, const Token *tok, Env *env) {
+    Node *inner = expr(&tok, tok, env);
+    if (!consume(&tok, tok, ";")) {
+        return NULL;
+    }
+    *rest = tok;
+
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_SEMICOLON;
+    node->lhs = inner;
+    return node;
+}
+
+//
 //  statement =
 //      labeled_statement
-//      expr ";"
-//      declaration
-//      "{" stmt* "}"
+//      compound_statement
+//      expression_statement
 //      selection_statement
 //      iteration_statement
 //      jump_statement
@@ -1352,27 +1384,17 @@ stmt(const Token **rest, const Token *tok, Env *env) {
     Node *node = NULL;
 
     if ((node = labeled(&tok, tok, env))) {
+    } else if ((node = compound(&tok, tok, env))) {
+    } else if ((node = expr_stmt(&tok, tok, env))) {
     } else if ((node = selection(&tok, tok, env))) {
     } else if ((node = iteration(&tok, tok, env))) {
-    } else if ((node = jump(&tok, tok, env))) {
     } else {
-        Env new = make_block_scope(env);
-        node = block(&tok, tok, &new);
-        if (!node) {
-            node = calloc(1, sizeof(Node));
-            const Declaration *decl = declaration(&tok, tok, env);
-            if (decl) {
-                node->kind = ND_DECLARE;
-                node->decl = decl;
-            } else {
-                node->kind = ND_SEMICOLON;
-                node->lhs = expr(&tok, tok, env);
-                expect(&tok, tok, ";");
-            }
-        }
+        node = jump(&tok, tok, env);
     }
 
-    *rest = tok;
+    if (node) {
+        *rest = tok;
+    }
 
     return node;
 }
