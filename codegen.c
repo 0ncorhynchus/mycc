@@ -564,6 +564,19 @@ gen_switch(const Node *node) {
 }
 
 void
+gen_statement(const Statement *statement) {
+    switch (statement->kind) {
+    case ST_LABEL:
+        printf(".L%d:\n", statement->label.jump_index);
+        gen(statement->body);
+        break;
+    case ST_CONTINUE:
+        printf("  jmp .Lcontin%d\n", statement->jump_index);
+        break;
+    }
+}
+
+void
 gen(Node *node) {
     size_t size;
 
@@ -710,15 +723,11 @@ gen(Node *node) {
     case ND_BREAK:
         printf("  jmp .Lend%d\n", node->jump_index);
         break;
-    case ND_CONTINUE:
-        printf("  jmp .Lcontin%d\n", node->jump_index);
-        break;
     case ND_SWITCH:
         gen_switch(node);
         break;
     case ND_STATEMENT:
-        printf(".L%d:\n", node->statement->label.jump_index);
-        gen(node->statement->body);
+        gen_statement(node->statement);
         break;
     }
 }

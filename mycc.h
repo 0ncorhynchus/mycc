@@ -149,7 +149,6 @@ typedef enum {
     ND_STRING,
     ND_SEMICOLON,
     ND_BREAK,
-    ND_CONTINUE,
     ND_SWITCH,
     ND_STATEMENT,
 } NodeKind;
@@ -216,14 +215,19 @@ struct NodeList {
 
 typedef enum {
     ST_LABEL,
+
+    // Jump
+    ST_CONTINUE,
 } StatementKind;
 
 struct Statement {
     StatementKind kind;
 
+    // ST_LABEL, ST_CONTINUE
+    int jump_index;
+
     // ST_LABEL,
     Label label;
-    int jump_index;
     Node *body;
 };
 

@@ -1334,9 +1334,13 @@ jump(const Token **rest, const Token *tok, Env *env) {
     }
     if (consume(&tok, tok, "continue")) {
         expect(rest, tok, ";");
+        Statement *statement = calloc(1, sizeof(Statement));
+        statement->kind = ST_CONTINUE;
+        statement->jump_index = env->jump_index;
+
         Node *node = calloc(1, sizeof(Node));
-        node->kind = ND_CONTINUE;
-        node->jump_index = env->jump_index;
+        node->kind = ND_STATEMENT;
+        node->statement = statement;
         return node;
     }
     if (consume(&tok, tok, "break")) {
