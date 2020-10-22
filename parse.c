@@ -1255,9 +1255,9 @@ selection(const Token **rest, const Token *tok, Env *env) {
 //      "for" "(" expression? ";" expression? ";" expression? ")" statement
 //      "for" "(" declaration expression? ":" expression? ")" statement
 //
-static Node *
+static Statement *
 iteration(const Token **rest, const Token *tok, Env *env) {
-    Node *node = NULL;
+    Statement *statement = NULL;
     if (consume(&tok, tok, "while")) {
         Env new = make_jump_scope(env);
 
@@ -1266,57 +1266,55 @@ iteration(const Token **rest, const Token *tok, Env *env) {
         expect(&tok, tok, ")");
         Node *body = stmt(&tok, tok, &new);
 
-        Statement *statement = calloc(1, sizeof(Statement));
+        statement = calloc(1, sizeof(Statement));
         statement->kind = ST_WHILE;
         statement->jump_index = new.jump_index;
         statement->cond = cond;
         statement->body = body;
-
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_STATEMENT;
-        node->statement = statement;
     } else if (consume(&tok, tok, "do")) {
         not_implemented(&tok->span, "do");
     } else if (consume(&tok, tok, "for")) {
         Env new = make_jump_scope(env);
 
-        Node *for_init = NULL;
-        Node *for_cond = NULL;
-        Node *for_end = NULL;
+        Node *init = NULL;
+        Node *cond = NULL;
+        Node *end = NULL;
 
         expect(&tok, tok, "(");
         if (!consume(&tok, tok, ";")) {
             const Declaration *decl = declaration(&tok, tok, &new);
             if (decl) {
-                for_init = calloc(1, sizeof(Node));
-                for_init->kind = ND_DECLARE;
-                for_init->decl = decl;
-            } else if ((for_init = expr(&tok, tok, &new))) {
+                init = calloc(1, sizeof(Node));
+                init->kind = ND_DECLARE;
+                init->decl = decl;
+            } else if ((init = expr(&tok, tok, &new))) {
                 expect(&tok, tok, ";");
             } else {
                 unexpected("expression or declaration", tok);
             }
         }
         if (!consume(&tok, tok, ";")) {
-            for_cond = expr(&tok, tok, &new);
+            cond = expr(&tok, tok, &new);
             expect(&tok, tok, ";");
         }
         if (!consume(&tok, tok, ")")) {
-            for_end = expr(&tok, tok, &new);
+            end = expr(&tok, tok, &new);
             expect(&tok, tok, ")");
         }
         Node *body = stmt(&tok, tok, &new);
 
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_FOR;
-        node->jump_index = new.jump_index;
-        node->for_init = for_init;
-        node->for_cond = for_cond;
-        node->for_end = for_end;
-        node->body = body;
+        statement = calloc(1, sizeof(Statement));
+        statement->kind = ST_FOR;
+        statement->jump_index = new.jump_index;
+        statement->init = init;
+        statement->cond = cond;
+        statement->end = end;
+        statement->body = body;
     }
-    *rest = tok;
-    return node;
+    if (statement) {
+        *rest = tok;
+    }
+    return statement;
 }
 
 //
@@ -1406,7 +1404,10 @@ stmt(const Token **rest, const Token *tok, Env *env) {
         node->kind = ND_STATEMENT;
         node->statement = statement;
     } else if ((node = selection(&tok, tok, env))) {
-    } else if ((node = iteration(&tok, tok, env))) {
+    } else if ((statement = iteration(&tok, tok, env))) {
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_STATEMENT;
+        node->statement = statement;
     } else {
         statement = jump(&tok, tok, env);
         if (statement) {

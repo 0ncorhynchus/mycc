@@ -138,7 +138,6 @@ typedef enum {
     ND_ASSIGN, // "="
     ND_LVAR,   // [a-zA-Z_][a-zA-Z0-9_]*
     ND_IF,
-    ND_FOR,
     ND_CALL,  // <function call>
     ND_ADDR,  // "&"
     ND_DEREF, // "*"
@@ -180,7 +179,7 @@ struct Node {
     Node *then_body;
     Node *else_body;
 
-    // For ND_FOR and ND_SWITCH
+    // For ND_SWITCH
     Node *body;
 
     Node *for_init;
@@ -190,7 +189,7 @@ struct Node {
     // For ND_SWITCH
     Node *value;
 
-    // For ND_IF, ND_FOR_INIT and ND_SWITCH
+    // For ND_IF and ND_SWITCH
     int jump_index;
 
     // For ND_SWITCH
@@ -212,6 +211,7 @@ typedef enum {
 
     // Iteration
     ST_WHILE,
+    ST_FOR,
 
     // Jump
     ST_CONTINUE,
@@ -222,8 +222,14 @@ typedef enum {
 struct Statement {
     StatementKind kind;
 
+    // ST_LABEL
+    Label label;
+
     // ST_LABEL, ST_WHILE, ST_CONTINUE, ST_BREAK
     int jump_index;
+
+    // ST_LABEL, ST_WHILE, ST_FOR
+    Node *body;
 
     // ST_COMPOUND
     NodeList *block;
@@ -231,14 +237,12 @@ struct Statement {
     // ST_EXPRESSION
     Node *expression;
 
-    // ST_WHILE
+    // ST_WHILE, ST_FOR
     Node *cond;
 
-    // ST_WHILE, ST_LABEL
-    Node *body;
-
-    // ST_LABEL
-    Label label;
+    // ST_FOR
+    Node *init;
+    Node *end;
 
     // ST_RETURN
     Node *retval;
