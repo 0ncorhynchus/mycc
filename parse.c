@@ -1168,12 +1168,16 @@ labeled(const Token **rest, const Token *tok, Env *env) {
         Label label = {CASE, jump_index};
         label.val = val;
 
-        Node *node = calloc(1, sizeof(Node));
-        node->kind = ND_LABEL;
-        node->label = label;
-        node->body = body;
+        Statement *statement = calloc(1, sizeof(Statement));
+        statement->kind = ST_LABEL;
+        statement->label = label;
+        statement->body = body;
 
-        push_label(env, &node->label);
+        Node *node = calloc(1, sizeof(Node));
+        node->kind = ND_STATEMENT;
+        node->statement = statement;
+
+        push_label(env, &statement->label);
 
         *rest = tok;
         return node;
@@ -1187,16 +1191,19 @@ labeled(const Token **rest, const Token *tok, Env *env) {
 
         Label label = {DEFAULT, jump_index};
 
-        Node *node = calloc(1, sizeof(Node));
-        node->kind = ND_LABEL;
-        node->label = label;
-        node->body = body;
+        Statement *statement = calloc(1, sizeof(Statement));
+        statement->kind = ST_LABEL;
+        statement->label = label;
+        statement->body = body;
 
-        push_label(env, &node->label);
+        Node *node = calloc(1, sizeof(Node));
+        node->kind = ND_STATEMENT;
+        node->statement = statement;
+
+        push_label(env, &statement->label);
 
         *rest = tok;
         return node;
-    } else {
     }
 
     return NULL;

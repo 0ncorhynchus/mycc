@@ -151,10 +151,11 @@ typedef enum {
     ND_BREAK,
     ND_CONTINUE,
     ND_SWITCH,
-    ND_LABEL,
+    ND_STATEMENT,
 } NodeKind;
 
 typedef struct NodeList NodeList;
+typedef struct Statement Statement;
 
 struct Node {
     NodeKind kind;
@@ -198,19 +199,32 @@ struct Node {
     // For ND_SWITCH
     Node *value;
 
-    // For ND_IF, ND_WHILE, ND_FOR_INIT, ND_SWITCH and ND_LABEL
+    // For ND_IF, ND_WHILE, ND_FOR_INIT and ND_SWITCH
     int jump_index;
 
     // For ND_SWITCH
     LabelList *labels;
 
-    // For ND_LABEL,
-    Label label;
+    // For ND_STATEMENT
+    Statement *statement;
 };
 
 struct NodeList {
     NodeList *next;
     Node *node;
+};
+
+typedef enum {
+    ST_LABEL,
+} StatementKind;
+
+struct Statement {
+    StatementKind kind;
+
+    // ST_LABEL,
+    Label label;
+    int jump_index;
+    Node *body;
 };
 
 // Linked list for variables

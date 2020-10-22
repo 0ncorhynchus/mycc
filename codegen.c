@@ -716,9 +716,9 @@ gen(Node *node) {
     case ND_SWITCH:
         gen_switch(node);
         break;
-    case ND_LABEL:
-        printf(".L%d:\n", node->label.jump_index);
-        gen(node->body);
+    case ND_STATEMENT:
+        printf(".L%d:\n", node->statement->label.jump_index);
+        gen(node->statement->body);
         break;
     }
 }
