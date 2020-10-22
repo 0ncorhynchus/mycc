@@ -937,7 +937,7 @@ expr(const Token **rest, const Token *tok, Env *env) {
     return assign(rest, tok, env);
 }
 
-static Node *
+static Statement *
 stmt(const Token **rest, const Token *tok, Env *env);
 
 static const Declaration *
@@ -975,7 +975,10 @@ compound(const Token **rest, const Token *tok, Env *env) {
             node->statement = declare_statement(decl);
             next->node = node;
         } else {
-            next->node = stmt(&tok, tok, &new);
+            Node *node = calloc(1, sizeof(Node));
+            node->kind = ND_STATEMENT;
+            node->statement = stmt(&tok, tok, &new);
+            next->node = node;
         }
         if (body) {
             body->next = next;
@@ -1168,7 +1171,7 @@ labeled(const Token **rest, const Token *tok, Env *env) {
             error("a number is expected after case");
         }
         expect(&tok, tok, ":");
-        Node *body = stmt(&tok, tok, env);
+        Statement *body = stmt(&tok, tok, env);
         if (body == NULL) {
             error("a statement is expected after a case label");
         }
@@ -1188,7 +1191,7 @@ labeled(const Token **rest, const Token *tok, Env *env) {
     } else if (consume(&tok, tok, "default")) {
         const int jump_index = make_jump_scope(env).jump_index;
         expect(&tok, tok, ":");
-        Node *body = stmt(&tok, tok, env);
+        Statement *body = stmt(&tok, tok, env);
         if (body == NULL) {
             error("a statement is expected after a default label");
         }
@@ -1224,8 +1227,8 @@ selection(const Token **rest, const Token *tok, Env *env) {
         expect(&tok, tok, "(");
         Node *cond = expr(&tok, tok, env);
         expect(&tok, tok, ")");
-        Node *then_body = stmt(&tok, tok, env);
-        Node *else_body = NULL;
+        Statement *then_body = stmt(&tok, tok, env);
+        Statement *else_body = NULL;
         if (consume(&tok, tok, "else")) {
             else_body = stmt(&tok, tok, env);
         }
@@ -1241,7 +1244,7 @@ selection(const Token **rest, const Token *tok, Env *env) {
         expect(&tok, tok, "(");
         Node *value = expr(&tok, tok, env);
         expect(&tok, tok, ")");
-        Node *body = stmt(&tok, tok, &new);
+        Statement *body = stmt(&tok, tok, &new);
 
         statement = calloc(1, sizeof(Statement));
         statement->kind = ST_SWITCH;
@@ -1272,7 +1275,7 @@ iteration(const Token **rest, const Token *tok, Env *env) {
         expect(&tok, tok, "(");
         Node *cond = expr(&tok, tok, &new);
         expect(&tok, tok, ")");
-        Node *body = stmt(&tok, tok, &new);
+        Statement *body = stmt(&tok, tok, &new);
 
         statement = calloc(1, sizeof(Statement));
         statement->kind = ST_WHILE;
@@ -1388,45 +1391,24 @@ expr_stmt(const Token **rest, const Token *tok, Env *env) {
 //      iteration_statement
 //      jump_statement
 //
-static Node *
+static Statement *
 stmt(const Token **rest, const Token *tok, Env *env) {
-    Node *node = NULL;
     Statement *statement = NULL;
 
     if ((statement = labeled(&tok, tok, env))) {
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_STATEMENT;
-        node->statement = statement;
     } else if ((statement = compound(&tok, tok, env))) {
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_STATEMENT;
-        node->statement = statement;
     } else if ((statement = expr_stmt(&tok, tok, env))) {
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_STATEMENT;
-        node->statement = statement;
     } else if ((statement = selection(&tok, tok, env))) {
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_STATEMENT;
-        node->statement = statement;
     } else if ((statement = iteration(&tok, tok, env))) {
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_STATEMENT;
-        node->statement = statement;
     } else {
         statement = jump(&tok, tok, env);
-        if (statement) {
-            node = calloc(1, sizeof(Node));
-            node->kind = ND_STATEMENT;
-            node->statement = statement;
-        }
     }
 
-    if (node) {
+    if (statement) {
         *rest = tok;
     }
 
-    return node;
+    return statement;
 }
 
 //

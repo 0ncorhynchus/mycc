@@ -208,7 +208,7 @@ struct Statement {
     int jump_index;
 
     // ST_LABEL, ST_SWITCH, ST_WHILE, ST_FOR
-    Node *body;
+    Statement *body;
 
     // ST_COMPOUND
     NodeList *block;
@@ -220,8 +220,8 @@ struct Statement {
     Node *cond;
 
     // ST_IF
-    Node *then_body;
-    Node *else_body;
+    Statement *then_body;
+    Statement *else_body;
 
     // ST_SWITCH
     Node *value;

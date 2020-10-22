@@ -102,6 +102,8 @@ gen_lval(Node *node) {
         error("lvalue is not a varialbe or dereference");
     }
 }
+void
+gen_statement(const Statement *statement);
 
 void
 gen_while(const Statement *statement) {
@@ -111,7 +113,7 @@ gen_while(const Statement *statement) {
     pop("rax");
     printf("  cmp rax, 0\n");
     printf("  je .Lend%d\n", jump_index);
-    gen(statement->body);
+    gen_statement(statement->body);
     printf(".Lcontin%d:\n", jump_index);
     printf("  jmp .Lbegin%d\n", jump_index);
     printf(".Lend%d:\n", jump_index);
@@ -139,7 +141,7 @@ gen_for(const Statement *statement) {
         printf("  je .Lend%d\n", jump_index);
     }
 
-    gen(statement->body);
+    gen_statement(statement->body);
 
     printf(".Lcontin%d:\n", jump_index);
     if (statement->end) {
@@ -527,13 +529,13 @@ gen_if(const Statement *statement) {
     printf("  cmp rax, 0\n");
     if (statement->else_body) {
         printf("  je .Lelse%d\n", statement->jump_index);
-        gen(statement->then_body);
+        gen_statement(statement->then_body);
         printf("  jmp .Lend%d\n", statement->jump_index);
         printf(".Lelse%d:\n", statement->jump_index);
-        gen(statement->else_body);
+        gen_statement(statement->else_body);
     } else {
         printf("  je .Lend%d\n", statement->jump_index);
-        gen(statement->then_body);
+        gen_statement(statement->then_body);
     }
     printf(".Lend%d:\n", statement->jump_index);
 }
@@ -562,7 +564,7 @@ gen_switch(const Statement *statement) {
         printf("  jmp .L%d\n", *default_jump_index);
     }
 
-    gen(statement->body);
+    gen_statement(statement->body);
     printf(".Lend%d:\n", statement->jump_index);
 }
 
@@ -571,7 +573,7 @@ gen_statement(const Statement *statement) {
     switch (statement->kind) {
     case ST_LABEL:
         printf(".L%d:\n", statement->label.jump_index);
-        gen(statement->body);
+        gen_statement(statement->body);
         break;
     case ST_COMPOUND:
         gen_block(statement->block);
