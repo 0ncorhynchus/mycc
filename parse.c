@@ -1327,32 +1327,28 @@ iteration(const Token **rest, const Token *tok, Env *env) {
 //      "break" ";"
 //      "return" expression? ";"
 //
-static Node *
+static Statement *
 jump(const Token **rest, const Token *tok, Env *env) {
     if (consume(&tok, tok, "goto")) {
         not_implemented(&tok->span, "goto");
     }
     if (consume(&tok, tok, "continue")) {
         expect(rest, tok, ";");
+
         Statement *statement = calloc(1, sizeof(Statement));
         statement->kind = ST_CONTINUE;
         statement->jump_index = env->jump_index;
 
-        Node *node = calloc(1, sizeof(Node));
-        node->kind = ND_STATEMENT;
-        node->statement = statement;
-        return node;
+        return statement;
     }
     if (consume(&tok, tok, "break")) {
         expect(rest, tok, ";");
+
         Statement *statement = calloc(1, sizeof(Statement));
         statement->kind = ST_BREAK;
         statement->jump_index = env->jump_index;
 
-        Node *node = calloc(1, sizeof(Node));
-        node->kind = ND_STATEMENT;
-        node->statement = statement;
-        return node;
+        return statement;
     }
     if (consume(&tok, tok, "return")) {
         Node *retval = as_ptr(expr(&tok, tok, env));
@@ -1362,10 +1358,7 @@ jump(const Token **rest, const Token *tok, Env *env) {
         statement->kind = ST_RETURN;
         statement->retval = retval;
 
-        Node *node = calloc(1, sizeof(Node));
-        node->kind = ND_STATEMENT;
-        node->statement = statement;
-        return node;
+        return statement;
     }
     return NULL;
 }
@@ -1407,7 +1400,12 @@ stmt(const Token **rest, const Token *tok, Env *env) {
     } else if ((node = selection(&tok, tok, env))) {
     } else if ((node = iteration(&tok, tok, env))) {
     } else {
-        node = jump(&tok, tok, env);
+        Statement *statement = jump(&tok, tok, env);
+        if (statement) {
+            node = calloc(1, sizeof(Node));
+            node->kind = ND_STATEMENT;
+            node->statement = statement;
+        }
     }
 
     if (node) {
