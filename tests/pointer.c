@@ -1,5 +1,9 @@
 #include "test.h"
 
+typedef struct {
+    int a;
+} A;
+
 int
 main() {
     int x = 3;
@@ -22,6 +26,13 @@ main() {
 
     q = q - 2;
     assert_int(2, *q);
+
+    A a = {0};
+    A *ptr = &a;
+    assert_int(0, ptr->a);
+
+    ptr->a = 1;
+    assert_int(1, ptr->a);
 
     return summary();
 }

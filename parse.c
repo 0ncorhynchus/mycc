@@ -197,7 +197,9 @@ struct_union_spec(const Token **rest, const Token *tok, const Env *env) {
     }
 
     Struct *st = calloc(1, sizeof(Struct));
-    st->tag = char_from_span(&tag->span);
+    if (tag) {
+        st->tag = char_from_span(&tag->span);
+    }
     st->size = size;
     st->members = members;
 
@@ -488,18 +490,22 @@ static const Type *typename(const Token **rest, const Token *tok,
     return ty;
 }
 
+Node *
+refer(Node *inner, const Type *ty) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_ADDR;
+    node->lhs = inner;
+    node->ty = mk_ptr(ty);
+    return node;
+}
+
 // Implicit converter from array T[] to pointer T*
 Node *
 as_ptr(Node *array) {
     if (array == NULL || array->ty == NULL || array->ty->ty != ARRAY)
         return array;
 
-    Node *ptr = calloc(1, sizeof(Node));
-    ptr->kind = ND_ADDR;
-    ptr->lhs = array;
-    ptr->ty = mk_ptr(array->ty->ptr_to);
-
-    return ptr;
+    return refer(array, array->ty->ptr_to);
 }
 
 Node *
@@ -577,16 +583,21 @@ primary(const Token **rest, const Token *tok, Env *env) {
     return NULL;
 }
 
+static Node *
+deref(Node *ptr) {
+    if (ptr->ty->ty != PTR) {
+        error("Cannot deref: '%s'", type_to_str(ptr->ty));
+    }
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_DEREF;
+    node->lhs = ptr;
+    node->ty = ptr->ty->ptr_to;
+    return node;
+}
+
 Node *
 deref_offset_ptr(Node *ptr, Node *index) {
-    Node *new = calloc(1, sizeof(Node));
-    new->kind = ND_DEREF;
-    new->lhs = new_node(ND_ADD, ptr, index);
-    if (new->lhs->ty == NULL || new->lhs->ty->ty != PTR) {
-        error("Cannot deref: '%s'", type_to_str(new->lhs->ty));
-    }
-    new->ty = new->lhs->ty->ptr_to;
-    return new;
+    return deref(new_node(ND_ADD, ptr, index));
 }
 
 static Node *
@@ -621,7 +632,11 @@ argexprlist(const Token **rest, const Token *tok, Env *env) {
 }
 
 static Node *
-member(const Node *var, const Token *ident_token) {
+member(Node *var, const Token *ident_token) {
+    if (var->ty->ty != STRUCT) {
+        error("Not struct");
+    }
+
     const char *ident = char_from_span(&ident_token->span);
     const Members *members = var->ty->struct_ty->members;
 
@@ -637,17 +652,20 @@ member(const Node *var, const Token *ident_token) {
         error_at(&ident_token->span, "Invalid member");
     }
 
-    Var *mvar = calloc(1, sizeof(Var));
-    mvar->ident = m->ident;
-    mvar->ty = m->ty;
-    mvar->offset = var->var->offset - m->offset;
+    if (var->kind == ND_LVAR) {
+        Var *mvar = calloc(1, sizeof(Var));
+        mvar->ident = m->ident;
+        mvar->ty = m->ty;
+        mvar->offset = var->var->offset - m->offset;
 
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_LVAR;
-    node->var = mvar;
-    node->ty = mvar->ty;
+        Node *node = calloc(1, sizeof(Node));
+        node->kind = ND_LVAR;
+        node->var = mvar;
+        node->ty = mvar->ty;
+        return node;
+    }
 
-    return node;
+    return deref_offset_ptr(refer(var, m->ty), new_node_num(-m->offset));
 }
 
 //
@@ -692,7 +710,9 @@ postfix(const Token **rest, const Token *tok, Env *env) {
             continue;
         }
         if (consume(&tok, tok, "->")) {
-            not_implemented(&tok->span, NULL);
+            const Token *ident_token = consume_ident(&tok, tok);
+            node = member(deref(node), ident_token);
+            continue;
         }
         if (consume(&tok, tok, "++")) {
             not_implemented(&tok->span, NULL);
@@ -745,29 +765,17 @@ unary(const Token **rest, const Token *tok, Env *env) {
         not_implemented(&tok->span, NULL);
     }
     if (consume(&tok, tok, "&")) {
-        Node *node = calloc(1, sizeof(Node));
-        node->kind = ND_ADDR;
-        node->lhs = unary(&tok, tok, env);
-        if (node->lhs && node->lhs->ty) {
-            node->ty = mk_ptr(node->lhs->ty);
+        Node *node = unary(&tok, tok, env);
+        if (node && node->ty) {
             *rest = tok;
-            return node;
+            return refer(node, node->ty);
         }
         error("Internal compile error: try to obtain the address to an "
               "unknown "
               "type");
     }
     if (consume(&tok, tok, "*")) {
-        Node *node = calloc(1, sizeof(Node));
-        node->kind = ND_DEREF;
-        Node *inner = as_ptr(unary(&tok, tok, env));
-        if (inner->ty && inner->ty->ty == PTR) {
-            node->lhs = inner;
-            node->ty = inner->ty->ptr_to;
-            *rest = tok;
-            return node;
-        }
-        error("Cannot deref: '%s'", type_to_str(inner->ty));
+        return deref(as_ptr(unary(rest, tok, env)));
     }
     if (consume(&tok, tok, "+")) {
         return cast(rest, tok, env);
