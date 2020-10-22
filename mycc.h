@@ -137,7 +137,6 @@ typedef enum {
     ND_NE,     // "!="
     ND_ASSIGN, // "="
     ND_LVAR,   // [a-zA-Z_][a-zA-Z0-9_]*
-    ND_RETURN, // "return"
     ND_IF,
     ND_WHILE, // "while"
     ND_FOR,
@@ -148,7 +147,6 @@ typedef enum {
     ND_DECLARE,
     ND_STRING,
     ND_SEMICOLON,
-    ND_BREAK,
     ND_SWITCH,
     ND_STATEMENT,
 } NodeKind;
@@ -218,6 +216,8 @@ typedef enum {
 
     // Jump
     ST_CONTINUE,
+    ST_BREAK,
+    ST_RETURN,
 } StatementKind;
 
 struct Statement {
@@ -226,9 +226,12 @@ struct Statement {
     // ST_LABEL, ST_CONTINUE
     int jump_index;
 
-    // ST_LABEL,
+    // ST_LABEL
     Label label;
     Node *body;
+
+    // ST_RETURN
+    Node *retval;
 };
 
 // Linked list for variables

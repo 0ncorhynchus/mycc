@@ -573,6 +573,12 @@ gen_statement(const Statement *statement) {
     case ST_CONTINUE:
         printf("  jmp .Lcontin%d\n", statement->jump_index);
         break;
+    case ST_BREAK:
+        printf("  jmp .Lend%d\n", statement->jump_index);
+        break;
+    case ST_RETURN:
+        epilogue(statement->retval);
+        break;
     }
 }
 
@@ -611,9 +617,6 @@ gen(Node *node) {
         break;
     case ND_FOR:
         gen_for(node);
-        break;
-    case ND_RETURN:
-        epilogue(node->lhs);
         break;
     case ND_BLOCK:
         gen_block(node->inner);
@@ -719,9 +722,6 @@ gen(Node *node) {
         printf("  setne al\n");
         printf("  movzb rax, al\n");
         push("rax");
-        break;
-    case ND_BREAK:
-        printf("  jmp .Lend%d\n", node->jump_index);
         break;
     case ND_SWITCH:
         gen_switch(node);

@@ -1345,19 +1345,26 @@ jump(const Token **rest, const Token *tok, Env *env) {
     }
     if (consume(&tok, tok, "break")) {
         expect(rest, tok, ";");
+        Statement *statement = calloc(1, sizeof(Statement));
+        statement->kind = ST_BREAK;
+        statement->jump_index = env->jump_index;
+
         Node *node = calloc(1, sizeof(Node));
-        node->kind = ND_BREAK;
-        node->jump_index = env->jump_index;
+        node->kind = ND_STATEMENT;
+        node->statement = statement;
         return node;
     }
     if (consume(&tok, tok, "return")) {
         Node *retval = as_ptr(expr(&tok, tok, env));
         expect(rest, tok, ";");
 
-        Node *node = calloc(1, sizeof(Node));
-        node->kind = ND_RETURN;
-        node->lhs = retval;
+        Statement *statement = calloc(1, sizeof(Statement));
+        statement->kind = ST_RETURN;
+        statement->retval = retval;
 
+        Node *node = calloc(1, sizeof(Node));
+        node->kind = ND_STATEMENT;
+        node->statement = statement;
         return node;
     }
     return NULL;
