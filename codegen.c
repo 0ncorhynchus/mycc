@@ -117,15 +117,18 @@ gen_while(const Statement *statement) {
     printf(".Lend%d:\n", jump_index);
 }
 
+static void
+gen_local_declare(const Declaration *decl);
+
 void
 gen_for(const Statement *statement) {
     const int jump_index = statement->jump_index;
 
     if (statement->init) {
         gen(statement->init);
-        if (statement->init->kind != ND_DECLARE) {
-            pop("rax"); // consume the retval
-        }
+        pop("rax"); // consume the retval
+    } else if (statement->declaration) {
+        gen_local_declare(statement->declaration);
     }
     printf(".Lbegin%d:\n", jump_index);
 
@@ -600,6 +603,9 @@ gen_statement(const Statement *statement) {
     case ST_RETURN:
         epilogue(statement->retval);
         break;
+    case ST_DECLARATION:
+        gen_local_declare(statement->declaration);
+        break;
     }
 }
 
@@ -651,9 +657,6 @@ gen(Node *node) {
         break;
     case ND_ADDR:
         gen_lval(node->lhs);
-        break;
-    case ND_DECLARE:
-        gen_local_declare(node->decl);
         break;
     case ND_ADD:
         gen_add(node, "add");

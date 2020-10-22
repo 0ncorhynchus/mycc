@@ -140,7 +140,6 @@ typedef enum {
     ND_CALL,   // <function call>
     ND_ADDR,   // "&"
     ND_DEREF,  // "*"
-    ND_DECLARE,
     ND_STRING,
     ND_STATEMENT,
 } NodeKind;
@@ -169,9 +168,6 @@ struct Node {
     // For ND_STRING
     const char *str;
 
-    // For ND_DECLARE
-    const Declaration *decl;
-
     // For ND_STATEMENT
     Statement *statement;
 };
@@ -198,6 +194,8 @@ typedef enum {
     ST_CONTINUE,
     ST_BREAK,
     ST_RETURN,
+
+    ST_DECLARATION,
 } StatementKind;
 
 struct Statement {
@@ -228,6 +226,9 @@ struct Statement {
     // ST_SWITCH
     Node *value;
     LabelList *labels;
+
+    // ST_FOR, ST_DECLARATION
+    const Declaration *declaration;
 
     // ST_FOR
     Node *init;

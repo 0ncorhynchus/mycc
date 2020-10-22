@@ -943,6 +943,14 @@ stmt(const Token **rest, const Token *tok, Env *env);
 static const Declaration *
 declaration(const Token **rest, const Token *tok, Env *env);
 
+static Statement *
+declare_statement(const Declaration *decl) {
+    Statement *statement = calloc(1, sizeof(Statement));
+    statement->kind = ST_DECLARATION;
+    statement->declaration = decl;
+    return statement;
+}
+
 //
 //  compound_statement =
 //      "{" ( declaration | statement )* "}"
@@ -963,8 +971,8 @@ compound(const Token **rest, const Token *tok, Env *env) {
         const Declaration *decl = declaration(&tok, tok, &new);
         if (decl) {
             Node *node = calloc(1, sizeof(Node));
-            node->kind = ND_DECLARE;
-            node->decl = decl;
+            node->kind = ND_STATEMENT;
+            node->statement = declare_statement(decl);
             next->node = node;
         } else {
             next->node = stmt(&tok, tok, &new);
@@ -1276,40 +1284,34 @@ iteration(const Token **rest, const Token *tok, Env *env) {
     } else if (consume(&tok, tok, "for")) {
         Env new = make_jump_scope(env);
 
-        Node *init = NULL;
-        Node *cond = NULL;
-        Node *end = NULL;
+        statement = calloc(1, sizeof(Statement));
+        statement->kind = ST_FOR;
+        statement->jump_index = new.jump_index;
 
         expect(&tok, tok, "(");
         if (!consume(&tok, tok, ";")) {
+            Node *init = NULL;
             const Declaration *decl = declaration(&tok, tok, &new);
             if (decl) {
-                init = calloc(1, sizeof(Node));
-                init->kind = ND_DECLARE;
-                init->decl = decl;
+                statement->declaration = decl;
             } else if ((init = expr(&tok, tok, &new))) {
                 expect(&tok, tok, ";");
+                statement->init = init;
             } else {
                 unexpected("expression or declaration", tok);
             }
         }
+
         if (!consume(&tok, tok, ";")) {
-            cond = expr(&tok, tok, &new);
+            statement->cond = expr(&tok, tok, &new);
             expect(&tok, tok, ";");
         }
         if (!consume(&tok, tok, ")")) {
-            end = expr(&tok, tok, &new);
+            statement->end = expr(&tok, tok, &new);
             expect(&tok, tok, ")");
         }
-        Node *body = stmt(&tok, tok, &new);
 
-        statement = calloc(1, sizeof(Statement));
-        statement->kind = ST_FOR;
-        statement->jump_index = new.jump_index;
-        statement->init = init;
-        statement->cond = cond;
-        statement->end = end;
-        statement->body = body;
+        statement->body = stmt(&tok, tok, &new);
     }
     if (statement) {
         *rest = tok;
