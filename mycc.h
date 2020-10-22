@@ -137,21 +137,10 @@ typedef enum {
     ND_NE,     // "!="
     ND_ASSIGN, // "="
     ND_LVAR,   // [a-zA-Z_][a-zA-Z0-9_]*
-    ND_RETURN, // "return"
-    ND_IF,
-    ND_WHILE, // "while"
-    ND_FOR,
-    ND_BLOCK, // "{" stmt* "}"
-    ND_CALL,  // <function call>
-    ND_ADDR,  // "&"
-    ND_DEREF, // "*"
-    ND_DECLARE,
+    ND_CALL,   // <function call>
+    ND_ADDR,   // "&"
+    ND_DEREF,  // "*"
     ND_STRING,
-    ND_SEMICOLON,
-    ND_BREAK,
-    ND_CONTINUE,
-    ND_SWITCH,
-    ND_LABEL,
 } NodeKind;
 
 typedef struct NodeList NodeList;
@@ -176,41 +165,77 @@ struct Node {
 
     // For ND_STRING
     const char *str;
-
-    // For ND_DECLARE
-    const Declaration *decl;
-
-    // For ND_BLOCK
-    NodeList *inner;
-
-    // For ND_IF
-    Node *cond;
-    Node *then_body;
-    Node *else_body;
-
-    // For ND_FOR and ND_SWITCH
-    Node *body;
-
-    Node *for_init;
-    Node *for_cond;
-    Node *for_end;
-
-    // For ND_SWITCH
-    Node *value;
-
-    // For ND_IF, ND_WHILE, ND_FOR_INIT, ND_SWITCH and ND_LABEL
-    int jump_index;
-
-    // For ND_SWITCH
-    LabelList *labels;
-
-    // For ND_LABEL,
-    Label label;
 };
 
 struct NodeList {
     NodeList *next;
     Node *node;
+};
+
+typedef struct Statement Statement;
+
+typedef struct BlockItems BlockItems;
+struct BlockItems {
+    BlockItems *next;
+    const Declaration *declaration;
+    const Statement *statement;
+};
+
+typedef enum {
+    ST_LABEL,
+    ST_COMPOUND,
+    ST_EXPRESSION,
+
+    // Selection
+    ST_IF,
+    ST_SWITCH,
+
+    // Iteration
+    ST_WHILE,
+    ST_FOR,
+
+    // Jump
+    ST_CONTINUE,
+    ST_BREAK,
+    ST_RETURN,
+} StatementKind;
+
+struct Statement {
+    StatementKind kind;
+
+    // ST_LABEL
+    Label label;
+
+    // ST_LABEL, ST_IF, ST_SWITCH, ST_WHILE, ST_CONTINUE, ST_BREAK
+    int jump_index;
+
+    // ST_LABEL, ST_SWITCH, ST_WHILE, ST_FOR
+    const Statement *body;
+
+    // ST_COMPOUND
+    BlockItems *block;
+
+    // ST_EXPRESSION
+    Node *expression;
+
+    // ST_IF, ST_WHILE, ST_FOR
+    Node *cond;
+
+    // ST_IF
+    const Statement *then_body;
+    const Statement *else_body;
+
+    // ST_SWITCH
+    Node *value;
+    LabelList *labels;
+
+    // ST_FOR
+    const Declaration *declaration;
+    Node *init;
+    Node *end;
+
+    // ST_RETURN
+    Node *retval;
 };
 
 // Linked list for variables
@@ -266,7 +291,7 @@ struct Function {
     const Var *def; // For ident and type and args
     unsigned int num_args;
     int lvar_offset;
-    Node *body;
+    const Statement *body;
 };
 
 typedef struct Unit Unit;

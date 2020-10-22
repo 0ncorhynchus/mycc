@@ -102,45 +102,50 @@ gen_lval(Node *node) {
         error("lvalue is not a varialbe or dereference");
     }
 }
+void
+gen_statement(const Statement *statement);
 
 void
-gen_while(Node *node) {
-    const int jump_index = node->jump_index;
+gen_while(const Statement *statement) {
+    const int jump_index = statement->jump_index;
     printf(".Lbegin%d:\n", jump_index);
-    gen(node->lhs);
+    gen(statement->cond);
     pop("rax");
     printf("  cmp rax, 0\n");
     printf("  je .Lend%d\n", jump_index);
-    gen(node->rhs);
+    gen_statement(statement->body);
     printf(".Lcontin%d:\n", jump_index);
     printf("  jmp .Lbegin%d\n", jump_index);
     printf(".Lend%d:\n", jump_index);
 }
 
-void
-gen_for(Node *node) {
-    const int jump_index = node->jump_index;
+static void
+gen_local_declare(const Declaration *decl);
 
-    if (node->for_init) {
-        gen(node->for_init);
-        if (node->for_init->kind != ND_DECLARE) {
-            pop("rax"); // consume the retval
-        }
+void
+gen_for(const Statement *statement) {
+    const int jump_index = statement->jump_index;
+
+    if (statement->init) {
+        gen(statement->init);
+        pop("rax"); // consume the retval
+    } else if (statement->declaration) {
+        gen_local_declare(statement->declaration);
     }
     printf(".Lbegin%d:\n", jump_index);
 
-    if (node->for_cond) {
-        gen(node->for_cond);
+    if (statement->cond) {
+        gen(statement->cond);
         pop("rax");
         printf("  cmp rax, 0\n");
         printf("  je .Lend%d\n", jump_index);
     }
 
-    gen(node->body);
+    gen_statement(statement->body);
 
     printf(".Lcontin%d:\n", jump_index);
-    if (node->for_end) {
-        gen(node->for_end);
+    if (statement->end) {
+        gen(statement->end);
         pop("rax"); // consume the retval
     }
     printf("  jmp .Lbegin%d\n", jump_index);
@@ -148,9 +153,15 @@ gen_for(Node *node) {
 }
 
 static void
-gen_block(const NodeList *list) {
+gen_block(const BlockItems *list) {
     while (list) {
-        gen(list->node);
+        if (list->declaration) {
+            gen_local_declare(list->declaration);
+        } else if (list->statement) {
+            gen_statement(list->statement);
+        } else {
+            error("Internal compiler error");
+        }
         list = list->next;
     }
 }
@@ -205,7 +216,7 @@ gen_func(const Function *fn) {
            fn->lvar_offset);
     num_vars = fn->lvar_offset / 8;
 
-    gen_block(fn->body->inner);
+    gen_block(fn->body->block);
 
     epilogue(NULL);
 }
@@ -518,30 +529,30 @@ gen_local_declare(const Declaration *decl) {
 }
 
 static void
-gen_if(const Node *node) {
-    gen(node->cond);
+gen_if(const Statement *statement) {
+    gen(statement->cond);
     pop("rax");
     printf("  cmp rax, 0\n");
-    if (node->else_body) {
-        printf("  je .Lelse%d\n", node->jump_index);
-        gen(node->then_body);
-        printf("  jmp .Lend%d\n", node->jump_index);
-        printf(".Lelse%d:\n", node->jump_index);
-        gen(node->else_body);
+    if (statement->else_body) {
+        printf("  je .Lelse%d\n", statement->jump_index);
+        gen_statement(statement->then_body);
+        printf("  jmp .Lend%d\n", statement->jump_index);
+        printf(".Lelse%d:\n", statement->jump_index);
+        gen_statement(statement->else_body);
     } else {
-        printf("  je .Lend%d\n", node->jump_index);
-        gen(node->then_body);
+        printf("  je .Lend%d\n", statement->jump_index);
+        gen_statement(statement->then_body);
     }
-    printf(".Lend%d:\n", node->jump_index);
+    printf(".Lend%d:\n", statement->jump_index);
 }
 
 static void
-gen_switch(const Node *node) {
-    gen(node->value);
+gen_switch(const Statement *statement) {
+    gen(statement->value);
     pop("rax");
 
     const int *default_jump_index = NULL;
-    LabelList *labels = node->labels;
+    LabelList *labels = statement->labels;
     while (labels) {
         const Label *label = labels->label;
         switch (label->kind) {
@@ -559,8 +570,48 @@ gen_switch(const Node *node) {
         printf("  jmp .L%d\n", *default_jump_index);
     }
 
-    gen(node->body);
-    printf(".Lend%d:\n", node->jump_index);
+    gen_statement(statement->body);
+    printf(".Lend%d:\n", statement->jump_index);
+}
+
+void
+gen_statement(const Statement *statement) {
+    switch (statement->kind) {
+    case ST_LABEL:
+        printf(".L%d:\n", statement->label.jump_index);
+        gen_statement(statement->body);
+        break;
+    case ST_COMPOUND:
+        gen_block(statement->block);
+        break;
+    case ST_EXPRESSION:
+        if (statement->expression) {
+            gen(statement->expression);
+            pop("rax");
+        }
+        break;
+    case ST_IF:
+        gen_if(statement);
+        break;
+    case ST_SWITCH:
+        gen_switch(statement);
+        break;
+    case ST_WHILE:
+        gen_while(statement);
+        break;
+    case ST_FOR:
+        gen_for(statement);
+        break;
+    case ST_CONTINUE:
+        printf("  jmp .Lcontin%d\n", statement->jump_index);
+        break;
+    case ST_BREAK:
+        printf("  jmp .Lend%d\n", statement->jump_index);
+        break;
+    case ST_RETURN:
+        epilogue(statement->retval);
+        break;
+    }
 }
 
 void
@@ -590,21 +641,6 @@ gen(Node *node) {
         printf("  mov [rax], %s\n", di(sizeof_ty(node->lhs->ty)));
         push("rdi");
         break;
-    case ND_IF:
-        gen_if(node);
-        break;
-    case ND_WHILE:
-        gen_while(node);
-        break;
-    case ND_FOR:
-        gen_for(node);
-        break;
-    case ND_RETURN:
-        epilogue(node->lhs);
-        break;
-    case ND_BLOCK:
-        gen_block(node->inner);
-        break;
     case ND_CALL:
         gen_call(node);
         break;
@@ -627,9 +663,6 @@ gen(Node *node) {
     case ND_ADDR:
         gen_lval(node->lhs);
         break;
-    case ND_DECLARE:
-        gen_local_declare(node->decl);
-        break;
     case ND_ADD:
         gen_add(node, "add");
         break;
@@ -639,12 +672,6 @@ gen(Node *node) {
     case ND_STRING:
         printf("  lea rax, .LC%d[rip]\n", node->val);
         push("rax");
-        break;
-    case ND_SEMICOLON:
-        if (node->lhs) {
-            gen(node->lhs);
-            pop("rax");
-        }
         break;
     case ND_MUL:
         gen(node->lhs);
@@ -706,19 +733,6 @@ gen(Node *node) {
         printf("  setne al\n");
         printf("  movzb rax, al\n");
         push("rax");
-        break;
-    case ND_BREAK:
-        printf("  jmp .Lend%d\n", node->jump_index);
-        break;
-    case ND_CONTINUE:
-        printf("  jmp .Lcontin%d\n", node->jump_index);
-        break;
-    case ND_SWITCH:
-        gen_switch(node);
-        break;
-    case ND_LABEL:
-        printf(".L%d:\n", node->label.jump_index);
-        gen(node->body);
         break;
     }
 }

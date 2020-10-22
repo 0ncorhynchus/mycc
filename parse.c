@@ -937,39 +937,51 @@ expr(const Token **rest, const Token *tok, Env *env) {
     return assign(rest, tok, env);
 }
 
-static Node *
+static const Statement *
 stmt(const Token **rest, const Token *tok, Env *env);
 
-static Node *
-block(const Token **rest, const Token *tok, Env *env) {
+static const Declaration *
+declaration(const Token **rest, const Token *tok, Env *env);
+
+//
+//  compound_statement =
+//      "{" ( declaration | statement )* "}"
+//
+static const Statement *
+compound(const Token **rest, const Token *tok, Env *env) {
+    Env new = make_block_scope(env);
     if (!consume(&tok, tok, "{")) {
         return NULL;
     }
 
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_BLOCK;
+    Statement *comp = calloc(1, sizeof(Statement));
+    comp->kind = ST_COMPOUND;
 
-    NodeList *body = NULL;
+    BlockItems *body = NULL;
     while (!consume(&tok, tok, "}")) {
-        NodeList *next = calloc(1, sizeof(NodeList));
-        next->node = stmt(&tok, tok, env);
+        BlockItems *next = calloc(1, sizeof(BlockItems));
+        const Declaration *decl = declaration(&tok, tok, &new);
+        if (decl) {
+            next->declaration = decl;
+        } else {
+            next->statement = stmt(&tok, tok, &new);
+        }
         if (body) {
             body->next = next;
             body = body->next;
         } else {
-            node->inner = next;
-            body = node->inner;
+            comp->block = next;
+            body = comp->block;
         }
     }
 
     *rest = tok;
-
-    return node;
+    return comp;
 }
 
 //
-//  function_definition = declaration_specifiers declarator declartion_list?
-//      compound_statement
+//  function_definition =
+//      declaration_specifiers declarator declartion_list? compound_statement
 //
 static Function *
 function(const Token **rest, const Token *tok, Env *parent) {
@@ -998,7 +1010,7 @@ function(const Token **rest, const Token *tok, Env *parent) {
     }
     const int argument_offset = env.maximum_offset;
 
-    Node *body = block(&tok, tok, &env);
+    const Statement *body = compound(&tok, tok, &env);
     if (body == NULL) {
         free(fn);
         return NULL;
@@ -1135,7 +1147,7 @@ declaration(const Token **rest, const Token *tok, Env *env) {
 //      "case" constant_expression ":" statement
 //      "default" ":" statement
 //
-static Node *
+static const Statement *
 labeled(const Token **rest, const Token *tok, Env *env) {
     if (consume(&tok, tok, "case")) {
         const int jump_index = make_jump_scope(env).jump_index;
@@ -1145,43 +1157,42 @@ labeled(const Token **rest, const Token *tok, Env *env) {
             error("a number is expected after case");
         }
         expect(&tok, tok, ":");
-        Node *body = stmt(&tok, tok, env);
+        const Statement *body = stmt(&tok, tok, env);
         if (body == NULL) {
             error("a statement is expected after a case label");
         }
+        *rest = tok;
 
         Label label = {CASE, jump_index};
         label.val = val;
 
-        Node *node = calloc(1, sizeof(Node));
-        node->kind = ND_LABEL;
-        node->label = label;
-        node->body = body;
+        Statement *statement = calloc(1, sizeof(Statement));
+        statement->kind = ST_LABEL;
+        statement->label = label;
+        statement->body = body;
 
-        push_label(env, &node->label);
+        push_label(env, &statement->label);
 
-        *rest = tok;
-        return node;
+        return statement;
     } else if (consume(&tok, tok, "default")) {
         const int jump_index = make_jump_scope(env).jump_index;
         expect(&tok, tok, ":");
-        Node *body = stmt(&tok, tok, env);
+        const Statement *body = stmt(&tok, tok, env);
         if (body == NULL) {
             error("a statement is expected after a default label");
         }
+        *rest = tok;
 
         Label label = {DEFAULT, jump_index};
 
-        Node *node = calloc(1, sizeof(Node));
-        node->kind = ND_LABEL;
-        node->label = label;
-        node->body = body;
+        Statement *statement = calloc(1, sizeof(Statement));
+        statement->kind = ST_LABEL;
+        statement->label = label;
+        statement->body = body;
 
-        push_label(env, &node->label);
+        push_label(env, &statement->label);
 
-        *rest = tok;
-        return node;
-    } else {
+        return statement;
     }
 
     return NULL;
@@ -1192,9 +1203,9 @@ labeled(const Token **rest, const Token *tok, Env *env) {
 //      "if" "(" expression ")" statement ( "else" statement )?
 //      "switch" "(" expression ")" statement
 //
-static Node *
+static const Statement *
 selection(const Token **rest, const Token *tok, Env *env) {
-    Node *node = NULL;
+    Statement *statement = NULL;
 
     if (consume(&tok, tok, "if")) {
         const Env new = make_jump_scope(env);
@@ -1202,36 +1213,36 @@ selection(const Token **rest, const Token *tok, Env *env) {
         expect(&tok, tok, "(");
         Node *cond = expr(&tok, tok, env);
         expect(&tok, tok, ")");
-        Node *then_body = stmt(&tok, tok, env);
-        Node *else_body = NULL;
+        const Statement *then_body = stmt(&tok, tok, env);
+        const Statement *else_body = NULL;
         if (consume(&tok, tok, "else")) {
             else_body = stmt(&tok, tok, env);
         }
 
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_IF;
-        node->jump_index = new.jump_index;
-        node->cond = cond;
-        node->then_body = then_body;
-        node->else_body = else_body;
+        statement = calloc(1, sizeof(Statement));
+        statement->kind = ST_IF;
+        statement->jump_index = new.jump_index;
+        statement->cond = cond;
+        statement->then_body = then_body;
+        statement->else_body = else_body;
     } else if (consume(&tok, tok, "switch")) {
         Env new = make_switch_scope(env);
         expect(&tok, tok, "(");
         Node *value = expr(&tok, tok, env);
         expect(&tok, tok, ")");
-        Node *body = stmt(&tok, tok, &new);
+        const Statement *body = stmt(&tok, tok, &new);
 
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_SWITCH;
-        node->value = value;
-        node->body = body;
-        node->labels = new.labels;
-    } else {
-        return NULL;
+        statement = calloc(1, sizeof(Statement));
+        statement->kind = ST_SWITCH;
+        statement->value = value;
+        statement->body = body;
+        statement->labels = new.labels;
     }
 
-    *rest = tok;
-    return node;
+    if (statement) {
+        *rest = tok;
+    }
+    return statement;
 }
 
 //
@@ -1241,61 +1252,60 @@ selection(const Token **rest, const Token *tok, Env *env) {
 //      "for" "(" expression? ";" expression? ";" expression? ")" statement
 //      "for" "(" declaration expression? ":" expression? ")" statement
 //
-static Node *
+static const Statement *
 iteration(const Token **rest, const Token *tok, Env *env) {
-    Node *node = NULL;
+    Statement *statement = NULL;
     if (consume(&tok, tok, "while")) {
         Env new = make_jump_scope(env);
 
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_WHILE;
-        node->jump_index = new.jump_index;
         expect(&tok, tok, "(");
-        node->lhs = expr(&tok, tok, &new);
+        Node *cond = expr(&tok, tok, &new);
         expect(&tok, tok, ")");
-        node->rhs = stmt(&tok, tok, &new);
+        const Statement *body = stmt(&tok, tok, &new);
+
+        statement = calloc(1, sizeof(Statement));
+        statement->kind = ST_WHILE;
+        statement->jump_index = new.jump_index;
+        statement->cond = cond;
+        statement->body = body;
     } else if (consume(&tok, tok, "do")) {
         not_implemented(&tok->span, "do");
     } else if (consume(&tok, tok, "for")) {
         Env new = make_jump_scope(env);
 
-        Node *for_init = NULL;
-        Node *for_cond = NULL;
-        Node *for_end = NULL;
+        statement = calloc(1, sizeof(Statement));
+        statement->kind = ST_FOR;
+        statement->jump_index = new.jump_index;
 
         expect(&tok, tok, "(");
         if (!consume(&tok, tok, ";")) {
+            Node *init = NULL;
             const Declaration *decl = declaration(&tok, tok, &new);
             if (decl) {
-                for_init = calloc(1, sizeof(Node));
-                for_init->kind = ND_DECLARE;
-                for_init->decl = decl;
-            } else if ((for_init = expr(&tok, tok, &new))) {
+                statement->declaration = decl;
+            } else if ((init = expr(&tok, tok, &new))) {
                 expect(&tok, tok, ";");
+                statement->init = init;
             } else {
                 unexpected("expression or declaration", tok);
             }
         }
+
         if (!consume(&tok, tok, ";")) {
-            for_cond = expr(&tok, tok, &new);
+            statement->cond = expr(&tok, tok, &new);
             expect(&tok, tok, ";");
         }
         if (!consume(&tok, tok, ")")) {
-            for_end = expr(&tok, tok, &new);
+            statement->end = expr(&tok, tok, &new);
             expect(&tok, tok, ")");
         }
-        Node *body = stmt(&tok, tok, &new);
 
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_FOR;
-        node->jump_index = new.jump_index;
-        node->for_init = for_init;
-        node->for_cond = for_cond;
-        node->for_end = for_end;
-        node->body = body;
+        statement->body = stmt(&tok, tok, &new);
     }
-    *rest = tok;
-    return node;
+    if (statement) {
+        *rest = tok;
+    }
+    return statement;
 }
 
 //
@@ -1305,76 +1315,86 @@ iteration(const Token **rest, const Token *tok, Env *env) {
 //      "break" ";"
 //      "return" expression? ";"
 //
-static Node *
+static Statement *
 jump(const Token **rest, const Token *tok, Env *env) {
     if (consume(&tok, tok, "goto")) {
         not_implemented(&tok->span, "goto");
     }
     if (consume(&tok, tok, "continue")) {
         expect(rest, tok, ";");
-        Node *node = calloc(1, sizeof(Node));
-        node->kind = ND_CONTINUE;
-        node->jump_index = env->jump_index;
-        return node;
+
+        Statement *statement = calloc(1, sizeof(Statement));
+        statement->kind = ST_CONTINUE;
+        statement->jump_index = env->jump_index;
+
+        return statement;
     }
     if (consume(&tok, tok, "break")) {
         expect(rest, tok, ";");
-        Node *node = calloc(1, sizeof(Node));
-        node->kind = ND_BREAK;
-        node->jump_index = env->jump_index;
-        return node;
+
+        Statement *statement = calloc(1, sizeof(Statement));
+        statement->kind = ST_BREAK;
+        statement->jump_index = env->jump_index;
+
+        return statement;
     }
     if (consume(&tok, tok, "return")) {
         Node *retval = as_ptr(expr(&tok, tok, env));
         expect(rest, tok, ";");
 
-        Node *node = calloc(1, sizeof(Node));
-        node->kind = ND_RETURN;
-        node->lhs = retval;
+        Statement *statement = calloc(1, sizeof(Statement));
+        statement->kind = ST_RETURN;
+        statement->retval = retval;
 
-        return node;
+        return statement;
     }
     return NULL;
 }
 
 //
+//  expression_statement =
+//      expression? ";"
+//
+static const Statement *
+expr_stmt(const Token **rest, const Token *tok, Env *env) {
+    Node *expression = expr(&tok, tok, env);
+    if (!consume(rest, tok, ";")) {
+        return NULL;
+    }
+
+    Statement *statement = calloc(1, sizeof(Statement));
+    statement->kind = ST_EXPRESSION;
+    statement->expression = expression;
+    return statement;
+}
+
+//
 //  statement =
 //      labeled_statement
-//      expr ";"
-//      declaration
-//      "{" stmt* "}"
+//      compound_statement
+//      expression_statement
 //      selection_statement
 //      iteration_statement
 //      jump_statement
 //
-static Node *
+static const Statement *
 stmt(const Token **rest, const Token *tok, Env *env) {
-    Node *node = NULL;
+    const Statement *statement = NULL;
 
-    if ((node = labeled(&tok, tok, env))) {
-    } else if ((node = selection(&tok, tok, env))) {
-    } else if ((node = iteration(&tok, tok, env))) {
-    } else if ((node = jump(&tok, tok, env))) {
+    if ((statement = labeled(&tok, tok, env))) {
+    } else if ((statement = compound(&tok, tok, env))) {
+    } else if ((statement = expr_stmt(&tok, tok, env))) {
+    } else if ((statement = selection(&tok, tok, env))) {
+    } else if ((statement = iteration(&tok, tok, env))) {
     } else {
-        Env new = make_block_scope(env);
-        node = block(&tok, tok, &new);
-        if (!node) {
-            node = calloc(1, sizeof(Node));
-            const Declaration *decl = declaration(&tok, tok, env);
-            if (decl) {
-                node->kind = ND_DECLARE;
-                node->decl = decl;
-            } else {
-                node->kind = ND_SEMICOLON;
-                node->lhs = expr(&tok, tok, env);
-                expect(&tok, tok, ";");
-            }
-        }
+        statement = jump(&tok, tok, env);
     }
 
-    *rest = tok;
+    if (statement) {
+        *rest = tok;
+    }
 
-    return node;
+    return statement;
 }
 
 //
