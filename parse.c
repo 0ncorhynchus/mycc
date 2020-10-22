@@ -937,7 +937,7 @@ expr(const Token **rest, const Token *tok, Env *env) {
     return assign(rest, tok, env);
 }
 
-static Statement *
+static const Statement *
 stmt(const Token **rest, const Token *tok, Env *env);
 
 static const Declaration *
@@ -947,7 +947,7 @@ declaration(const Token **rest, const Token *tok, Env *env);
 //  compound_statement =
 //      "{" ( declaration | statement )* "}"
 //
-static Statement *
+static const Statement *
 compound(const Token **rest, const Token *tok, Env *env) {
     Env new = make_block_scope(env);
     if (!consume(&tok, tok, "{")) {
@@ -1010,7 +1010,7 @@ function(const Token **rest, const Token *tok, Env *parent) {
     }
     const int argument_offset = env.maximum_offset;
 
-    Statement *body = compound(&tok, tok, &env);
+    const Statement *body = compound(&tok, tok, &env);
     if (body == NULL) {
         free(fn);
         return NULL;
@@ -1147,7 +1147,7 @@ declaration(const Token **rest, const Token *tok, Env *env) {
 //      "case" constant_expression ":" statement
 //      "default" ":" statement
 //
-static Statement *
+static const Statement *
 labeled(const Token **rest, const Token *tok, Env *env) {
     if (consume(&tok, tok, "case")) {
         const int jump_index = make_jump_scope(env).jump_index;
@@ -1157,7 +1157,7 @@ labeled(const Token **rest, const Token *tok, Env *env) {
             error("a number is expected after case");
         }
         expect(&tok, tok, ":");
-        Statement *body = stmt(&tok, tok, env);
+        const Statement *body = stmt(&tok, tok, env);
         if (body == NULL) {
             error("a statement is expected after a case label");
         }
@@ -1177,7 +1177,7 @@ labeled(const Token **rest, const Token *tok, Env *env) {
     } else if (consume(&tok, tok, "default")) {
         const int jump_index = make_jump_scope(env).jump_index;
         expect(&tok, tok, ":");
-        Statement *body = stmt(&tok, tok, env);
+        const Statement *body = stmt(&tok, tok, env);
         if (body == NULL) {
             error("a statement is expected after a default label");
         }
@@ -1203,7 +1203,7 @@ labeled(const Token **rest, const Token *tok, Env *env) {
 //      "if" "(" expression ")" statement ( "else" statement )?
 //      "switch" "(" expression ")" statement
 //
-static Statement *
+static const Statement *
 selection(const Token **rest, const Token *tok, Env *env) {
     Statement *statement = NULL;
 
@@ -1213,8 +1213,8 @@ selection(const Token **rest, const Token *tok, Env *env) {
         expect(&tok, tok, "(");
         Node *cond = expr(&tok, tok, env);
         expect(&tok, tok, ")");
-        Statement *then_body = stmt(&tok, tok, env);
-        Statement *else_body = NULL;
+        const Statement *then_body = stmt(&tok, tok, env);
+        const Statement *else_body = NULL;
         if (consume(&tok, tok, "else")) {
             else_body = stmt(&tok, tok, env);
         }
@@ -1230,7 +1230,7 @@ selection(const Token **rest, const Token *tok, Env *env) {
         expect(&tok, tok, "(");
         Node *value = expr(&tok, tok, env);
         expect(&tok, tok, ")");
-        Statement *body = stmt(&tok, tok, &new);
+        const Statement *body = stmt(&tok, tok, &new);
 
         statement = calloc(1, sizeof(Statement));
         statement->kind = ST_SWITCH;
@@ -1252,7 +1252,7 @@ selection(const Token **rest, const Token *tok, Env *env) {
 //      "for" "(" expression? ";" expression? ";" expression? ")" statement
 //      "for" "(" declaration expression? ":" expression? ")" statement
 //
-static Statement *
+static const Statement *
 iteration(const Token **rest, const Token *tok, Env *env) {
     Statement *statement = NULL;
     if (consume(&tok, tok, "while")) {
@@ -1261,7 +1261,7 @@ iteration(const Token **rest, const Token *tok, Env *env) {
         expect(&tok, tok, "(");
         Node *cond = expr(&tok, tok, &new);
         expect(&tok, tok, ")");
-        Statement *body = stmt(&tok, tok, &new);
+        const Statement *body = stmt(&tok, tok, &new);
 
         statement = calloc(1, sizeof(Statement));
         statement->kind = ST_WHILE;
@@ -1355,7 +1355,7 @@ jump(const Token **rest, const Token *tok, Env *env) {
 //  expression_statement =
 //      expression? ";"
 //
-static Statement *
+static const Statement *
 expr_stmt(const Token **rest, const Token *tok, Env *env) {
     Node *expression = expr(&tok, tok, env);
     if (!consume(rest, tok, ";")) {
@@ -1377,9 +1377,9 @@ expr_stmt(const Token **rest, const Token *tok, Env *env) {
 //      iteration_statement
 //      jump_statement
 //
-static Statement *
+static const Statement *
 stmt(const Token **rest, const Token *tok, Env *env) {
-    Statement *statement = NULL;
+    const Statement *statement = NULL;
 
     if ((statement = labeled(&tok, tok, env))) {
     } else if ((statement = compound(&tok, tok, env))) {

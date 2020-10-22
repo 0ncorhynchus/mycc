@@ -178,7 +178,7 @@ typedef struct BlockItems BlockItems;
 struct BlockItems {
     BlockItems *next;
     const Declaration *declaration;
-    Statement *statement;
+    const Statement *statement;
 };
 
 typedef enum {
@@ -210,7 +210,7 @@ struct Statement {
     int jump_index;
 
     // ST_LABEL, ST_SWITCH, ST_WHILE, ST_FOR
-    Statement *body;
+    const Statement *body;
 
     // ST_COMPOUND
     BlockItems *block;
@@ -222,8 +222,8 @@ struct Statement {
     Node *cond;
 
     // ST_IF
-    Statement *then_body;
-    Statement *else_body;
+    const Statement *then_body;
+    const Statement *else_body;
 
     // ST_SWITCH
     Node *value;
@@ -291,7 +291,7 @@ struct Function {
     const Var *def; // For ident and type and args
     unsigned int num_args;
     int lvar_offset;
-    Statement *body;
+    const Statement *body;
 };
 
 typedef struct Unit Unit;
