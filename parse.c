@@ -947,15 +947,15 @@ declaration(const Token **rest, const Token *tok, Env *env);
 //  compound_statement =
 //      "{" ( declaration | statement )* "}"
 //
-static Node *
+static Statement *
 compound(const Token **rest, const Token *tok, Env *env) {
     Env new = make_block_scope(env);
     if (!consume(&tok, tok, "{")) {
         return NULL;
     }
 
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_BLOCK;
+    Statement *comp = calloc(1, sizeof(Statement));
+    comp->kind = ST_COMPOUND;
 
     NodeList *body = NULL;
     while (!consume(&tok, tok, "}")) {
@@ -973,13 +973,13 @@ compound(const Token **rest, const Token *tok, Env *env) {
             body->next = next;
             body = body->next;
         } else {
-            node->inner = next;
-            body = node->inner;
+            comp->block = next;
+            body = comp->block;
         }
     }
 
     *rest = tok;
-    return node;
+    return comp;
 }
 
 //
@@ -1013,7 +1013,7 @@ function(const Token **rest, const Token *tok, Env *parent) {
     }
     const int argument_offset = env.maximum_offset;
 
-    Node *body = compound(&tok, tok, &env);
+    Statement *body = compound(&tok, tok, &env);
     if (body == NULL) {
         free(fn);
         return NULL;
@@ -1150,7 +1150,7 @@ declaration(const Token **rest, const Token *tok, Env *env) {
 //      "case" constant_expression ":" statement
 //      "default" ":" statement
 //
-static Node *
+static Statement *
 labeled(const Token **rest, const Token *tok, Env *env) {
     if (consume(&tok, tok, "case")) {
         const int jump_index = make_jump_scope(env).jump_index;
@@ -1164,6 +1164,7 @@ labeled(const Token **rest, const Token *tok, Env *env) {
         if (body == NULL) {
             error("a statement is expected after a case label");
         }
+        *rest = tok;
 
         Label label = {CASE, jump_index};
         label.val = val;
@@ -1173,14 +1174,9 @@ labeled(const Token **rest, const Token *tok, Env *env) {
         statement->label = label;
         statement->body = body;
 
-        Node *node = calloc(1, sizeof(Node));
-        node->kind = ND_STATEMENT;
-        node->statement = statement;
-
         push_label(env, &statement->label);
 
-        *rest = tok;
-        return node;
+        return statement;
     } else if (consume(&tok, tok, "default")) {
         const int jump_index = make_jump_scope(env).jump_index;
         expect(&tok, tok, ":");
@@ -1188,6 +1184,7 @@ labeled(const Token **rest, const Token *tok, Env *env) {
         if (body == NULL) {
             error("a statement is expected after a default label");
         }
+        *rest = tok;
 
         Label label = {DEFAULT, jump_index};
 
@@ -1196,14 +1193,9 @@ labeled(const Token **rest, const Token *tok, Env *env) {
         statement->label = label;
         statement->body = body;
 
-        Node *node = calloc(1, sizeof(Node));
-        node->kind = ND_STATEMENT;
-        node->statement = statement;
-
         push_label(env, &statement->label);
 
-        *rest = tok;
-        return node;
+        return statement;
     }
 
     return NULL;
@@ -1394,8 +1386,14 @@ stmt(const Token **rest, const Token *tok, Env *env) {
     Node *node = NULL;
     Statement *statement = NULL;
 
-    if ((node = labeled(&tok, tok, env))) {
-    } else if ((node = compound(&tok, tok, env))) {
+    if ((statement = labeled(&tok, tok, env))) {
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_STATEMENT;
+        node->statement = statement;
+    } else if ((statement = compound(&tok, tok, env))) {
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_STATEMENT;
+        node->statement = statement;
     } else if ((statement = expr_stmt(&tok, tok, env))) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_STATEMENT;

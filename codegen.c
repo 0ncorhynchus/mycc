@@ -205,7 +205,7 @@ gen_func(const Function *fn) {
            fn->lvar_offset);
     num_vars = fn->lvar_offset / 8;
 
-    gen_block(fn->body->inner);
+    gen_block(fn->body->block);
 
     epilogue(NULL);
 }
@@ -570,6 +570,9 @@ gen_statement(const Statement *statement) {
         printf(".L%d:\n", statement->label.jump_index);
         gen(statement->body);
         break;
+    case ST_COMPOUND:
+        gen_block(statement->block);
+        break;
     case ST_EXPRESSION:
         if (statement->expression) {
             gen(statement->expression);
@@ -623,9 +626,6 @@ gen(Node *node) {
         break;
     case ND_FOR:
         gen_for(node);
-        break;
-    case ND_BLOCK:
-        gen_block(node->inner);
         break;
     case ND_CALL:
         gen_call(node);

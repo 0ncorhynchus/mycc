@@ -140,7 +140,6 @@ typedef enum {
     ND_IF,
     ND_WHILE, // "while"
     ND_FOR,
-    ND_BLOCK, // "{" stmt* "}"
     ND_CALL,  // <function call>
     ND_ADDR,  // "&"
     ND_DEREF, // "*"
@@ -177,9 +176,6 @@ struct Node {
     // For ND_DECLARE
     const Declaration *decl;
 
-    // For ND_BLOCK
-    NodeList *inner;
-
     // For ND_IF
     Node *cond;
     Node *then_body;
@@ -212,7 +208,7 @@ struct NodeList {
 
 typedef enum {
     ST_LABEL,
-
+    ST_COMPOUND,
     ST_EXPRESSION,
 
     // Jump
@@ -226,6 +222,9 @@ struct Statement {
 
     // ST_LABEL, ST_CONTINUE, ST_BREAK
     int jump_index;
+
+    // ST_COMPOUND
+    NodeList *block;
 
     // ST_EXPRESSION
     Node *expression;
@@ -291,7 +290,7 @@ struct Function {
     const Var *def; // For ident and type and args
     unsigned int num_args;
     int lvar_offset;
-    Node *body;
+    Statement *body;
 };
 
 typedef struct Unit Unit;
