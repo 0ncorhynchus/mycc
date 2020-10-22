@@ -1367,18 +1367,17 @@ jump(const Token **rest, const Token *tok, Env *env) {
 //  expression_statement =
 //      expression? ";"
 //
-static Node *
+static Statement *
 expr_stmt(const Token **rest, const Token *tok, Env *env) {
-    Node *inner = expr(&tok, tok, env);
-    if (!consume(&tok, tok, ";")) {
+    Node *expression = expr(&tok, tok, env);
+    if (!consume(rest, tok, ";")) {
         return NULL;
     }
-    *rest = tok;
 
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_SEMICOLON;
-    node->lhs = inner;
-    return node;
+    Statement *statement = calloc(1, sizeof(Statement));
+    statement->kind = ST_EXPRESSION;
+    statement->expression = expression;
+    return statement;
 }
 
 //
@@ -1393,14 +1392,18 @@ expr_stmt(const Token **rest, const Token *tok, Env *env) {
 static Node *
 stmt(const Token **rest, const Token *tok, Env *env) {
     Node *node = NULL;
+    Statement *statement = NULL;
 
     if ((node = labeled(&tok, tok, env))) {
     } else if ((node = compound(&tok, tok, env))) {
-    } else if ((node = expr_stmt(&tok, tok, env))) {
+    } else if ((statement = expr_stmt(&tok, tok, env))) {
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_STATEMENT;
+        node->statement = statement;
     } else if ((node = selection(&tok, tok, env))) {
     } else if ((node = iteration(&tok, tok, env))) {
     } else {
-        Statement *statement = jump(&tok, tok, env);
+        statement = jump(&tok, tok, env);
         if (statement) {
             node = calloc(1, sizeof(Node));
             node->kind = ND_STATEMENT;

@@ -570,6 +570,12 @@ gen_statement(const Statement *statement) {
         printf(".L%d:\n", statement->label.jump_index);
         gen(statement->body);
         break;
+    case ST_EXPRESSION:
+        if (statement->expression) {
+            gen(statement->expression);
+            pop("rax");
+        }
+        break;
     case ST_CONTINUE:
         printf("  jmp .Lcontin%d\n", statement->jump_index);
         break;
@@ -655,12 +661,6 @@ gen(Node *node) {
     case ND_STRING:
         printf("  lea rax, .LC%d[rip]\n", node->val);
         push("rax");
-        break;
-    case ND_SEMICOLON:
-        if (node->lhs) {
-            gen(node->lhs);
-            pop("rax");
-        }
         break;
     case ND_MUL:
         gen(node->lhs);
