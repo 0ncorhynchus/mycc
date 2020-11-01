@@ -745,6 +745,17 @@ gen(Node *node) {
         pop("rax");
         printf("  mov [rax], %s\n", di(sizeof_ty(node->lhs->ty)));
         break;
+    case ND_DECR:
+        gen_lval(node->lhs);
+        pop("rax");
+        printf("  mov rdi, [rax]\n");
+        push("rdi");
+        push("rax");
+        gen_add("sub", node->lhs, new_node_num(1));
+        pop("rdi");
+        pop("rax");
+        printf("  mov [rax], %s\n", di(sizeof_ty(node->lhs->ty)));
+        break;
     }
 }
 

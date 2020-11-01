@@ -720,9 +720,15 @@ postfix(const Token **rest, const Token *tok, Env *env) {
             new->lhs = as_ptr(node);
             new->ty = node->ty;
             node = new;
+            continue;
         }
         if (consume(&tok, tok, "--")) {
-            not_implemented(&tok->span, NULL);
+            Node *new = calloc(1, sizeof(Node));
+            new->kind = ND_DECR;
+            new->lhs = as_ptr(node);
+            new->ty = node->ty;
+            node = new;
+            continue;
         }
         break;
     }

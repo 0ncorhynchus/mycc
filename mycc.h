@@ -127,6 +127,7 @@ struct LabelList {
 
 typedef enum {
     ND_INCR,   // "++"
+    ND_DECR,   // "--"
     ND_ADD,    // "+"
     ND_SUB,    // "-"
     ND_MUL,    // "*"

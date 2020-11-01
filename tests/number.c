@@ -42,6 +42,13 @@ main() {
     assert_int(1, x++);
     assert_int(2, x);
     assert_int(2, x++);
+    assert_int(3, x);
+    assert_int(3, x--);
+    assert_int(2, x);
+    assert_int(2, x--);
+    assert_int(1, x);
+    assert_int(1, x--);
+    assert_int(0, x);
 
     return summary();
 }
