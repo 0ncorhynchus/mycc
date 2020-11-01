@@ -36,5 +36,12 @@ main() {
     assert_int(97, z[x]);
     assert_int(97, z[y]);
 
+    assert_int(0, x);
+    assert_int(0, x++);
+    assert_int(1, x);
+    assert_int(1, x++);
+    assert_int(2, x);
+    assert_int(2, x++);
+
     return summary();
 }

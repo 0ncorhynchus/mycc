@@ -361,17 +361,17 @@ gen_top(Unit *code) {
 }
 
 void
-gen_add(Node *node, char *op) {
-    if (node->lhs->ty->ty == PTR) {
-        if (node->rhs->ty->ty == PTR) {
+gen_add(char *op, Node *lhs, Node *rhs) {
+    if (lhs->ty->ty == PTR) {
+        if (rhs->ty->ty == PTR) {
             error("Invalid operands to binary '%s' between pointers", op);
         } else {
-            size_t size = sizeof_ty(node->lhs->ty->ptr_to);
-            gen(node->lhs);
+            size_t size = sizeof_ty(lhs->ty->ptr_to);
+            gen(lhs);
 
-            gen(node->rhs);
+            gen(rhs);
             pop("rax");
-            switch (sizeof_ty(node->rhs->ty)) {
+            switch (sizeof_ty(rhs->ty)) {
             case 1:
                 printf("  movsx rax, al\n");
                 break;
@@ -384,11 +384,11 @@ gen_add(Node *node, char *op) {
             push("rax");
         }
     } else {
-        if (node->rhs->ty->ty == PTR) {
-            size_t size = sizeof_ty(node->rhs->ty->ptr_to);
-            gen(node->lhs);
+        if (rhs->ty->ty == PTR) {
+            size_t size = sizeof_ty(rhs->ty->ptr_to);
+            gen(lhs);
             pop("rax");
-            switch (sizeof_ty(node->lhs->ty)) {
+            switch (sizeof_ty(lhs->ty)) {
             case 1:
                 printf("  movsx rax, al\n");
                 break;
@@ -400,11 +400,11 @@ gen_add(Node *node, char *op) {
             printf("  imul rax, rdi\n");
             push("rax");
 
-            gen(node->rhs);
+            gen(rhs);
         } else {
-            gen(node->lhs);
+            gen(lhs);
             pop("rax");
-            switch (sizeof_ty(node->lhs->ty)) {
+            switch (sizeof_ty(lhs->ty)) {
             case 1:
                 printf("  movsx rax, al\n");
                 break;
@@ -414,9 +414,9 @@ gen_add(Node *node, char *op) {
             }
             push("rax");
 
-            gen(node->rhs);
+            gen(rhs);
             pop("rax");
-            switch (sizeof_ty(node->rhs->ty)) {
+            switch (sizeof_ty(rhs->ty)) {
             case 1:
                 printf("  movsx rax, al\n");
                 break;
@@ -664,10 +664,10 @@ gen(Node *node) {
         gen_lval(node->lhs);
         break;
     case ND_ADD:
-        gen_add(node, "add");
+        gen_add("add", node->lhs, node->rhs);
         break;
     case ND_SUB:
-        gen_add(node, "sub");
+        gen_add("sub", node->lhs, node->rhs);
         break;
     case ND_STRING:
         printf("  lea rax, .LC%d[rip]\n", node->val);
@@ -733,6 +733,17 @@ gen(Node *node) {
         printf("  setne al\n");
         printf("  movzb rax, al\n");
         push("rax");
+        break;
+    case ND_INCR:
+        gen_lval(node->lhs);
+        pop("rax");
+        printf("  mov rdi, [rax]\n");
+        push("rdi");
+        push("rax");
+        gen_add("add", node->lhs, new_node_num(1));
+        pop("rdi");
+        pop("rax");
+        printf("  mov [rax], %s\n", di(sizeof_ty(node->lhs->ty)));
         break;
     }
 }
