@@ -368,8 +368,8 @@ gen_add(char *op, Node *lhs, Node *rhs) {
         } else {
             size_t size = sizeof_ty(lhs->ty->ptr_to);
             gen(lhs);
-
             gen(rhs);
+
             pop("rax");
             switch (sizeof_ty(rhs->ty)) {
             case 1:
@@ -380,13 +380,18 @@ gen_add(char *op, Node *lhs, Node *rhs) {
                 break;
             }
             printf("  mov rdi, %zu\n", size);
-            printf("  imul rax, rdi\n");
+            printf("  imul rdi, rax\n");
+
+            pop("rax");
+            printf("  %s rax, rdi\n", op);
             push("rax");
         }
     } else {
         if (rhs->ty->ty == PTR) {
             size_t size = sizeof_ty(rhs->ty->ptr_to);
+            gen(rhs);
             gen(lhs);
+
             pop("rax");
             switch (sizeof_ty(lhs->ty)) {
             case 1:
@@ -398,11 +403,24 @@ gen_add(char *op, Node *lhs, Node *rhs) {
             }
             printf("  mov rdi, %zu\n", size);
             printf("  imul rax, rdi\n");
-            push("rax");
 
-            gen(rhs);
+            pop("rdi");
+            printf("  %s rax, rdi\n", op);
+            push("rax");
         } else {
             gen(lhs);
+            gen(rhs);
+
+            pop("rdi");
+            switch (sizeof_ty(rhs->ty)) {
+            case 1:
+                printf("  movsx rdi, dil\n");
+                break;
+            case 4:
+                printf("  movsx rdi, edi\n");
+                break;
+            }
+
             pop("rax");
             switch (sizeof_ty(lhs->ty)) {
             case 1:
@@ -412,26 +430,11 @@ gen_add(char *op, Node *lhs, Node *rhs) {
                 printf("  movsx rax, eax\n");
                 break;
             }
-            push("rax");
 
-            gen(rhs);
-            pop("rax");
-            switch (sizeof_ty(rhs->ty)) {
-            case 1:
-                printf("  movsx rax, al\n");
-                break;
-            case 4:
-                printf("  movsx rax, eax\n");
-                break;
-            }
+            printf("  %s rax, rdi\n", op);
             push("rax");
         }
     }
-
-    pop("rdi");
-    pop("rax");
-    printf("  %s rax, rdi\n", op);
-    push("rax");
 }
 
 static Node *
