@@ -376,7 +376,7 @@ gen_add(char *op, Node *lhs, Node *rhs) {
                 printf("  movsx rax, al\n");
                 break;
             case 4:
-                printf("  movsx rax, eax\n");
+                printf("  movsxd rax, eax\n");
                 break;
             }
             printf("  mov rdi, %zu\n", size);
@@ -398,7 +398,7 @@ gen_add(char *op, Node *lhs, Node *rhs) {
                 printf("  movsx rax, al\n");
                 break;
             case 4:
-                printf("  movsx rax, eax\n");
+                printf("  movsxd rax, eax\n");
                 break;
             }
             printf("  mov rdi, %zu\n", size);
@@ -417,7 +417,7 @@ gen_add(char *op, Node *lhs, Node *rhs) {
                 printf("  movsx rdi, dil\n");
                 break;
             case 4:
-                printf("  movsx rdi, edi\n");
+                printf("  movsxd rdi, edi\n");
                 break;
             }
 
@@ -427,7 +427,7 @@ gen_add(char *op, Node *lhs, Node *rhs) {
                 printf("  movsx rax, al\n");
                 break;
             case 4:
-                printf("  movsx rax, eax\n");
+                printf("  movsxd rax, eax\n");
                 break;
             }
 
@@ -701,7 +701,7 @@ gen(Node *node) {
         size = sizeof_ty(node->lhs->ty);
         printf("  cmp %s, %s\n", ax(size), di(size));
         printf("  setl al\n");
-        printf("  movzb rax, al\n");
+        printf("  movzx rax, al\n");
         push("rax");
         break;
     case ND_LE:
@@ -712,7 +712,7 @@ gen(Node *node) {
         size = sizeof_ty(node->lhs->ty);
         printf("  cmp %s, %s\n", ax(size), di(size));
         printf("  setle al\n");
-        printf("  movzb rax, al\n");
+        printf("  movzx rax, al\n");
         push("rax");
         break;
     case ND_EQ:
@@ -723,7 +723,7 @@ gen(Node *node) {
         size = sizeof_ty(node->lhs->ty);
         printf("  cmp %s, %s\n", ax(size), di(size));
         printf("  sete al\n");
-        printf("  movzb rax, al\n");
+        printf("  movzx rax, al\n");
         push("rax");
         break;
     case ND_NE:
@@ -734,7 +734,7 @@ gen(Node *node) {
         size = sizeof_ty(node->lhs->ty);
         printf("  cmp %s, %s\n", ax(size), di(size));
         printf("  setne al\n");
-        printf("  movzb rax, al\n");
+        printf("  movzx rax, al\n");
         push("rax");
         break;
     case ND_INCR:
