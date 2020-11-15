@@ -12,8 +12,8 @@ static Declaration *
 declarator(const Token **rest, const Token *tok, const Env *env,
            const Type *ty);
 
-static const Type *typename(const Token **rest, const Token *tok,
-                            const Env *env);
+static const Type *
+type_name(const Token **rest, const Token *tok, const Env *env);
 
 static Node *
 expr(const Token **rest, const Token *tok, Env *env);
@@ -246,7 +246,7 @@ atomic_type_spec(const Token **rest, const Token *tok, const Env *env) {
     if (consume(rest, tok, "_Atomic")) {
         not_implemented(&tok->span, "_Atomic");
         /* expect(&tok, tok, "("); */
-        /* const Type *ty = typename(&tok, tok, env); */
+        /* const Type *ty = type_name(&tok, tok, env); */
         /* expect(&tok, tok, ")"); */
     }
 
@@ -531,10 +531,10 @@ declarator(const Token **rest, const Token *tok, const Env *env,
 }
 
 //
-//  typename = ( "int" | "char" | "void" )  "*"* ( "[" num "]" )?
+//  type_name = ( "int" | "char" | "void" )  "*"* ( "[" num "]" )?
 //
-static const Type *typename(const Token **rest, const Token *tok,
-                            const Env *env) {
+static const Type *
+type_name(const Token **rest, const Token *tok, const Env *env) {
     const Type *ty = type_specifier(&tok, tok, env);
     if (ty == NULL) {
         return NULL;
@@ -736,8 +736,8 @@ member(Node *var, const Token *ident_token) {
 //  postfix_expression = postfix_head postfix_tail*
 //  postfix_head =
 //      primary_expression
-//      "(" typename ")" "{" initializer_list "}"
-//      "(" typename ")" "{" initializer_list "," "}"
+//      "(" type_name ")" "{" initializer_list "}"
+//      "(" type_name ")" "{" initializer_list "," "}"
 //  postfix_tail =
 //      "[" expression "]"
 //      "(" argument_expression_list? ")"
@@ -862,7 +862,7 @@ unary(const Token **rest, const Token *tok, Env *env) {
     }
     if (consume(&tok, tok, "sizeof")) {
         if (consume(&tok, tok, "(")) {
-            const Type *ty = typename(&tok, tok, env);
+            const Type *ty = type_name(&tok, tok, env);
             if (ty == NULL) {
                 Node *node = expr(&tok, tok, env);
                 if (node) {
