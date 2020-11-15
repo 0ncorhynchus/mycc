@@ -5,7 +5,30 @@
 // Declarations
 //
 
-static const Type *
+typedef enum {
+    TS_VOID = 0x0001,
+    TS_CHAR = 0x0002,
+    TS_SHORT = 0x0004,
+    TS_INT = 0x0008,
+    TS_LONG = 0x0010,
+    TS_FLOAT = 0x0040,
+    TS_DOUBLE = 0x0080,
+    TS_SIGNED = 0x0100,
+    TS_UNSIGNED = 0x0200,
+    TS_BOOL = 0x0400,
+    TS_COMPLEX = 0x0800,
+    TS_ATOMIC = 0x1000,
+    TS_STRUCT_OR_UNION = 0x2000,
+    TS_ENUM = 0x4000,
+    TS_TYPEDEF_NAME = 0x8000,
+} TypeSpecKind;
+
+typedef struct {
+    TypeSpecKind kind;
+    const Type *ty;
+} TypeSpec;
+
+static const TypeSpec
 type_specifier(const Token **rest, const Token *tok, const Env *env);
 
 static Declaration *
@@ -169,12 +192,64 @@ enum_specifier(const Token **rest, const Token *tok) {
     return ty;
 }
 
+static bool
+composite_type_spec(TypeSpec *x, const TypeSpec y) {
+    switch (x->kind & y.kind) {
+    case 0:
+    case TS_LONG:
+        break;
+    default:
+        return false;
+    }
+
+    x->kind += y.kind;
+    if (y.ty) {
+        x->ty = y.ty;
+    }
+    return true;
+}
+
+const Type *
+construct_type(const TypeSpec spec) {
+    switch (spec.kind) {
+    case TS_VOID:
+        return &VOID_T;
+    case TS_CHAR:
+        return &CHAR_T;
+    case TS_INT:
+        return &INT_T;
+    case TS_STRUCT_OR_UNION:
+    case TS_ENUM:
+    case TS_TYPEDEF_NAME:
+        return spec.ty;
+    default:
+        break;
+    }
+    return NULL;
+}
+
 //
 //  specifier_qualifier_list = ( type_specifier | type_qualifier )+
 //
 static const Type *
 spec_qual_list(const Token **rest, const Token *tok, const Env *env) {
-    return type_specifier(rest, tok, env);
+    TypeSpec ty_spec = {};
+    for (;;) {
+        const TypeSpec spec = type_specifier(&tok, tok, env);
+        if (spec.kind) {
+            if (!composite_type_spec(&ty_spec, spec)) {
+                error_at(&tok->span, "invalid type specifier");
+            }
+            continue;
+        }
+        break;
+    }
+
+    const Type *ty = construct_type(ty_spec);
+    if (ty) {
+        *rest = tok;
+    }
+    return ty;
 }
 
 //
@@ -253,6 +328,12 @@ atomic_type_spec(const Token **rest, const Token *tok, const Env *env) {
     return NULL;
 }
 
+static const TypeSpec
+type_spec(const TypeSpecKind kind, const Type *ty) {
+    const TypeSpec spec = {kind, ty};
+    return spec;
+}
+
 //
 //  type_specifier = "void" | "char" | "short" | "int" | "long" | float" |
 //      "double" | "signed" | "unsigned" | "_Bool" | "_Complex" |
@@ -262,19 +343,19 @@ atomic_type_spec(const Token **rest, const Token *tok, const Env *env) {
 //      typedef_name
 //  typedef_name = identifier
 //
-static const Type *
+static const TypeSpec
 type_specifier(const Token **rest, const Token *tok, const Env *env) {
     if (consume(rest, tok, "void")) {
-        return &VOID_T;
+        return type_spec(TS_VOID, NULL);
     }
     if (consume(rest, tok, "char")) {
-        return &CHAR_T;
+        return type_spec(TS_CHAR, NULL);
     }
     if (consume(rest, tok, "short")) {
         not_implemented(&tok->span, "short");
     }
     if (consume(rest, tok, "int")) {
-        return &INT_T;
+        return type_spec(TS_INT, NULL);
     }
     if (consume(rest, tok, "long")) {
         not_implemented(&tok->span, "long");
@@ -301,17 +382,17 @@ type_specifier(const Token **rest, const Token *tok, const Env *env) {
     const Type *ty;
     ty = atomic_type_spec(rest, tok, env);
     if (ty) {
-        return ty;
+        return type_spec(TS_ATOMIC, ty);
     }
     ty = struct_union_spec(rest, tok, env);
     if (ty) {
         if (ty->struct_ty->members == NULL) {
             const Type *orig = get_tag(env, ty->struct_ty->tag);
             if (orig) {
-                return orig;
+                ty = orig;
             }
         }
-        return ty;
+        return type_spec(TS_STRUCT_OR_UNION, ty);
     }
 
     ty = enum_specifier(rest, tok);
@@ -319,10 +400,10 @@ type_specifier(const Token **rest, const Token *tok, const Env *env) {
         if (ty->enum_ty->consts == NULL) {
             const Type *orig = get_tag(env, ty->enum_ty->tag);
             if (orig) {
-                return orig;
+                ty = orig;
             }
         }
-        return ty;
+        return type_spec(TS_ENUM, ty);
     }
 
     const Token *typedef_name = consume_ident(&tok, tok);
@@ -330,11 +411,11 @@ type_specifier(const Token **rest, const Token *tok, const Env *env) {
         const Type *ty = get_typedef(env, char_from_span(&typedef_name->span));
         if (ty) {
             *rest = tok;
-            return ty;
+            return type_spec(TS_TYPEDEF_NAME, ty);
         }
     }
 
-    return NULL;
+    return type_spec(0, NULL);
 }
 
 static int
@@ -403,7 +484,7 @@ typedef struct {
 static const DeclSpec
 declspec(const Token **rest, const Token *tok, const Env *env) {
     DeclSpec spec = {};
-    bool is_consumed = false;
+    TypeSpec ty_spec = {};
 
     for (;;) {
         const StorageClass s = storage_spec(&tok, tok);
@@ -415,19 +496,22 @@ declspec(const Token **rest, const Token *tok, const Env *env) {
             continue;
         }
 
-        const Type *ty = type_specifier(&tok, tok, env);
-        if (ty) {
-            spec.ty = ty;
-            is_consumed = true;
+        const TypeSpec ty = type_specifier(&tok, tok, env);
+        if (ty.kind) {
+            if (!composite_type_spec(&ty_spec, ty)) {
+                error_at(&tok->span, "invalid type specifier");
+            }
             continue;
         }
 
         break;
     }
 
-    if (is_consumed) {
+    spec.ty = construct_type(ty_spec);
+    if (spec.ty) {
         *rest = tok;
     }
+
     return spec;
 }
 
@@ -531,11 +615,11 @@ declarator(const Token **rest, const Token *tok, const Env *env,
 }
 
 //
-//  type_name = ( "int" | "char" | "void" )  "*"* ( "[" num "]" )?
+//  type_name = specifier_qualifier_list abstract_declarator?
 //
 static const Type *
 type_name(const Token **rest, const Token *tok, const Env *env) {
-    const Type *ty = type_specifier(&tok, tok, env);
+    const Type *ty = spec_qual_list(&tok, tok, env);
     if (ty == NULL) {
         return NULL;
     }
