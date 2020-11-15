@@ -19,5 +19,10 @@ main() {
     assert_int(8, sizeof(int *));
     assert_int(20, sizeof(int[5]));
 
+    assert_int(8, sizeof(long));
+    assert_int(8, sizeof(signed long));
+    assert_int(8, sizeof(long int));
+    assert_int(8, sizeof(signed long int));
+
     return summary();
 }

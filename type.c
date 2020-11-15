@@ -2,9 +2,10 @@
 #include <stdio.h>
 #include <string.h>
 
-const Type INT_T = {INTEGER, INT};
-const Type CHAR_T = {INTEGER, CHAR};
 const Type VOID_T = {VOID};
+const Type CHAR_T = {INTEGER, CHAR};
+const Type INT_T = {INTEGER, INT};
+const Type LONG_T = {INTEGER, LONG};
 
 const Type *
 mk_ptr(const Type *base) {
@@ -46,6 +47,8 @@ sizeof_ty(const Type *ty) {
             return 1;
         case INT:
             return 4;
+        case LONG:
+            return 8;
         }
     case PTR:
         return 8;
@@ -93,6 +96,8 @@ type_to_str(const Type *ty) {
             case INT:
                 strcat(buffer, "tni");
                 break;
+            case LONG:
+                strcat(buffer, "gnol");
             }
             break;
         case PTR:

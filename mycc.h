@@ -94,7 +94,7 @@ struct ParamList {
 struct Type {
     enum { INTEGER, PTR, ARRAY, VOID, FUNCTION, ENUM, STRUCT } ty;
 
-    enum { CHAR, INT } ikind;
+    enum { CHAR, INT, LONG } ikind;
 
     const Type *ptr_to;
     int array_size;
@@ -109,9 +109,10 @@ struct Type {
     Struct *struct_ty;
 };
 
-extern const Type INT_T;
-extern const Type CHAR_T;
 extern const Type VOID_T;
+extern const Type CHAR_T;
+extern const Type INT_T;
+extern const Type LONG_T;
 
 typedef struct {
     enum { CASE, DEFAULT } kind;

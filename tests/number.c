@@ -50,5 +50,15 @@ main() {
     assert_int(1, x--);
     assert_int(0, x);
 
+    long lx = 0;
+    long int ly;
+    signed int long lz;
+
+    assert_int(0, lx);
+    ly = lx + 1;
+    assert_int(1, ly);
+    lz = lx + ly;
+    assert_int(1, lz);
+
     return summary();
 }

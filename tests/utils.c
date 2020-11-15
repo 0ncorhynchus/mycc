@@ -1,8 +1,9 @@
+#include "test.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include "test.h"
 
-int alloc4(int **p, int a, int b, int c, int d) {
+int
+alloc4(int **p, int a, int b, int c, int d) {
     *p = malloc(4 * sizeof(int));
     (*p)[0] = a;
     (*p)[1] = b;
@@ -15,7 +16,8 @@ static int test_no = 0;
 static int num_passed = 0;
 static int num_failed;
 
-int assert_int(int expected, int actual) {
+int
+assert_int(int expected, int actual) {
     test_no = test_no + 1;
     if (expected == actual) {
         num_passed = num_passed + 1;
@@ -29,7 +31,23 @@ int assert_int(int expected, int actual) {
     return 0;
 }
 
-int summary() {
+long
+assert_long(long expected, long actual) {
+    test_no = test_no + 1;
+    if (expected == actual) {
+        num_passed = num_passed + 1;
+    } else {
+        num_failed = num_failed + 1;
+        printf("%03d: ", test_no);
+        printf("Failed. %ld expected, but got %ld\n", expected, actual);
+        printf("     expected: 0x%08lX\n", expected);
+        printf("     actual:   0x%08lX\n", actual);
+    }
+    return 0;
+}
+
+int
+summary() {
     printf("SUMMARY:\n");
     printf("    %d tests passed.\n", num_passed);
     printf("    %d tests failed.\n", num_failed);

@@ -244,8 +244,7 @@ construct_type(const TypeSpec spec, const Span *span) {
     case TS_SIGNED + TS_LONG:
     case TS_LONG + TS_INT:
     case TS_SIGNED + TS_LONG + TS_INT:
-        not_implemented(span, "long");
-        break;
+        return &LONG_T;
     case TS_UNSIGNED + TS_LONG:
     case TS_UNSIGNED + TS_LONG + TS_INT:
         not_implemented(span, "unsigned long");
