@@ -326,8 +326,8 @@ pointer(const Token **rest, const Token *tok) {
 //
 //  storage_class_specifier
 //
-// At most, one storage-class specifier is allowed expect that `_Thread_local`
-// may appear with `static` or `extern`.
+// At most, one storage-class specifier is allowed expect that
+// `_Thread_local` may appear with `static` or `extern`.
 //
 typedef enum {
     EMPTY = 0,        // 0b00000
@@ -1037,7 +1037,8 @@ compound(const Token **rest, const Token *tok, Env *env) {
 
 //
 //  function_definition =
-//      declaration_specifiers declarator declartion_list? compound_statement
+//      declaration_specifiers declarator declartion_list?
+//      compound_statement
 //
 static Function *
 function(const Token **rest, const Token *tok, Env *parent) {
