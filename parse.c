@@ -1,6 +1,39 @@
 #include "mycc.h"
 #include <string.h>
 
+//
+// Declarations
+//
+
+static const Type *
+type_specifier(const Token **rest, const Token *tok, const Env *env);
+
+static Declaration *
+declarator(const Token **rest, const Token *tok, const Env *env,
+           const Type *ty);
+
+static const Type *typename(const Token **rest, const Token *tok,
+                            const Env *env);
+
+static Node *
+expr(const Token **rest, const Token *tok, Env *env);
+
+static Node *
+assign(const Token **rest, const Token *tok, Env *env);
+
+static Node *
+unary(const Token **rest, const Token *tok, Env *env);
+
+static const Statement *
+stmt(const Token **rest, const Token *tok, Env *env);
+
+static const Declaration *
+declaration(const Token **rest, const Token *tok, Env *env);
+
+//
+// Function definitions
+//
+
 static void
 unexpected(const char *expected, const Token *got) {
     error_at(&got->span, "Unexpected token: '%s' expected, but got '%.*s'",
@@ -135,12 +168,6 @@ enum_specifier(const Token **rest, const Token *tok) {
     *rest = tok;
     return ty;
 }
-static const Type *
-type_specifier(const Token **rest, const Token *tok, const Env *env);
-
-static Declaration *
-declarator(const Token **rest, const Token *tok, const Env *env,
-           const Type *ty);
 
 //
 //  specifier_qualifier_list = ( type_specifier | type_qualifier )+
@@ -210,9 +237,6 @@ struct_union_spec(const Token **rest, const Token *tok, const Env *env) {
     *rest = tok;
     return ty;
 }
-
-static const Type *typename(const Token **rest, const Token *tok,
-                            const Env *env);
 
 //
 // atomic_type_specifier = "_Atomic" "(" type_name ")"
@@ -573,9 +597,6 @@ new_node_num(int val) {
     return node;
 }
 
-static Node *
-expr(const Token **rest, const Token *tok, Env *env);
-
 //
 //  primary_expression =
 //      identifier
@@ -645,9 +666,6 @@ Node *
 deref_offset_ptr(Node *ptr, Node *index) {
     return deref(new_node(ND_ADD, ptr, index));
 }
-
-static Node *
-assign(const Token **rest, const Token *tok, Env *env);
 
 //
 //  argument_expression_list? = ( assign ( "," assign )* )?
@@ -782,9 +800,6 @@ postfix(const Token **rest, const Token *tok, Env *env) {
     *rest = tok;
     return node;
 }
-
-static Node *
-unary(const Token **rest, const Token *tok, Env *env);
 
 //
 //  cast_expression = ( "(" type_name ")" )* unary_expression
@@ -992,12 +1007,6 @@ static Node *
 expr(const Token **rest, const Token *tok, Env *env) {
     return assign(rest, tok, env);
 }
-
-static const Statement *
-stmt(const Token **rest, const Token *tok, Env *env);
-
-static const Declaration *
-declaration(const Token **rest, const Token *tok, Env *env);
 
 //
 //  compound_statement =
