@@ -211,6 +211,24 @@ struct_union_spec(const Token **rest, const Token *tok, const Env *env) {
     return ty;
 }
 
+static const Type *typename(const Token **rest, const Token *tok,
+                            const Env *env);
+
+//
+// atomic_type_specifier = "_Atomic" "(" type_name ")"
+//
+static const Type *
+atomic_type_spec(const Token **rest, const Token *tok, const Env *env) {
+    if (consume(rest, tok, "_Atomic")) {
+        not_implemented(&tok->span, "_Atomic");
+        /* expect(&tok, tok, "("); */
+        /* const Type *ty = typename(&tok, tok, env); */
+        /* expect(&tok, tok, ")"); */
+    }
+
+    return NULL;
+}
+
 //
 //  type_specifier = "void" | "char" | "short" | "int" | "long" | float" |
 //      "double" | "signed" | "unsigned" | "_Bool" | "_Complex" |
@@ -222,17 +240,45 @@ struct_union_spec(const Token **rest, const Token *tok, const Env *env) {
 //
 static const Type *
 type_specifier(const Token **rest, const Token *tok, const Env *env) {
-    if (consume(rest, tok, "int")) {
-        return &INT_T;
+    if (consume(rest, tok, "void")) {
+        return &VOID_T;
     }
     if (consume(rest, tok, "char")) {
         return &CHAR_T;
     }
-    if (consume(rest, tok, "void")) {
-        return &VOID_T;
+    if (consume(rest, tok, "short")) {
+        not_implemented(&tok->span, "short");
+    }
+    if (consume(rest, tok, "int")) {
+        return &INT_T;
+    }
+    if (consume(rest, tok, "long")) {
+        not_implemented(&tok->span, "long");
+    }
+    if (consume(rest, tok, "float")) {
+        not_implemented(&tok->span, "float");
+    }
+    if (consume(rest, tok, "double")) {
+        not_implemented(&tok->span, "double");
+    }
+    if (consume(rest, tok, "signed")) {
+        not_implemented(&tok->span, "signed");
+    }
+    if (consume(rest, tok, "unsigned")) {
+        not_implemented(&tok->span, "unsigned");
+    }
+    if (consume(rest, tok, "_Bool")) {
+        not_implemented(&tok->span, "_Bool");
+    }
+    if (consume(rest, tok, "_Complex")) {
+        not_implemented(&tok->span, "_Complex");
     }
 
     const Type *ty;
+    ty = atomic_type_spec(rest, tok, env);
+    if (ty) {
+        return ty;
+    }
     ty = struct_union_spec(rest, tok, env);
     if (ty) {
         if (ty->struct_ty->members == NULL) {
