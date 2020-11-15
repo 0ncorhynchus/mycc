@@ -228,18 +228,15 @@ construct_type(const TypeSpec spec, const Span *span) {
     case TS_SIGNED + TS_SHORT:
     case TS_SHORT + TS_INT:
     case TS_SIGNED + TS_SHORT + TS_INT:
-        not_implemented(span, "short");
-        break;
+        return &SHORT_T;
     case TS_UNSIGNED + TS_SIGNED:
     case TS_UNSIGNED + TS_SIGNED + TS_INT:
-        not_implemented(span, "unsigned short");
-        break;
+        return &USHORT_T;
     case TS_INT:
     case TS_SIGNED + TS_INT:
         return &INT_T;
     case TS_UNSIGNED + TS_INT:
-        not_implemented(span, "unsigned int");
-        break;
+        return &UINT_T;
     case TS_LONG:
     case TS_SIGNED + TS_LONG:
     case TS_LONG + TS_INT:
@@ -247,30 +244,23 @@ construct_type(const TypeSpec spec, const Span *span) {
         return &LONG_T;
     case TS_UNSIGNED + TS_LONG:
     case TS_UNSIGNED + TS_LONG + TS_INT:
-        not_implemented(span, "unsigned long");
-        break;
+        return &ULONG_T;
     case TS_LONG + TS_LONG:
     case TS_SIGNED + TS_LONG + TS_LONG:
     case TS_LONG + TS_LONG + TS_INT:
     case TS_SIGNED + TS_LONG + TS_LONG + TS_INT:
-        not_implemented(span, "long long");
-        break;
+        return &LONG_LONG_T;
     case TS_UNSIGNED + TS_LONG + TS_LONG:
     case TS_UNSIGNED + TS_LONG + TS_LONG + TS_INT:
-        not_implemented(span, "unsigned long long");
-        break;
+        return &ULONG_LONG_T;
     case TS_FLOAT:
-        not_implemented(span, "float");
-        break;
+        return &FLOAT_T;
     case TS_DOUBLE:
-        not_implemented(span, "double");
-        break;
+        return &DOUBLE_T;
     case TS_LONG + TS_DOUBLE:
-        not_implemented(span, "long double");
-        break;
+        return &LONG_DOUBLE_T;
     case TS_BOOL:
-        not_implemented(span, "_Bool");
-        break;
+        return &BOOL_T;
     case TS_FLOAT + TS_COMPLEX:
         not_implemented(span, "float _Complex");
         break;

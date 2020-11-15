@@ -92,9 +92,12 @@ struct ParamList {
 };
 
 struct Type {
-    enum { INTEGER, PTR, ARRAY, VOID, FUNCTION, ENUM, STRUCT } ty;
+    enum { BOOL, INTEGER, REAL, PTR, ARRAY, VOID, FUNCTION, ENUM, STRUCT } ty;
 
-    enum { CHAR, INT, LONG } ikind;
+    enum { CHAR, SHORT, INT, LONG, LONG_LONG } ikind;
+    bool is_unsigned;
+
+    enum { FLOAT, DOUBLE, LONG_DOUBLE } fkind;
 
     const Type *ptr_to;
     int array_size;
@@ -111,8 +114,18 @@ struct Type {
 
 extern const Type VOID_T;
 extern const Type CHAR_T;
+extern const Type SHORT_T;
+extern const Type USHORT_T;
 extern const Type INT_T;
+extern const Type UINT_T;
 extern const Type LONG_T;
+extern const Type ULONG_T;
+extern const Type LONG_LONG_T;
+extern const Type ULONG_LONG_T;
+extern const Type FLOAT_T;
+extern const Type DOUBLE_T;
+extern const Type LONG_DOUBLE_T;
+extern const Type BOOL_T;
 
 typedef struct {
     enum { CASE, DEFAULT } kind;

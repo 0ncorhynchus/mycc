@@ -3,9 +3,22 @@
 #include <string.h>
 
 const Type VOID_T = {VOID};
+
 const Type CHAR_T = {INTEGER, CHAR};
-const Type INT_T = {INTEGER, INT};
-const Type LONG_T = {INTEGER, LONG};
+const Type SHORT_T = {INTEGER, SHORT, false};
+const Type USHORT_T = {INTEGER, SHORT, true};
+const Type INT_T = {INTEGER, INT, false};
+const Type UINT_T = {INTEGER, INT, true};
+const Type LONG_T = {INTEGER, LONG, false};
+const Type ULONG_T = {INTEGER, LONG, true};
+const Type LONG_LONG_T = {INTEGER, LONG_LONG, false};
+const Type ULONG_LONG_T = {INTEGER, LONG_LONG, true};
+
+const Type FLOAT_T = {REAL, 0, false, FLOAT};
+const Type DOUBLE_T = {REAL, 0, false, DOUBLE};
+const Type LONG_DOUBLE_T = {REAL, 0, false, LONG_DOUBLE};
+
+const Type BOOL_T = {BOOL};
 
 const Type *
 mk_ptr(const Type *base) {
@@ -45,10 +58,14 @@ sizeof_ty(const Type *ty) {
         switch (ty->ikind) {
         case CHAR:
             return 1;
+        case SHORT:
+            return 2;
         case INT:
             return 4;
         case LONG:
             return 8;
+        case LONG_LONG:
+            return 16;
         }
     case PTR:
         return 8;
@@ -93,11 +110,16 @@ type_to_str(const Type *ty) {
             case CHAR:
                 strcat(buffer, "rahc");
                 break;
+            case SHORT:
+                strcat(buffer, "trohs");
+                break;
             case INT:
                 strcat(buffer, "tni");
                 break;
             case LONG:
                 strcat(buffer, "gnol");
+            case LONG_LONG:
+                strcat(buffer, "gnol gnol");
             }
             break;
         case PTR:
@@ -166,7 +188,9 @@ is_subtype(const Type *base, const Type *derived) {
 
     switch (base->ty) {
     case INTEGER:
-        return derived->ty == INTEGER && sizeof_ty(base) >= sizeof_ty(derived);
+        return derived->ty == INTEGER &&
+               sizeof_ty(base) >= sizeof_ty(derived) &&
+               base->is_unsigned == derived->is_unsigned;
     case PTR:
         if (derived->ty == PTR) {
             return is_subtype(base->ptr_to, derived->ptr_to);
