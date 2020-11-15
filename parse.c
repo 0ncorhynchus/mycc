@@ -24,7 +24,7 @@ typedef enum {
 } TypeSpecKind;
 
 typedef struct {
-    TypeSpecKind kind;
+    int kind;
     const Type *ty;
 } TypeSpec;
 
@@ -210,21 +210,90 @@ composite_type_spec(TypeSpec *x, const TypeSpec y) {
 }
 
 const Type *
-construct_type(const TypeSpec spec) {
+construct_type(const TypeSpec spec, const Span *span) {
     switch (spec.kind) {
+    case 0:
+        return NULL;
     case TS_VOID:
         return &VOID_T;
     case TS_CHAR:
         return &CHAR_T;
+    case TS_SIGNED + TS_CHAR:
+        not_implemented(span, "signed char");
+        break;
+    case TS_UNSIGNED + TS_CHAR:
+        not_implemented(span, "unsigned char");
+        break;
+    case TS_SHORT:
+    case TS_SIGNED + TS_SHORT:
+    case TS_SHORT + TS_INT:
+    case TS_SIGNED + TS_SHORT + TS_INT:
+        not_implemented(span, "short");
+        break;
+    case TS_UNSIGNED + TS_SIGNED:
+    case TS_UNSIGNED + TS_SIGNED + TS_INT:
+        not_implemented(span, "unsigned short");
+        break;
     case TS_INT:
+    case TS_SIGNED + TS_INT:
         return &INT_T;
+    case TS_UNSIGNED + TS_INT:
+        not_implemented(span, "unsigned int");
+        break;
+    case TS_LONG:
+    case TS_SIGNED + TS_LONG:
+    case TS_LONG + TS_INT:
+    case TS_SIGNED + TS_LONG + TS_INT:
+        not_implemented(span, "long");
+        break;
+    case TS_UNSIGNED + TS_LONG:
+    case TS_UNSIGNED + TS_LONG + TS_INT:
+        not_implemented(span, "unsigned long");
+        break;
+    case TS_LONG + TS_LONG:
+    case TS_SIGNED + TS_LONG + TS_LONG:
+    case TS_LONG + TS_LONG + TS_INT:
+    case TS_SIGNED + TS_LONG + TS_LONG + TS_INT:
+        not_implemented(span, "long long");
+        break;
+    case TS_UNSIGNED + TS_LONG + TS_LONG:
+    case TS_UNSIGNED + TS_LONG + TS_LONG + TS_INT:
+        not_implemented(span, "unsigned long long");
+        break;
+    case TS_FLOAT:
+        not_implemented(span, "float");
+        break;
+    case TS_DOUBLE:
+        not_implemented(span, "double");
+        break;
+    case TS_LONG + TS_DOUBLE:
+        not_implemented(span, "long double");
+        break;
+    case TS_BOOL:
+        not_implemented(span, "_Bool");
+        break;
+    case TS_FLOAT + TS_COMPLEX:
+        not_implemented(span, "float _Complex");
+        break;
+    case TS_DOUBLE + TS_COMPLEX:
+        not_implemented(span, "double _Complex");
+        break;
+    case TS_LONG + TS_DOUBLE + TS_COMPLEX:
+        not_implemented(span, "long double _Complex");
+        break;
+    case TS_ATOMIC:
+        not_implemented(span, "_Atomic");
+        break;
     case TS_STRUCT_OR_UNION:
     case TS_ENUM:
     case TS_TYPEDEF_NAME:
         return spec.ty;
+
     default:
+        error_at(span, "invalid type");
         break;
     }
+
     return NULL;
 }
 
@@ -233,6 +302,7 @@ construct_type(const TypeSpec spec) {
 //
 static const Type *
 spec_qual_list(const Token **rest, const Token *tok, const Env *env) {
+    const Span start = tok->span;
     TypeSpec ty_spec = {};
     for (;;) {
         const TypeSpec spec = type_specifier(&tok, tok, env);
@@ -245,7 +315,7 @@ spec_qual_list(const Token **rest, const Token *tok, const Env *env) {
         break;
     }
 
-    const Type *ty = construct_type(ty_spec);
+    const Type *ty = construct_type(ty_spec, &start);
     if (ty) {
         *rest = tok;
     }
@@ -318,11 +388,15 @@ struct_union_spec(const Token **rest, const Token *tok, const Env *env) {
 //
 static const Type *
 atomic_type_spec(const Token **rest, const Token *tok, const Env *env) {
-    if (consume(rest, tok, "_Atomic")) {
-        not_implemented(&tok->span, "_Atomic");
-        /* expect(&tok, tok, "("); */
-        /* const Type *ty = type_name(&tok, tok, env); */
-        /* expect(&tok, tok, ")"); */
+    if (consume(&tok, tok, "_Atomic")) {
+        expect(&tok, tok, "(");
+        const Type *ty = type_name(&tok, tok, env);
+        if (ty == NULL) {
+            unexpected("type name", tok);
+        }
+        expect(&tok, tok, ")");
+        *rest = tok;
+        return ty;
     }
 
     return NULL;
@@ -352,31 +426,31 @@ type_specifier(const Token **rest, const Token *tok, const Env *env) {
         return type_spec(TS_CHAR, NULL);
     }
     if (consume(rest, tok, "short")) {
-        not_implemented(&tok->span, "short");
+        return type_spec(TS_SHORT, NULL);
     }
     if (consume(rest, tok, "int")) {
         return type_spec(TS_INT, NULL);
     }
     if (consume(rest, tok, "long")) {
-        not_implemented(&tok->span, "long");
+        return type_spec(TS_LONG, NULL);
     }
     if (consume(rest, tok, "float")) {
-        not_implemented(&tok->span, "float");
+        return type_spec(TS_FLOAT, NULL);
     }
     if (consume(rest, tok, "double")) {
-        not_implemented(&tok->span, "double");
+        return type_spec(TS_DOUBLE, NULL);
     }
     if (consume(rest, tok, "signed")) {
-        not_implemented(&tok->span, "signed");
+        return type_spec(TS_SIGNED, NULL);
     }
     if (consume(rest, tok, "unsigned")) {
-        not_implemented(&tok->span, "unsigned");
+        return type_spec(TS_UNSIGNED, NULL);
     }
     if (consume(rest, tok, "_Bool")) {
-        not_implemented(&tok->span, "_Bool");
+        return type_spec(TS_BOOL, NULL);
     }
     if (consume(rest, tok, "_Complex")) {
-        not_implemented(&tok->span, "_Complex");
+        return type_spec(TS_COMPLEX, NULL);
     }
 
     const Type *ty;
@@ -483,6 +557,7 @@ typedef struct {
 
 static const DeclSpec
 declspec(const Token **rest, const Token *tok, const Env *env) {
+    const Span start = tok->span;
     DeclSpec spec = {};
     TypeSpec ty_spec = {};
 
@@ -507,7 +582,7 @@ declspec(const Token **rest, const Token *tok, const Env *env) {
         break;
     }
 
-    spec.ty = construct_type(ty_spec);
+    spec.ty = construct_type(ty_spec, &start);
     if (spec.ty) {
         *rest = tok;
     }
