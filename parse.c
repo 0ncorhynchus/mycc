@@ -31,6 +31,17 @@ typedef struct {
 static const TypeSpec
 type_specifier(const Token **rest, const Token *tok, const Env *env);
 
+typedef enum {
+    TQ_NULL,
+    TQ_CONST,
+    TQ_RESTRICT,
+    TQ_VOLATILE,
+    TQ_ATOMIC,
+} TypeQualifier;
+
+static const TypeQualifier
+type_qualifier(const Token **rest, const Token *tok);
+
 static Declaration *
 declarator(const Token **rest, const Token *tok, const Env *env,
            const Type *ty);
@@ -301,6 +312,12 @@ spec_qual_list(const Token **rest, const Token *tok, const Env *env) {
             }
             continue;
         }
+
+        const TypeQualifier qualifier = type_qualifier(&tok, tok);
+        if (qualifier != TQ_NULL) {
+            continue;
+        }
+
         break;
     }
 
@@ -481,6 +498,26 @@ type_specifier(const Token **rest, const Token *tok, const Env *env) {
     return type_spec(0, NULL);
 }
 
+//
+//  type_qualifier = "const" | "restrict" | "volatile" | "_Atomic"
+//
+static const TypeQualifier
+type_qualifier(const Token **rest, const Token *tok) {
+    if (consume(rest, tok, "const")) {
+        return TQ_CONST;
+    }
+    if (consume(rest, tok, "restrict")) {
+        return TQ_RESTRICT;
+    }
+    if (consume(rest, tok, "volatile")) {
+        return TQ_VOLATILE;
+    }
+    if (consume(rest, tok, "_Atomic")) {
+        return TQ_ATOMIC;
+    }
+    return TQ_NULL;
+}
+
 static int
 pointer(const Token **rest, const Token *tok) {
     unsigned int num_ptrs = 0;
@@ -565,6 +602,11 @@ declspec(const Token **rest, const Token *tok, const Env *env) {
             if (!composite_type_spec(&ty_spec, ty)) {
                 error_at(&tok->span, "invalid type specifier");
             }
+            continue;
+        }
+
+        const TypeQualifier tq = type_qualifier(&tok, tok);
+        if (tq != TQ_NULL) {
             continue;
         }
 
