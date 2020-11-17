@@ -130,10 +130,16 @@ make_span(const char *ptr, int len) {
 }
 
 static Token *
-new_token(TokenKind kind, Token *cur, const char *str, int len) {
+gen_token(TokenKind kind, const char *str, int len) {
     Token *tok = calloc(1, sizeof(Token));
     tok->kind = kind;
     tok->span = make_span(str, len);
+    return tok;
+}
+
+static Token *
+new_token(TokenKind kind, Token *cur, const char *str, int len) {
+    Token *tok = gen_token(kind, str, len);
     cur->next = tok;
     return tok;
 }
@@ -154,14 +160,20 @@ skip_to_break(const char **p) {
     line_head = *p;
 }
 
+static int
+read_decimal(const char **rest, const char *p, int base) {
+    char *endptr;
+    int val = strtol(p, &endptr, base);
+    *rest = endptr;
+    return val;
+}
+
 static void
 process_macro(const char **p) {
     int line = 0;
     skip_space(p);
     if (isdigit(**p)) {
-        char *end;
-        line = strtol(*p, &end, 10);
-        *p = end;
+        line = read_decimal(p, *p, 10);
     } else {
         skip_to_break(p);
         return;
@@ -238,9 +250,7 @@ tokenize(const char *path) {
 
         if (isdigit(*p)) {
             const char *first = p;
-            char *endptr;
-            int val = strtol(p, &endptr, 10);
-            p = endptr;
+            int val = read_decimal(&p, p, 10);
             int len = p - first;
             cur = new_token(TK_NUM, cur, first, len);
             cur->val = val;
