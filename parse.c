@@ -1265,7 +1265,7 @@ relational(const Token **rest, const Token *tok, Env *env) {
 }
 
 //
-//  equality = relational ( ( "==" | "!=" ) relational )*
+//  equality_expression = relational ( ( "==" | "!=" ) relational )*
 //
 static Node *
 equality(const Token **rest, const Token *tok, Env *env) {
@@ -1281,6 +1281,25 @@ equality(const Token **rest, const Token *tok, Env *env) {
             return node;
         }
     }
+}
+
+//
+//  and_expression =
+//          equality_expression ( "&" equality_expression )*
+//
+static Node *
+and_expression(const Token **rest, const Token *tok, Env *env) {
+    Node *node = equality(&tok, tok, env);
+    if (node == NULL) {
+        return NULL;
+    }
+
+    while (consume(&tok, tok, "&")) {
+        node = new_node(ND_AND, node, equality(&tok, tok, env));
+    }
+
+    *rest = tok;
+    return node;
 }
 
 static Node *

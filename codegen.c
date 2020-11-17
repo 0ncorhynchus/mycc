@@ -751,6 +751,14 @@ gen(Node *node) {
     case ND_SHR:
         gen_shift("shr", node->lhs, node->rhs);
         break;
+    case ND_AND:
+        gen(node->lhs);
+        gen(node->rhs);
+        pop("rdi");
+        pop("rax");
+        printf("  and rax, rdi\n");
+        push("rax");
+        break;
     }
 }
 
