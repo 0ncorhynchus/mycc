@@ -361,7 +361,7 @@ gen_top(Unit *code) {
 }
 
 void
-gen_add(char *op, Node *lhs, Node *rhs) {
+gen_add(const char *op, Node *lhs, Node *rhs) {
     if (lhs->ty->ty == PTR) {
         if (rhs->ty->ty == PTR) {
             error("Invalid operands to binary '%s' between pointers", op);
@@ -618,6 +618,32 @@ gen_statement(const Statement *statement) {
 }
 
 static void
+gen_comparison(const char *op, Node *lhs, Node *rhs) {
+    gen(lhs);
+    gen(rhs);
+    pop("rdi");
+    pop("rax");
+    const size_t size = sizeof_ty(lhs->ty);
+    printf("  cmp %s, %s\n", ax(size), di(size));
+    printf("  %s al\n", op);
+    printf("  movzx rax, al\n");
+    push("rax");
+}
+
+static void
+gen_increment(const char *op, Node *node) {
+    gen_lval(node);
+    pop("rax");
+    printf("  mov rdi, [rax]\n");
+    push("rdi");
+    push("rax");
+    gen_add(op, node, new_node_num(1));
+    pop("rdi");
+    pop("rax");
+    printf("  mov [rax], %s\n", di(sizeof_ty(node->ty)));
+}
+
+static void
 gen_shift(const char *op, Node *lhs, Node *rhs) {
     gen(lhs);
     gen(rhs);
@@ -629,8 +655,6 @@ gen_shift(const char *op, Node *lhs, Node *rhs) {
 
 void
 gen(Node *node) {
-    size_t size;
-
     switch (node->kind) {
     case ND_NUM:
         push_val(node->val);
@@ -704,70 +728,22 @@ gen(Node *node) {
         push("rax");
         break;
     case ND_LT:
-        gen(node->lhs);
-        gen(node->rhs);
-        pop("rdi");
-        pop("rax");
-        size = sizeof_ty(node->lhs->ty);
-        printf("  cmp %s, %s\n", ax(size), di(size));
-        printf("  setl al\n");
-        printf("  movzx rax, al\n");
-        push("rax");
+        gen_comparison("setl", node->lhs, node->rhs);
         break;
     case ND_LE:
-        gen(node->lhs);
-        gen(node->rhs);
-        pop("rdi");
-        pop("rax");
-        size = sizeof_ty(node->lhs->ty);
-        printf("  cmp %s, %s\n", ax(size), di(size));
-        printf("  setle al\n");
-        printf("  movzx rax, al\n");
-        push("rax");
+        gen_comparison("setle", node->lhs, node->rhs);
         break;
     case ND_EQ:
-        gen(node->lhs);
-        gen(node->rhs);
-        pop("rdi");
-        pop("rax");
-        size = sizeof_ty(node->lhs->ty);
-        printf("  cmp %s, %s\n", ax(size), di(size));
-        printf("  sete al\n");
-        printf("  movzx rax, al\n");
-        push("rax");
+        gen_comparison("sete", node->lhs, node->rhs);
         break;
     case ND_NE:
-        gen(node->lhs);
-        gen(node->rhs);
-        pop("rdi");
-        pop("rax");
-        size = sizeof_ty(node->lhs->ty);
-        printf("  cmp %s, %s\n", ax(size), di(size));
-        printf("  setne al\n");
-        printf("  movzx rax, al\n");
-        push("rax");
+        gen_comparison("setne", node->lhs, node->rhs);
         break;
     case ND_INCR:
-        gen_lval(node->lhs);
-        pop("rax");
-        printf("  mov rdi, [rax]\n");
-        push("rdi");
-        push("rax");
-        gen_add("add", node->lhs, new_node_num(1));
-        pop("rdi");
-        pop("rax");
-        printf("  mov [rax], %s\n", di(sizeof_ty(node->lhs->ty)));
+        gen_increment("add", node->lhs);
         break;
     case ND_DECR:
-        gen_lval(node->lhs);
-        pop("rax");
-        printf("  mov rdi, [rax]\n");
-        push("rdi");
-        push("rax");
-        gen_add("sub", node->lhs, new_node_num(1));
-        pop("rdi");
-        pop("rax");
-        printf("  mov [rax], %s\n", di(sizeof_ty(node->lhs->ty)));
+        gen_increment("sub", node->lhs);
         break;
     case ND_SHL:
         gen_shift("shl", node->lhs, node->rhs);
