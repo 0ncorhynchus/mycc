@@ -197,6 +197,76 @@ process_macro(const char **p) {
     skip_to_break(p);
 }
 
+typedef enum {
+    IS_UNSIGNED = 1,
+    IS_LONG = 2,
+} IntegerSuffix;
+
+static bool
+unsigned_suffix(const char **rest, const char *p) {
+    if (*p == 'u' || *p == 'U') {
+        *rest = p + 1;
+        return true;
+    } else {
+        return false;
+    }
+}
+
+static int
+long_suffix(const char **rest, const char *p) {
+    int kind = 0;
+    switch (*p) {
+    case 'l':
+        p++;
+        kind += IS_LONG;
+        if (*p == 'l') {
+            p++;
+            kind += IS_LONG;
+        }
+        break;
+    case 'L':
+        p++;
+        kind += IS_LONG;
+        if (*p == 'L') {
+            p++;
+            kind += IS_LONG;
+        }
+        break;
+    default:
+        break;
+    }
+
+    *rest = p;
+    return kind;
+}
+
+//
+//  integer_suffix =
+//          unsigned_suffix
+//          unsigned_suffix long_suffix
+//          unsigned_suffix longlong_suffix
+//          long_suffix
+//          long_suffix unsigned_suffix
+//          longlong_suffix
+//          longlong_suffix unsigned_suffix
+//
+static int
+integer_suffix(const char **rest, const char *p) {
+    int kind = 0;
+    if (unsigned_suffix(&p, p)) {
+        kind += IS_UNSIGNED;
+        kind += long_suffix(&p, p);
+    } else {
+        kind += long_suffix(&p, p);
+        if (unsigned_suffix(&p, p)) {
+            kind += IS_UNSIGNED;
+        }
+    }
+
+    *rest = p;
+    return kind;
+}
+
 //
 //  integer_constant =
 //          decimal_constant integer_suffix?
@@ -221,8 +291,11 @@ integer(const char **rest, const char *p) {
         return NULL;
     }
 
-    int val = read_decimal(rest, p, base);
-    int len = *rest - first;
+    int val = read_decimal(&p, p, base);
+    integer_suffix(&p, p);
+
+    int len = p - first;
+    *rest = p;
     Token *tok = gen_token(TK_NUM, first, len);
     tok->val = val;
     return tok;
