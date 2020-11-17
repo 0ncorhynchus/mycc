@@ -581,6 +581,26 @@ storage_spec(const Token **rest, const Token *tok) {
     return EMPTY;
 }
 
+typedef enum {
+    FS_NULL,
+    FS_INLINE,
+    FS_NORETURN,
+} FuncSpec;
+
+//
+//  function_specifier = "inline" | "_Noreturn"
+//
+static FuncSpec
+function_specifier(const Token **rest, const Token *tok) {
+    if (consume(rest, tok, "inline")) {
+        return FS_INLINE;
+    }
+    if (consume(rest, tok, "_Noreturn")) {
+        return FS_NORETURN;
+    }
+    return FS_NULL;
+}
+
 //
 //  declaration_specifiers = (declaration_specifier)+
 //  declaration_specifier =
@@ -621,6 +641,11 @@ declspec(const Token **rest, const Token *tok, const Env *env) {
 
         const TypeQualifier tq = type_qualifier(&tok, tok);
         if (tq != TQ_NULL) {
+            continue;
+        }
+
+        const FuncSpec fs = function_specifier(&tok, tok);
+        if (fs != FS_NULL) {
             continue;
         }
 
