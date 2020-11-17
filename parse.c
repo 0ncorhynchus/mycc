@@ -1045,17 +1045,33 @@ postfix(const Token **rest, const Token *tok, Env *env) {
     return node;
 }
 
+static const Type *
+cast(const Token **rest, const Token *tok, Env *env) {
+    if (!consume(&tok, tok, "(")) {
+        return NULL;
+    }
+
+    const Type *ty = type_name(&tok, tok, env);
+    if (ty == NULL) {
+        return NULL;
+    }
+
+    expect(rest, tok, ")");
+    return ty;
+}
+
 //
 //  cast_expression = ( "(" type_name ")" )* unary_expression
 //
 static Node *
-cast(const Token **rest, const Token *tok, Env *env) {
+cast_expression(const Token **rest, const Token *tok, Env *env) {
     for (;;) {
-        if (consume(&tok, tok, "(")) {
+        const Type *ty = cast(&tok, tok, env);
+        if (ty) {
             not_implemented(&tok->span, "cast");
-            expect(&tok, tok, ")");
+        } else {
+            break;
         }
-        break;
     }
     return unary(rest, tok, env);
 }
@@ -1093,10 +1109,11 @@ unary(const Token **rest, const Token *tok, Env *env) {
         return deref(as_ptr(unary(rest, tok, env)));
     }
     if (consume(&tok, tok, "+")) {
-        return cast(rest, tok, env);
+        return cast_expression(rest, tok, env);
     }
     if (consume(&tok, tok, "-")) {
-        return new_node(ND_SUB, new_node_num(0), cast(rest, tok, env));
+        return new_node(ND_SUB, new_node_num(0),
+                        cast_expression(rest, tok, env));
     }
     if (consume(&tok, tok, "~")) {
         not_implemented(&tok->span, NULL);
@@ -1136,17 +1153,18 @@ unary(const Token **rest, const Token *tok, Env *env) {
 }
 
 //
-//  mul = unary ( "*" unary | "/" unary )*
+//  multiplicative_expression =
+//          cast_expression ( ( "*" | "/" | "%" ) cast_expression )*
 //
 static Node *
 mul(const Token **rest, const Token *tok, Env *env) {
-    Node *node = unary(&tok, tok, env);
+    Node *node = cast_expression(&tok, tok, env);
 
     for (;;) {
         if (consume(&tok, tok, "*")) {
-            node = new_node(ND_MUL, node, unary(&tok, tok, env));
+            node = new_node(ND_MUL, node, cast_expression(&tok, tok, env));
         } else if (consume(&tok, tok, "/")) {
-            node = new_node(ND_DIV, node, unary(&tok, tok, env));
+            node = new_node(ND_DIV, node, cast_expression(&tok, tok, env));
         } else {
             *rest = tok;
             return node;
