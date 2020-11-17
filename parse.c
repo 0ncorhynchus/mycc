@@ -1321,6 +1321,25 @@ exclusive_or_expression(const Token **rest, const Token *tok, Env *env) {
     return node;
 }
 
+//
+//  inclusive_or_expression =
+//          exclusive_or_expression ( "|" exclusive_or_expression )*
+//
+static Node *
+inclusive_or_expression(const Token **rest, const Token *tok, Env *env) {
+    Node *node = exclusive_or_expression(&tok, tok, env);
+    if (node == NULL) {
+        return NULL;
+    }
+
+    while (consume(&tok, tok, "|")) {
+        node = new_node(ND_OR, node, exclusive_or_expression(&tok, tok, env));
+    }
+
+    *rest = tok;
+    return node;
+}
+
 static Node *
 unary_and_assign(const Token **rest, const Token *tok, Env *env) {
     Node *node = unary(&tok, tok, env);
@@ -1354,7 +1373,7 @@ assign(const Token **rest, const Token *tok, Env *env) {
         return new_node(ND_ASSIGN, lhs, as_ptr(rhs));
     }
 
-    return exclusive_or_expression(rest, tok, env);
+    return inclusive_or_expression(rest, tok, env);
 }
 
 //

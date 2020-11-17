@@ -767,6 +767,9 @@ gen(Node *node) {
     case ND_XOR:
         gen_bitwise("xor", node->lhs, node->rhs);
         break;
+    case ND_OR:
+        gen_bitwise("or", node->lhs, node->rhs);
+        break;
     }
 }
 
