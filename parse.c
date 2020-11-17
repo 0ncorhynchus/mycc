@@ -1359,6 +1359,25 @@ logical_and_expression(const Token **rest, const Token *tok, Env *env) {
     return node;
 }
 
+//
+//  logical_or_expression =
+//          logical_and_expression ( "||" logical_and_expression )*
+//
+static Node *
+logical_or_expression(const Token **rest, const Token *tok, Env *env) {
+    Node *node = logical_and_expression(&tok, tok, env);
+    if (node == NULL) {
+        return NULL;
+    }
+
+    while (consume(&tok, tok, "||")) {
+        node = new_node(ND_LOR, node, logical_and_expression(&tok, tok, env));
+    }
+
+    *rest = tok;
+    return node;
+}
+
 static Node *
 unary_and_assign(const Token **rest, const Token *tok, Env *env) {
     Node *node = unary(&tok, tok, env);
@@ -1392,7 +1411,7 @@ assign(const Token **rest, const Token *tok, Env *env) {
         return new_node(ND_ASSIGN, lhs, as_ptr(rhs));
     }
 
-    return logical_and_expression(rest, tok, env);
+    return logical_or_expression(rest, tok, env);
 }
 
 //

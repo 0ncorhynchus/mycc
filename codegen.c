@@ -783,6 +783,9 @@ gen(Node *node) {
     case ND_LAND:
         gen_logical("and", node->lhs, node->rhs);
         break;
+    case ND_LOR:
+        gen_logical("or", node->lhs, node->rhs);
+        break;
     }
 }
 
