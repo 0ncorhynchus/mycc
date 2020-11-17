@@ -654,6 +654,16 @@ gen_shift(const char *op, Node *lhs, Node *rhs) {
 }
 
 void
+gen_bitwise(const char *op, Node *lhs, Node *rhs) {
+    gen(lhs);
+    gen(rhs);
+    pop("rdi");
+    pop("rax");
+    printf("  %s rax, rdi\n", op);
+    push("rax");
+}
+
+void
 gen(Node *node) {
     switch (node->kind) {
     case ND_NUM:
@@ -752,12 +762,10 @@ gen(Node *node) {
         gen_shift("shr", node->lhs, node->rhs);
         break;
     case ND_AND:
-        gen(node->lhs);
-        gen(node->rhs);
-        pop("rdi");
-        pop("rax");
-        printf("  and rax, rdi\n");
-        push("rax");
+        gen_bitwise("and", node->lhs, node->rhs);
+        break;
+    case ND_XOR:
+        gen_bitwise("xor", node->lhs, node->rhs);
         break;
     }
 }

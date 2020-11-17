@@ -1302,6 +1302,25 @@ and_expression(const Token **rest, const Token *tok, Env *env) {
     return node;
 }
 
+//
+//  exclusive_or_expression =
+//          and_expression ( "^" and_expression )*
+//
+static Node *
+exclusive_or_expression(const Token **rest, const Token *tok, Env *env) {
+    Node *node = and_expression(&tok, tok, env);
+    if (node == NULL) {
+        return NULL;
+    }
+
+    while (consume(&tok, tok, "^")) {
+        node = new_node(ND_XOR, node, and_expression(&tok, tok, env));
+    }
+
+    *rest = tok;
+    return node;
+}
+
 static Node *
 unary_and_assign(const Token **rest, const Token *tok, Env *env) {
     Node *node = unary(&tok, tok, env);
@@ -1335,7 +1354,7 @@ assign(const Token **rest, const Token *tok, Env *env) {
         return new_node(ND_ASSIGN, lhs, as_ptr(rhs));
     }
 
-    return and_expression(rest, tok, env);
+    return exclusive_or_expression(rest, tok, env);
 }
 
 //
