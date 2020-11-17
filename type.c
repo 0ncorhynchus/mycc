@@ -110,6 +110,9 @@ type_to_str(const Type *ty) {
         switch (tmp->ty) {
         case CHAR:
             strcat(buffer, "rahc");
+            if (tmp->is_unsigned) {
+                strcat(buffer, " dengisnu");
+            }
             break;
         case INTEGER:
             switch (tmp->ikind) {
@@ -123,6 +126,9 @@ type_to_str(const Type *ty) {
                 strcat(buffer, "gnol");
             case LONG_LONG:
                 strcat(buffer, "gnol gnol");
+            }
+            if (tmp->is_unsigned) {
+                strcat(buffer, " dengisnu");
             }
             break;
         case PTR:
@@ -191,10 +197,21 @@ is_subtype(const Type *base, const Type *derived) {
 
     switch (base->ty) {
     case CHAR:
+        return derived->ty == CHAR;
     case INTEGER:
-        return (derived->ty == INTEGER || derived->ty == CHAR) &&
-               sizeof_ty(base) >= sizeof_ty(derived) &&
-               base->is_unsigned == derived->is_unsigned;
+        if (derived->ty == CHAR) {
+            return true;
+        }
+        if (derived->ty == INTEGER) {
+            size_t base_size = sizeof_ty(base);
+            size_t derived_size = sizeof_ty(derived);
+            if (base_size > derived_size) {
+                return true;
+            } else if (base_size == derived_size) {
+                return base->is_unsigned == derived->is_unsigned;
+            }
+        }
+        return false;
     case PTR:
         if (derived->ty == PTR) {
             return is_subtype(base->ptr_to, derived->ptr_to);
