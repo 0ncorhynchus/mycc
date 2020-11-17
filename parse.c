@@ -1066,9 +1066,10 @@ cast(const Token **rest, const Token *tok, Env *env) {
 static Node *
 cast_expression(const Token **rest, const Token *tok, Env *env) {
     for (;;) {
+        const Token *tmp = tok;
         const Type *ty = cast(&tok, tok, env);
         if (ty) {
-            not_implemented(&tok->span, "cast");
+            not_implemented(&tmp->span, "cast");
         } else {
             break;
         }
