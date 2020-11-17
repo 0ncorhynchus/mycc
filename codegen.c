@@ -617,6 +617,16 @@ gen_statement(const Statement *statement) {
     }
 }
 
+static void
+gen_shift(const char *op, Node *lhs, Node *rhs) {
+    gen(lhs);
+    gen(rhs);
+    pop("rcx");
+    pop("rax");
+    printf("  %s rax, cl\n", op);
+    push("rax");
+}
+
 void
 gen(Node *node) {
     size_t size;
@@ -760,13 +770,10 @@ gen(Node *node) {
         printf("  mov [rax], %s\n", di(sizeof_ty(node->lhs->ty)));
         break;
     case ND_SHL:
+        gen_shift("shl", node->lhs, node->rhs);
+        break;
     case ND_SHR:
-        gen(node->lhs);
-        gen(node->rhs);
-        pop("rdi");
-        pop("rax");
-        // TODO
-        push("rax");
+        gen_shift("shr", node->lhs, node->rhs);
         break;
     }
 }
