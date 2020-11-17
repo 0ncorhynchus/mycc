@@ -518,14 +518,14 @@ type_qualifier(const Token **rest, const Token *tok) {
     return TQ_NULL;
 }
 
-static int
-pointer(const Token **rest, const Token *tok) {
-    unsigned int num_ptrs = 0;
+static const Type *
+pointer(const Token **rest, const Token *tok, const Type *ty) {
     while (consume(&tok, tok, "*")) {
-        num_ptrs++;
+        ty = mk_ptr(ty);
     }
+
     *rest = tok;
-    return num_ptrs;
+    return ty;
 }
 
 //
@@ -622,6 +622,28 @@ declspec(const Token **rest, const Token *tok, const Env *env) {
 }
 
 //
+// abstract_declarator? = pointer? direct_abstract_declarator?
+//
+static const Type *
+abstract_declarator(const Token **rest, const Token *tok, const Type *ty) {
+    ty = pointer(&tok, tok, ty);
+
+    // direct_abstract_declarator
+    if (consume(&tok, tok, "[")) {
+        int size;
+        if (!number(&tok, tok, &size)) {
+            error("Expect a number.");
+        }
+        expect(&tok, tok, "]");
+
+        ty = mk_array(ty, size);
+    }
+
+    *rest = tok;
+    return ty;
+}
+
+//
 //  parameter_declaration =
 //      declaration_specifiers declarator
 //      declaration_specifiers abstract_declarator?
@@ -713,10 +735,7 @@ direct_declarator(const Token **rest, const Token *tok, const Env *env,
 static Declaration *
 declarator(const Token **rest, const Token *tok, const Env *env,
            const Type *ty) {
-    for (int i = 0; i < pointer(&tok, tok); i++) {
-        ty = mk_ptr(ty);
-    }
-
+    ty = pointer(&tok, tok, ty);
     return direct_declarator(rest, tok, env, ty);
 }
 
@@ -730,24 +749,7 @@ type_name(const Token **rest, const Token *tok, const Env *env) {
         return NULL;
     }
 
-    // abstract_declarator? = pointer? direct_abstract_declarator?
-    for (int i = 0; i < pointer(&tok, tok); i++) {
-        ty = mk_ptr(ty);
-    }
-
-    // direct_abstract_declarator
-    if (consume(&tok, tok, "[")) {
-        int size;
-        if (!number(&tok, tok, &size)) {
-            error("Expect a number.");
-        }
-        expect(&tok, tok, "]");
-
-        ty = mk_array(ty, size);
-    }
-
-    *rest = tok;
-    return ty;
+    return abstract_declarator(rest, tok, ty);
 }
 
 Node *
