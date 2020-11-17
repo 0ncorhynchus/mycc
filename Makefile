@@ -31,7 +31,7 @@ tests/%.out: tests/%.s tests/utils.o
 	$(CC) -o $@ $^
 
 tests/%.s: tests/%.c tests/test.h mycc
-	cpp $< | ./mycc - > $@ || exit 1
+	cpp -undef -std=c11 $< | ./mycc - > $@ || exit 1
 
 #
 # Validation tests with cc
