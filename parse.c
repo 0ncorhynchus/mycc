@@ -1173,7 +1173,8 @@ mul(const Token **rest, const Token *tok, Env *env) {
 }
 
 //
-//  add = mul ( "+" mul | "-" mul )*
+//  additive_expression = multiplicative_expression
+//          ( ( "+" | "-" ) multiplicative_expression )*
 //
 static Node *
 add(const Token **rest, const Token *tok, Env *env) {
@@ -1264,7 +1265,7 @@ relational(const Token **rest, const Token *tok, Env *env) {
 }
 
 //
-//  equality = relational ( "==" relational | "!=" relational )*
+//  equality = relational ( ( "==" | "!=" ) relational )*
 //
 static Node *
 equality(const Token **rest, const Token *tok, Env *env) {
@@ -1282,19 +1283,40 @@ equality(const Token **rest, const Token *tok, Env *env) {
     }
 }
 
+static Node *
+unary_and_assign(const Token **rest, const Token *tok, Env *env) {
+    Node *node = unary(&tok, tok, env);
+    if (node == NULL) {
+        return NULL;
+    }
+
+    if (!consume(&tok, tok, "=")) {
+        return NULL;
+    }
+
+    *rest = tok;
+    return node;
+}
+
 //
-//  assign = equality ( "=" assign )?
+//  assignment_expression =
+//          conditional_expression
+//          unary_expression assignment_operator assignment_expression
 //
 static Node *
 assign(const Token **rest, const Token *tok, Env *env) {
-    Node *node = equality(&tok, tok, env);
-    if (consume(&tok, tok, "=")) {
-        const Type *ty = node->ty;
-        node = new_node(ND_ASSIGN, node, as_ptr(assign(&tok, tok, env)));
-        node->ty = ty;
+    Node *lhs = unary_and_assign(&tok, tok, env);
+    if (lhs) {
+        Node *rhs = assign(&tok, tok, env);
+        if (rhs == NULL) {
+            return NULL;
+        }
+
+        *rest = tok;
+        return new_node(ND_ASSIGN, lhs, as_ptr(rhs));
     }
-    *rest = tok;
-    return node;
+
+    return and_expression(rest, tok, env);
 }
 
 //
