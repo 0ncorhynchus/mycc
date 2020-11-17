@@ -169,6 +169,7 @@ typedef enum {
     ND_AND,    // "&"
     ND_XOR,    // "^"
     ND_OR,     // "|"
+    ND_LAND,   // "&&"
     ND_ASSIGN, // "="
     ND_LVAR,   // [a-zA-Z_][a-zA-Z0-9_]*
     ND_CALL,   // <function call>

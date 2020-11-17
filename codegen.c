@@ -664,6 +664,16 @@ gen_bitwise(const char *op, Node *lhs, Node *rhs) {
 }
 
 void
+gen_logical(const char *op, Node *lhs, Node *rhs) {
+    gen(lhs);
+    gen(rhs);
+    pop("rdi");
+    pop("rax");
+    printf("  %s al, dil\n", op);
+    push("rax");
+}
+
+void
 gen(Node *node) {
     switch (node->kind) {
     case ND_NUM:
@@ -769,6 +779,9 @@ gen(Node *node) {
         break;
     case ND_OR:
         gen_bitwise("or", node->lhs, node->rhs);
+        break;
+    case ND_LAND:
+        gen_logical("and", node->lhs, node->rhs);
         break;
     }
 }
