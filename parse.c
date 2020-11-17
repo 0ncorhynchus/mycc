@@ -1174,30 +1174,65 @@ add(const Token **rest, const Token *tok, Env *env) {
 }
 
 //
-//  relational= add ( "<" add | "<=" add | ">" add | ">=" add )*
+//  shift_expression =
+//          additive_expression ( ( "<<" | ">>" ) additive_expression )*
+//
+static Node *
+shift_expression(const Token **rest, const Token *tok, Env *env) {
+    Node *node = add(&tok, tok, env);
+    for (;;) {
+        NodeKind kind;
+        if (consume(&tok, tok, "<<")) {
+            kind = ND_SHL;
+        } else if (consume(&tok, tok, ">>")) {
+            kind = ND_SHR;
+        } else {
+            break;
+        }
+
+        Node *rhs = add(&tok, tok, env);
+        if (rhs == NULL) {
+            return NULL;
+        }
+
+        Node *new = calloc(1, sizeof(Node));
+        new->kind = kind;
+        new->ty = node->ty;
+        new->lhs = node;
+        new->rhs = rhs;
+        node = new;
+    }
+
+    *rest = tok;
+    return node;
+}
+
+//
+//  relational_expression =
+//          shift_expression ( ( "<" | ">" | "<=" | ">=" ) shift_expression )*
 //
 static Node *
 relational(const Token **rest, const Token *tok, Env *env) {
-    Node *node = add(&tok, tok, env);
+    Node *node = shift_expression(&tok, tok, env);
 
     for (;;) {
         if (consume(&tok, tok, "<")) {
-            Node *rhs = add(&tok, tok, env);
+            Node *rhs = shift_expression(&tok, tok, env);
             if (!is_same_type(node->ty, rhs->ty))
                 error("Not supported: compare between different types");
             node = new_node(ND_LT, node, rhs);
         } else if (consume(&tok, tok, "<=")) {
-            Node *rhs = add(&tok, tok, env);
+            Node *rhs = shift_expression(&tok, tok, env);
             if (!is_same_type(node->ty, rhs->ty))
                 error("Not supported: compare between different types");
             node = new_node(ND_LE, node, rhs);
         } else if (consume(&tok, tok, ">")) {
-            Node *lhs = add(&tok, tok, env);
+            Node *lhs = shift_expression(&tok, tok, env);
             if (!is_same_type(node->ty, lhs->ty))
                 error("Not supported: compare between different types");
             node = new_node(ND_LT, lhs, node);
         } else if (consume(&tok, tok, ">=")) {
-            Node *lhs = add(&tok, tok, env);
+            Node *lhs = shift_expression(&tok, tok, env);
             if (!is_same_type(node->ty, lhs->ty))
                 error("Not supported: compare between different types");
             node = new_node(ND_LE, lhs, node);

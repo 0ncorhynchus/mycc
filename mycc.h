@@ -160,6 +160,8 @@ typedef enum {
     ND_MUL,    // "*"
     ND_DIV,    // "/"
     ND_NUM,    // [0-9]+
+    ND_SHL,    // "<<"
+    ND_SHR,    // ">>"
     ND_LT,     // "<"
     ND_LE,     // "<="
     ND_EQ,     // "=="

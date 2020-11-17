@@ -759,6 +759,15 @@ gen(Node *node) {
         pop("rax");
         printf("  mov [rax], %s\n", di(sizeof_ty(node->lhs->ty)));
         break;
+    case ND_SHL:
+    case ND_SHR:
+        gen(node->lhs);
+        gen(node->rhs);
+        pop("rdi");
+        pop("rax");
+        // TODO
+        push("rax");
+        break;
     }
 }
 
