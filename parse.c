@@ -222,18 +222,17 @@ construct_type(const TypeSpec spec, const Span *span) {
     case TS_CHAR:
         return &CHAR_T;
     case TS_SIGNED + TS_CHAR:
-        not_implemented(span, "signed char");
+        return &SIGNED_CHAR_T;
         break;
     case TS_UNSIGNED + TS_CHAR:
-        not_implemented(span, "unsigned char");
-        break;
+        return &UNSIGNED_CHAR_T;
     case TS_SHORT:
     case TS_SIGNED + TS_SHORT:
     case TS_SHORT + TS_INT:
     case TS_SIGNED + TS_SHORT + TS_INT:
         return &SHORT_T;
-    case TS_UNSIGNED + TS_SIGNED:
-    case TS_UNSIGNED + TS_SIGNED + TS_INT:
+    case TS_UNSIGNED + TS_SHORT:
+    case TS_UNSIGNED + TS_SHORT + TS_INT:
         return &USHORT_T;
     case TS_INT:
     case TS_SIGNED + TS_INT:

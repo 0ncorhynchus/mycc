@@ -4,7 +4,10 @@
 
 const Type VOID_T = {VOID};
 
-const Type CHAR_T = {INTEGER, CHAR};
+const Type CHAR_T = {CHAR, 0, false};
+const Type UNSIGNED_CHAR_T = {CHAR, 0, true};
+const Type SIGNED_CHAR_T = {CHAR, 0, false};
+
 const Type SHORT_T = {INTEGER, SHORT, false};
 const Type USHORT_T = {INTEGER, SHORT, true};
 const Type INT_T = {INTEGER, INT, false};
@@ -54,10 +57,10 @@ sizeof_ty(const Type *ty) {
     }
 
     switch (ty->ty) {
+    case CHAR:
+        return 1;
     case INTEGER:
         switch (ty->ikind) {
-        case CHAR:
-            return 1;
         case SHORT:
             return 2;
         case INT:
@@ -105,11 +108,11 @@ type_to_str(const Type *ty) {
     const Type *tmp;
     for (tmp = ty; tmp; tmp = tmp->ptr_to) {
         switch (tmp->ty) {
+        case CHAR:
+            strcat(buffer, "rahc");
+            break;
         case INTEGER:
             switch (tmp->ikind) {
-            case CHAR:
-                strcat(buffer, "rahc");
-                break;
             case SHORT:
                 strcat(buffer, "trohs");
                 break;
@@ -187,15 +190,16 @@ is_subtype(const Type *base, const Type *derived) {
     const ParamList *barg, *darg;
 
     switch (base->ty) {
+    case CHAR:
     case INTEGER:
-        return derived->ty == INTEGER &&
+        return (derived->ty == INTEGER || derived->ty == CHAR) &&
                sizeof_ty(base) >= sizeof_ty(derived) &&
                base->is_unsigned == derived->is_unsigned;
     case PTR:
         if (derived->ty == PTR) {
             return is_subtype(base->ptr_to, derived->ptr_to);
         }
-        return derived->ty == INTEGER;
+        return derived->ty == INTEGER || derived->ty == CHAR;
     case ARRAY:
         if (derived->ty == ARRAY && base->array_size == derived->array_size) {
             return is_subtype(base->ptr_to, derived->ptr_to);

@@ -92,9 +92,20 @@ struct ParamList {
 };
 
 struct Type {
-    enum { BOOL, INTEGER, REAL, PTR, ARRAY, VOID, FUNCTION, ENUM, STRUCT } ty;
+    enum {
+        BOOL,
+        CHAR,
+        INTEGER,
+        REAL,
+        PTR,
+        ARRAY,
+        VOID,
+        FUNCTION,
+        ENUM,
+        STRUCT
+    } ty;
 
-    enum { CHAR, SHORT, INT, LONG, LONG_LONG } ikind;
+    enum { SHORT, INT, LONG, LONG_LONG } ikind;
     bool is_unsigned;
 
     enum { FLOAT, DOUBLE, LONG_DOUBLE } fkind;
@@ -114,6 +125,8 @@ struct Type {
 
 extern const Type VOID_T;
 extern const Type CHAR_T;
+extern const Type UNSIGNED_CHAR_T;
+extern const Type SIGNED_CHAR_T;
 extern const Type SHORT_T;
 extern const Type USHORT_T;
 extern const Type INT_T;
