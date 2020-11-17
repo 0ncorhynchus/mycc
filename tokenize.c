@@ -197,6 +197,37 @@ process_macro(const char **p) {
     skip_to_break(p);
 }
 
+//
+//  integer_constant =
+//          decimal_constant integer_suffix?
+//          octal_constant integer_suffix?
+//          hexadecimal_constant integer_suffix?
+//
+static Token *
+integer(const char **rest, const char *p) {
+    const char *first = p;
+    int base;
+    if (*p == '0') {
+        p++;
+        if (*p == 'x' || *p == 'X') {
+            p++;
+            base = 16;
+        } else {
+            base = 8;
+        }
+    } else if (isdigit(*p)) {
+        base = 10;
+    } else {
+        return NULL;
+    }
+
+    int val = read_decimal(rest, p, base);
+    int len = *rest - first;
+    Token *tok = gen_token(TK_NUM, first, len);
+    tok->val = val;
+    return tok;
+}
+
 const Token *
 tokenize(const char *path) {
     filename = path;
@@ -248,12 +279,10 @@ tokenize(const char *path) {
             continue;
         }
 
-        if (isdigit(*p)) {
-            const char *first = p;
-            int val = read_decimal(&p, p, 10);
-            int len = p - first;
-            cur = new_token(TK_NUM, cur, first, len);
-            cur->val = val;
+        Token *num = integer(&p, p);
+        if (num) {
+            cur->next = num;
+            cur = num;
             continue;
         }
 

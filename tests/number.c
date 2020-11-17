@@ -4,6 +4,9 @@ int
 main() {
     assert_int(0, 0);
     assert_int(42, 42);
+    assert_int(8, 010);
+    assert_int(16, 0x10);
+
     assert_int(21, 5 + 20 - 4);
     assert_int(41, 12 + 34 - 5);
     assert_int(47, 5 + 6 * 7);
