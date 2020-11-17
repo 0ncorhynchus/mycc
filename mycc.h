@@ -316,6 +316,14 @@ struct Unit {
     const Declaration *declaration;
 };
 
+typedef enum {
+    TQ_NULL = 0,
+    TQ_CONST = 1,
+    TQ_RESTRICT = 2,
+    TQ_VOLATILE = 4,
+    TQ_ATOMIC = 8,
+} TypeQualifier;
+
 void
 debug(char *fmt, ...);
 void
@@ -327,7 +335,7 @@ const Token *
 tokenize(const char *path);
 
 const Type *
-mk_ptr(const Type *base);
+mk_ptr(const Type *base, int qualifier);
 const Type *
 mk_array(const Type *base, int array_size);
 const Type *

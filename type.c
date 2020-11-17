@@ -21,7 +21,7 @@ const Type LONG_DOUBLE_T = {REAL, 0, false, LONG_DOUBLE};
 const Type BOOL_T = {BOOL};
 
 const Type *
-mk_ptr(const Type *base) {
+mk_ptr(const Type *base, int qualifier) {
     Type *ptr = calloc(1, sizeof(Type));
     ptr->ty = PTR;
     ptr->ptr_to = base;

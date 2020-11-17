@@ -31,14 +31,6 @@ typedef struct {
 static const TypeSpec
 type_specifier(const Token **rest, const Token *tok, const Env *env);
 
-typedef enum {
-    TQ_NULL,
-    TQ_CONST,
-    TQ_RESTRICT,
-    TQ_VOLATILE,
-    TQ_ATOMIC,
-} TypeQualifier;
-
 static const TypeQualifier
 type_qualifier(const Token **rest, const Token *tok);
 
@@ -518,10 +510,33 @@ type_qualifier(const Token **rest, const Token *tok) {
     return TQ_NULL;
 }
 
+//
+//  type_qualifier_list = type_qualifier+
+//
+static int
+type_qualifier_list(const Token **rest, const Token *tok) {
+    int qualifier = TQ_NULL;
+    for (;;) {
+        const TypeQualifier tq = type_qualifier(&tok, tok);
+        if (tq != TQ_NULL) {
+            qualifier |= tq;
+        } else {
+            break;
+        }
+    }
+
+    *rest = tok;
+    return qualifier;
+}
+
+//
+//  pointer = ( '*' type_qualifier_list? )+
+//
 static const Type *
 pointer(const Token **rest, const Token *tok, const Type *ty) {
     while (consume(&tok, tok, "*")) {
-        ty = mk_ptr(ty);
+        const int qualifier = type_qualifier_list(&tok, tok);
+        ty = mk_ptr(ty, qualifier);
     }
 
     *rest = tok;
@@ -770,7 +785,7 @@ refer(Node *inner, const Type *ty) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_ADDR;
     node->lhs = inner;
-    node->ty = mk_ptr(ty);
+    node->ty = mk_ptr(ty, TQ_NULL);
     return node;
 }
 
@@ -836,7 +851,7 @@ primary(const Token **rest, const Token *tok, Env *env) {
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_STRING;
         node->str = char_from_span(&span);
-        node->ty = mk_ptr(&CHAR_T);
+        node->ty = mk_ptr(&CHAR_T, TQ_NULL);
 
         const String *string = push_string(env, node->str);
         node->val = string->index;
