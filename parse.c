@@ -1378,6 +1378,32 @@ logical_or_expression(const Token **rest, const Token *tok, Env *env) {
     return node;
 }
 
+//
+//  conditional_expression =
+//          logical_or_expression
+//          logical_or_expression "?" expression ":" conditional_expression
+//
+static Node *
+conditional_expression(const Token **rest, const Token *tok, Env *env) {
+    Node *node = logical_or_expression(&tok, tok, env);
+    if (node == NULL) {
+        return NULL;
+    }
+
+    if (consume(&tok, tok, "?")) {
+        Node *lhs = expr(&tok, tok, env);
+        expect(&tok, tok, ":");
+        Node *rhs = conditional_expression(&tok, tok, env);
+        Node *cond = node;
+        node = new_node(ND_TERNARY, lhs, rhs);
+        node->cond = cond;
+        node->jump_index = make_jump_scope(env).jump_index;
+    }
+
+    *rest = tok;
+    return node;
+}
+
 static Node *
 unary_and_assign(const Token **rest, const Token *tok, Env *env) {
     Node *node = unary(&tok, tok, env);
@@ -1411,7 +1437,7 @@ assign(const Token **rest, const Token *tok, Env *env) {
         return new_node(ND_ASSIGN, lhs, as_ptr(rhs));
     }
 
-    return logical_or_expression(rest, tok, env);
+    return conditional_expression(rest, tok, env);
 }
 
 //

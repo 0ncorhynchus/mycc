@@ -673,6 +673,22 @@ gen_logical(const char *op, Node *lhs, Node *rhs) {
     push("rax");
 }
 
+static void
+gen_ternary(Node *node) {
+    gen(node->cond);
+    pop("rax");
+    printf("  cmp rax, 0\n");
+
+    printf("  je .Lelse%d\n", node->jump_index);
+    gen(node->lhs);
+    printf("  jmp .Lend%d\n", node->jump_index);
+    printf(".Lelse%d:\n", node->jump_index);
+    gen(node->rhs);
+    stack--;
+
+    printf(".Lend%d:\n", node->jump_index);
+}
+
 void
 gen(Node *node) {
     switch (node->kind) {
@@ -785,6 +801,9 @@ gen(Node *node) {
         break;
     case ND_LOR:
         gen_logical("or", node->lhs, node->rhs);
+        break;
+    case ND_TERNARY:
+        gen_ternary(node);
         break;
     }
 }

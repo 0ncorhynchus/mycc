@@ -153,29 +153,30 @@ struct LabelList {
 };
 
 typedef enum {
-    ND_INCR,   // "++"
-    ND_DECR,   // "--"
-    ND_ADD,    // "+"
-    ND_SUB,    // "-"
-    ND_MUL,    // "*"
-    ND_DIV,    // "/"
-    ND_NUM,    // [0-9]+
-    ND_SHL,    // "<<"
-    ND_SHR,    // ">>"
-    ND_LT,     // "<"
-    ND_LE,     // "<="
-    ND_EQ,     // "=="
-    ND_NE,     // "!="
-    ND_AND,    // "&"
-    ND_XOR,    // "^"
-    ND_OR,     // "|"
-    ND_LAND,   // "&&"
-    ND_LOR,    // "||"
-    ND_ASSIGN, // "="
-    ND_LVAR,   // [a-zA-Z_][a-zA-Z0-9_]*
-    ND_CALL,   // <function call>
-    ND_ADDR,   // "&"
-    ND_DEREF,  // "*"
+    ND_INCR,    // "++"
+    ND_DECR,    // "--"
+    ND_ADD,     // "+"
+    ND_SUB,     // "-"
+    ND_MUL,     // "*"
+    ND_DIV,     // "/"
+    ND_NUM,     // [0-9]+
+    ND_SHL,     // "<<"
+    ND_SHR,     // ">>"
+    ND_LT,      // "<"
+    ND_LE,      // "<="
+    ND_EQ,      // "=="
+    ND_NE,      // "!="
+    ND_AND,     // "&"
+    ND_XOR,     // "^"
+    ND_OR,      // "|"
+    ND_LAND,    // "&&"
+    ND_LOR,     // "||"
+    ND_TERNARY, // x "?" y ":" z
+    ND_ASSIGN,  // "="
+    ND_LVAR,    // [a-zA-Z_][a-zA-Z0-9_]*
+    ND_CALL,    // <function call>
+    ND_ADDR,    // "&"
+    ND_DEREF,   // "*"
     ND_STRING,
 } NodeKind;
 
@@ -191,6 +192,10 @@ struct Node {
     // For operators: ND_ADD, ND_SUB, ...
     Node *lhs;
     Node *rhs;
+
+    // For ND_TERNARY
+    Node *cond;
+    int jump_index;
 
     // For ND_LVAR
     const Var *var;
