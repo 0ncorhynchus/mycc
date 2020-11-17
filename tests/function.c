@@ -20,7 +20,7 @@ many(int x, int y, int z, int p, int q, int r, int m, int n) {
 }
 
 void
-foo() {
+foo(void) {
     return;
 }
 

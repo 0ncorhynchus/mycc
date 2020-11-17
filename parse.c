@@ -650,10 +650,23 @@ abstract_declarator(const Token **rest, const Token *tok, const Type *ty) {
 //
 static Declaration *
 param_decl(const Token **rest, const Token *tok, const Env *env) {
-    const Type *base = declspec(&tok, tok, env).ty;
-    Declaration *retval = declarator(&tok, tok, env, base);
-    *rest = tok;
-    return retval;
+    const Type *ty = declspec(&tok, tok, env).ty;
+    if (ty == NULL) {
+        return NULL;
+    }
+
+    Declaration *decl = declarator(&tok, tok, env, ty);
+    if (decl) {
+        *rest = tok;
+        return decl;
+    }
+
+    ty = abstract_declarator(rest, tok, ty);
+    decl = calloc(1, sizeof(Declaration));
+    decl->var = calloc(1, sizeof(Var));
+    decl->var->ty = ty;
+
+    return decl;
 }
 
 //
@@ -1260,6 +1273,14 @@ function(const Token **rest, const Token *tok, Env *parent) {
     const ParamList *arg = fn->def->ty->args;
     while (arg) {
         Declaration *decl = arg->decl;
+
+        if (decl->var->ty == &VOID_T) {
+            if (arg->next != NULL || fn->num_args > 0) {
+                error_at(&tok->span, "void is allowed only for empty argument");
+            }
+            break;
+        }
+
         if (!declare_arg(&env, decl->var)) {
             error_at(&tok->span, "'%s' is already declared", decl->var->ident);
         }
