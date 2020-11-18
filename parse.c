@@ -151,10 +151,10 @@ enum_specifier(const Token **rest, const Token *tok) {
         return NULL;
     }
 
-    Enum *e = calloc(1, sizeof(Enum));
+    Enum e = {NULL, NULL};
     const Token *tag = consume_ident(&tok, tok);
     if (tag) {
-        e->tag = char_from_span(&tag->span);
+        e.tag = char_from_span(&tag->span);
     }
 
     if (consume(&tok, tok, "{")) {
@@ -163,11 +163,11 @@ enum_specifier(const Token **rest, const Token *tok) {
         if (constant == NULL) {
             error_at(&tok->span, "Failed to parse enum");
         }
-        e->consts = calloc(1, sizeof(String));
-        e->consts->index = val;
-        e->consts->ident = char_from_span(&constant->span);
+        e.consts = calloc(1, sizeof(String));
+        e.consts->index = val;
+        e.consts->ident = char_from_span(&constant->span);
 
-        String *last = e->consts;
+        String *last = e.consts;
         while (!consume(&tok, tok, "}")) {
             expect(&tok, tok, ",");
 
@@ -468,8 +468,8 @@ type_specifier(const Token **rest, const Token *tok, const Env *env) {
 
     ty = enum_specifier(rest, tok);
     if (ty) {
-        if (ty->enum_ty->consts == NULL) {
-            const Type *orig = get_tag(env, ty->enum_ty->tag);
+        if (ty->enum_ty.consts == NULL) {
+            const Type *orig = get_tag(env, ty->enum_ty.tag);
             if (orig) {
                 ty = orig;
             }

@@ -146,9 +146,9 @@ type_to_str(const Type *ty) {
             strcat(buffer, "doiv");
             break;
         case ENUM:
-            if (ty->enum_ty->tag) {
-                c = calloc(6 + strlen(ty->enum_ty->tag), 1);
-                sprintf(c, "enum %s", ty->enum_ty->tag);
+            if (ty->enum_ty.tag) {
+                c = calloc(6 + strlen(ty->enum_ty.tag), 1);
+                sprintf(c, "enum %s", ty->enum_ty.tag);
                 strcat(buffer, revstr(c));
                 free(c);
             } else {

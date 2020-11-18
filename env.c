@@ -225,23 +225,23 @@ push_tag(Env *env, const char *tag, Type *ty) {
 
 static const Type *
 declare_enum(Env *env, const Type *ty) {
-    if (ty->enum_ty->tag) {
-        Type *defined = find_tag(env, ty->enum_ty->tag);
+    if (ty->enum_ty.tag) {
+        Type *defined = find_tag(env, ty->enum_ty.tag);
         if (defined) {
-            if (defined->ty != ENUM || defined->enum_ty->consts) {
+            if (defined->ty != ENUM || defined->enum_ty.consts) {
                 error("'%s' is already defined as a tag");
             }
-            defined->enum_ty->consts = ty->enum_ty->consts;
+            defined->enum_ty.consts = ty->enum_ty.consts;
         } else {
             defined = calloc(1, sizeof(Type));
             defined->ty = ty->ty;
             defined->enum_ty = ty->enum_ty;
-            push_tag(env, ty->enum_ty->tag, defined);
+            push_tag(env, ty->enum_ty.tag, defined);
         }
         ty = defined;
     }
 
-    const String *head = ty->enum_ty->consts;
+    const String *head = ty->enum_ty.consts;
     while (head) {
         Var *var = calloc(1, sizeof(Var));
         var->ty = ty;

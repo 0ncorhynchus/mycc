@@ -113,7 +113,7 @@ struct Type {
     const ParamList *args;
 
     // For ENUM
-    Enum *enum_ty;
+    Enum enum_ty;
 
     // For STRUCT
     Struct *struct_ty;
