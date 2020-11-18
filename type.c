@@ -4,22 +4,22 @@
 
 const Type VOID_T = {VOID};
 
-const Type CHAR_T = {CHAR, 0, false};
-const Type UNSIGNED_CHAR_T = {CHAR, 0, true};
-const Type SIGNED_CHAR_T = {CHAR, 0, false};
+const Type UNSIGNED_CHAR_T = {INTEGER, {CHAR, true}};
+const Type SIGNED_CHAR_T = {INTEGER, {CHAR, false}};
+const Type CHAR_T = SIGNED_CHAR_T;
 
-const Type SHORT_T = {INTEGER, SHORT, false};
-const Type USHORT_T = {INTEGER, SHORT, true};
-const Type INT_T = {INTEGER, INT, false};
-const Type UINT_T = {INTEGER, INT, true};
-const Type LONG_T = {INTEGER, LONG, false};
-const Type ULONG_T = {INTEGER, LONG, true};
-const Type LONG_LONG_T = {INTEGER, LONG_LONG, false};
-const Type ULONG_LONG_T = {INTEGER, LONG_LONG, true};
+const Type SHORT_T = {INTEGER, {SHORT, false}};
+const Type USHORT_T = {INTEGER, {SHORT, true}};
+const Type INT_T = {INTEGER, {INT, false}};
+const Type UINT_T = {INTEGER, {INT, true}};
+const Type LONG_T = {INTEGER, {LONG, false}};
+const Type ULONG_T = {INTEGER, {LONG, true}};
+const Type LONG_LONG_T = {INTEGER, {LONG_LONG, false}};
+const Type ULONG_LONG_T = {INTEGER, {LONG_LONG, true}};
 
-const Type FLOAT_T = {REAL, 0, false, FLOAT};
-const Type DOUBLE_T = {REAL, 0, false, DOUBLE};
-const Type LONG_DOUBLE_T = {REAL, 0, false, LONG_DOUBLE};
+const Type FLOAT_T = {REAL, {0, false}, FLOAT};
+const Type DOUBLE_T = {REAL, {0, false}, DOUBLE};
+const Type LONG_DOUBLE_T = {REAL, {0, false}, LONG_DOUBLE};
 
 const Type BOOL_T = {BOOL};
 
@@ -57,10 +57,10 @@ sizeof_ty(const Type *ty) {
     }
 
     switch (ty->ty) {
-    case CHAR:
-        return 1;
     case INTEGER:
-        switch (ty->ikind) {
+        switch (ty->integer.kind) {
+        case CHAR:
+            return 1;
         case SHORT:
             return 2;
         case INT:
@@ -108,14 +108,10 @@ type_to_str(const Type *ty) {
     const Type *tmp;
     for (tmp = ty; tmp; tmp = tmp->ptr_to) {
         switch (tmp->ty) {
-        case CHAR:
-            strcat(buffer, "rahc");
-            if (tmp->is_unsigned) {
-                strcat(buffer, " dengisnu");
-            }
-            break;
         case INTEGER:
-            switch (tmp->ikind) {
+            switch (tmp->integer.kind) {
+            case CHAR:
+                strcat(buffer, "rahc");
             case SHORT:
                 strcat(buffer, "trohs");
                 break;
@@ -127,7 +123,7 @@ type_to_str(const Type *ty) {
             case LONG_LONG:
                 strcat(buffer, "gnol gnol");
             }
-            if (tmp->is_unsigned) {
+            if (tmp->integer.is_unsigned) {
                 strcat(buffer, " dengisnu");
             }
             break;
@@ -196,19 +192,15 @@ is_subtype(const Type *base, const Type *derived) {
     const ParamList *barg, *darg;
 
     switch (base->ty) {
-    case CHAR:
-        return derived->ty == CHAR;
     case INTEGER:
-        if (derived->ty == CHAR) {
-            return true;
-        }
         if (derived->ty == INTEGER) {
             size_t base_size = sizeof_ty(base);
             size_t derived_size = sizeof_ty(derived);
             if (base_size > derived_size) {
                 return true;
             } else if (base_size == derived_size) {
-                return base->is_unsigned == derived->is_unsigned;
+                return base->integer.is_unsigned ==
+                       derived->integer.is_unsigned;
             }
         }
         return false;
@@ -216,7 +208,7 @@ is_subtype(const Type *base, const Type *derived) {
         if (derived->ty == PTR) {
             return is_subtype(base->ptr_to, derived->ptr_to);
         }
-        return derived->ty == INTEGER || derived->ty == CHAR;
+        return derived->ty == INTEGER;
     case ARRAY:
         if (derived->ty == ARRAY && base->array_size == derived->array_size) {
             return is_subtype(base->ptr_to, derived->ptr_to);

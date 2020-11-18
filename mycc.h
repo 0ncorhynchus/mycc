@@ -63,22 +63,11 @@ struct Initializer {
 
 typedef struct String String;
 
-typedef struct {
-    const char *tag;
-    String *consts;
-} Enum;
-
 typedef struct Members Members;
 struct Members {
     Members *next;
     const Var *member;
 };
-
-typedef struct {
-    const char *tag;
-    const Members *members;
-    size_t size;
-} Struct;
 
 typedef struct {
     Var *var;
@@ -91,23 +80,29 @@ struct ParamList {
     Declaration *decl;
 };
 
-struct Type {
-    enum {
-        BOOL,
-        CHAR,
-        INTEGER,
-        REAL,
-        PTR,
-        ARRAY,
-        VOID,
-        FUNCTION,
-        ENUM,
-        STRUCT
-    } ty;
+typedef struct {
+    const char *tag;
+    String *consts;
+} Enum;
 
-    enum { SHORT, INT, LONG, LONG_LONG } ikind;
+typedef struct {
+    const char *tag;
+    const Members *members;
+    size_t size;
+} Struct;
+
+typedef struct {
+    enum { CHAR, SHORT, INT, LONG, LONG_LONG } kind;
     bool is_unsigned;
+} Integer;
 
+struct Type {
+    enum { BOOL, INTEGER, REAL, PTR, ARRAY, VOID, FUNCTION, ENUM, STRUCT } ty;
+
+    // For INTEGER
+    Integer integer;
+
+    // For REAL
     enum { FLOAT, DOUBLE, LONG_DOUBLE } fkind;
 
     const Type *ptr_to;
@@ -119,6 +114,7 @@ struct Type {
 
     // For ENUM
     Enum *enum_ty;
+
     // For STRUCT
     Struct *struct_ty;
 };
