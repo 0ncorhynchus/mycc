@@ -494,7 +494,7 @@ gen_local_declare(const Declaration *decl) {
         }
     case STRUCT:
         if (init->list) {
-            const Members *member = ty->struct_ty->members;
+            const Members *member = ty->struct_ty.members;
             const InitList *list = init->list;
             for (; member; member = member->next) {
                 Var *mvar = calloc(1, sizeof(Var));

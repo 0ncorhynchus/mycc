@@ -116,7 +116,7 @@ struct Type {
     Enum enum_ty;
 
     // For STRUCT
-    Struct *struct_ty;
+    Struct struct_ty;
 };
 
 extern const Type VOID_T;

@@ -151,7 +151,7 @@ enum_specifier(const Token **rest, const Token *tok) {
         return NULL;
     }
 
-    Enum e = {NULL, NULL};
+    Enum e = {};
     const Token *tag = consume_ident(&tok, tok);
     if (tag) {
         e.tag = char_from_span(&tag->span);
@@ -365,12 +365,12 @@ struct_union_spec(const Token **rest, const Token *tok, const Env *env) {
         error("struct requires an identifier or a block at least");
     }
 
-    Struct *st = calloc(1, sizeof(Struct));
+    Struct st = {};
     if (tag) {
-        st->tag = char_from_span(&tag->span);
+        st.tag = char_from_span(&tag->span);
     }
-    st->size = size;
-    st->members = members;
+    st.size = size;
+    st.members = members;
 
     Type *ty = calloc(1, sizeof(Type));
     ty->ty = STRUCT;
@@ -457,8 +457,8 @@ type_specifier(const Token **rest, const Token *tok, const Env *env) {
     }
     ty = struct_union_spec(rest, tok, env);
     if (ty) {
-        if (ty->struct_ty->members == NULL) {
-            const Type *orig = get_tag(env, ty->struct_ty->tag);
+        if (ty->struct_ty.members == NULL) {
+            const Type *orig = get_tag(env, ty->struct_ty.tag);
             if (orig) {
                 ty = orig;
             }
@@ -946,7 +946,7 @@ member(Node *var, const Token *ident_token) {
     }
 
     const char *ident = char_from_span(&ident_token->span);
-    const Members *members = var->ty->struct_ty->members;
+    const Members *members = var->ty->struct_ty.members;
 
     const Var *m = NULL;
     while (members) {

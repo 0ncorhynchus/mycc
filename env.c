@@ -255,17 +255,17 @@ declare_enum(Env *env, const Type *ty) {
 
 static const Type *
 declare_struct(Env *env, const Type *ty) {
-    if (ty->struct_ty->tag == NULL) {
+    if (ty->struct_ty.tag == NULL) {
         return ty;
     }
 
-    Type *declared = find_tag(env, ty->struct_ty->tag);
+    Type *declared = find_tag(env, ty->struct_ty.tag);
     if (declared) {
-        if (declared->ty != STRUCT || declared->struct_ty->members) {
+        if (declared->ty != STRUCT || declared->struct_ty.members) {
             error("'%s' is already defined as a tag");
         }
-        declared->struct_ty->members = ty->struct_ty->members;
-        declared->struct_ty->size = ty->struct_ty->size;
+        declared->struct_ty.members = ty->struct_ty.members;
+        declared->struct_ty.size = ty->struct_ty.size;
         return declared;
     }
 
@@ -273,7 +273,7 @@ declare_struct(Env *env, const Type *ty) {
     new_type->ty = ty->ty;
     new_type->struct_ty = ty->struct_ty;
 
-    push_tag(env, ty->struct_ty->tag, new_type);
+    push_tag(env, ty->struct_ty.tag, new_type);
 
     return new_type;
 }

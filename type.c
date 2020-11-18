@@ -80,11 +80,11 @@ sizeof_ty(const Type *ty) {
     case ENUM:
         return sizeof_ty(&INT_T);
     case STRUCT:
-        if (ty->struct_ty->size == 0) {
+        if (ty->struct_ty.size == 0) {
             error("storage size of struct '%s' is not known",
-                  ty->struct_ty->tag);
+                  ty->struct_ty.tag);
         }
-        return ty->struct_ty->size;
+        return ty->struct_ty.size;
     default:
         error("The size of '%s' is unknown.", type_to_str(ty));
         return 0;
@@ -156,9 +156,9 @@ type_to_str(const Type *ty) {
             }
             break;
         case STRUCT:
-            if (ty->struct_ty->tag) {
-                c = calloc(8 + strlen(ty->struct_ty->tag), 1);
-                sprintf(c, "struct %s", ty->struct_ty->tag);
+            if (ty->struct_ty.tag) {
+                c = calloc(8 + strlen(ty->struct_ty.tag), 1);
+                sprintf(c, "struct %s", ty->struct_ty.tag);
                 strcat(buffer, revstr(c));
                 free(c);
             } else {
