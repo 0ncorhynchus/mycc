@@ -10,7 +10,7 @@ static const char *user_input;
 static int line_number = 1;
 static const char *line_head;
 
-const char *reserved[] = {
+static const char *reserved[] = {
     "auto",       "break",     "case",           "char",
     "const",      "continue",  "default",        "do",
     "double",     "else",      "enum",           "extern",
@@ -22,15 +22,16 @@ const char *reserved[] = {
     "volatile",   "while",     "_Alignas",       "_Alignof",
     "_Atomic",    "_Bool",     "_Complex",       "_Generic",
     "_Imaginary", "_Noreturn", "_Static_assert", "_Thread_local"};
-const size_t num_reserved = sizeof(reserved) / sizeof(const char *);
+static const size_t num_reserved = sizeof(reserved) / sizeof(const char *);
 
-const char *punctuators[] = {
+static const char *punctuators[] = {
     "~",   "}",  "||", "|=",   "|",  "{",  "^=",  "^",   "]",  "[",  "?",
     ">>=", ">>", ">=", ">",    "==", "=",  "<=",  "<<=", "<<", "<:", "<%",
     "<",   ";",  ":>", ":",    "/=", "/",  "...", ".",   "->", "-=", "--",
     "-",   ",",  "+=", "++",   "+",  "*=", "*",   ")",   "(",  "&=", "&&",
     "&",   "%>", "%=", "%:%:", "%:", "%",  "##",  "#",   "!=", "!"};
-const size_t num_punctuators = sizeof(punctuators) / sizeof(const char *);
+static const size_t num_punctuators =
+    sizeof(punctuators) / sizeof(const char *);
 
 void
 error_at(const Span *span, char *fmt, ...) {
@@ -301,7 +302,7 @@ integer(const char **rest, const char *p) {
     return tok;
 }
 
-const char
+static const char
 c_char(const char **rest, const char *p) {
     Span span;
     switch (*p) {
