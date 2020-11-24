@@ -14,7 +14,7 @@ struct Span {
 typedef enum {
     TK_RESERVED,
     TK_IDENT,
-    TK_NUM,
+    TK_CONST,
     TK_STRING,
     TK_EOF,
 } TokenKind;

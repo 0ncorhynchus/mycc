@@ -112,7 +112,7 @@ consume_string(const Token **rest, const Token *tok) {
 
 static bool
 number(const Token **rest, const Token *tok, int *val) {
-    if (tok->kind != TK_NUM) {
+    if (tok->kind != TK_CONST) {
         return false;
     }
 

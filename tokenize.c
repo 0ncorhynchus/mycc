@@ -296,7 +296,7 @@ integer(const char **rest, const char *p) {
 
     int len = p - first;
     *rest = p;
-    Token *tok = gen_token(TK_NUM, first, len);
+    Token *tok = gen_token(TK_CONST, first, len);
     tok->val = val;
     return tok;
 }
