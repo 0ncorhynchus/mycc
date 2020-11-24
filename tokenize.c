@@ -301,6 +301,120 @@ integer(const char **rest, const char *p) {
     return tok;
 }
 
+const char
+c_char(const char **rest, const char *p) {
+    Span span;
+    switch (*p) {
+    case '\'':
+    case '\n':
+        span = make_span(p, 1);
+        error_at(&span, "Invalid character");
+        return '\0';
+    case '\\': // escape sequence
+        p++;
+        switch (*p) {
+        case '\'':
+            *rest = p + 1;
+            return '\'';
+        case '"':
+            *rest = p + 1;
+            return '\"';
+        case '?':
+            *rest = p + 1;
+            return '\?';
+        case '\\':
+            *rest = p + 1;
+            return '\\';
+        case 'a':
+            *rest = p + 1;
+            return '\a';
+        case 'b':
+            *rest = p + 1;
+            return '\b';
+        case 'f':
+            *rest = p + 1;
+            return '\f';
+        case 'n':
+            *rest = p + 1;
+            return '\n';
+        case 'r':
+            *rest = p + 1;
+            return '\r';
+        case 't':
+            *rest = p + 1;
+            return '\t';
+        case 'v':
+            *rest = p + 1;
+            return '\v';
+        case 'x':
+            span = make_span(p - 1, 2);
+            error_at(&span, "Not implemented");
+            return '\0';
+        case '0':
+            *rest = p + 1;
+            return '\0';
+        default:
+            if (*p >= '0' && *p < '8') {
+                *rest = p + 1;
+                return *p - '0';
+            }
+            span = make_span(p - 1, 2);
+            error_at(&span, "Invalid character");
+            return '\0';
+        }
+    default:
+        *rest = p + 1;
+        return *p;
+    }
+}
+
+//
+//  character_constant =
+//          "'" c_char_sequence "'"
+//          "L'" c_char_sequence "'"
+//          "u'" c_char_sequence "'"
+//          "U'" c_char_sequence "'"
+//  c_char_sequence = c_char+
+//
+static Token *
+character(const char **rest, const char *p) {
+    bool is_not_implemented = false;
+    const char *first = p;
+    char val;
+    switch (*p) {
+    case 'L':
+    case 'u':
+    case 'U':
+        p++;
+        if (*p == '\'') {
+            return NULL;
+        }
+        is_not_implemented = true;
+    case '\'':
+        p++; // consume begining '\''
+        val = c_char(&p, p);
+        break;
+    default:
+        return NULL;
+    }
+    if (*p != '\'') {
+        return NULL;
+    }
+
+    p++; // consume ending '\''
+    const int len = p - first;
+    *rest = p;
+
+    Token *tok = gen_token(TK_CONST, first, len);
+    tok->val = val;
+
+    if (is_not_implemented) {
+        error_at(&tok->span, "Not implemented");
+    }
+
+    return tok;
+}
+
 const Token *
 tokenize(const char *path) {
     filename = path;
@@ -370,6 +484,13 @@ tokenize(const char *path) {
 
             int len = p - first;
             cur = new_token(TK_STRING, cur, first, len);
+            continue;
+        }
+
+        Token *char_constant = character(&p, p);
+        if (char_constant) {
+            cur->next = char_constant;
+            cur = char_constant;
             continue;
         }
 
