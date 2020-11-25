@@ -102,8 +102,8 @@ gen_lval(Node *node) {
         } else {
             switch (var->kind) {
             case VLOCAL:
-                printf("  mov rax, rbp\n");
-                printf("  sub rax, %d /* %s */\n", var->offset, var->ident);
+                printf("  lea rax, -%d[rbp] /* %s */\n", var->offset,
+                       var->ident);
                 break;
             case VGLOBAL:
                 printf("  lea rax, %s[rip]\n", var->ident);
