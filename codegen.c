@@ -34,6 +34,23 @@ di(size_t size) {
     }
 }
 
+static const char *
+ptr_size(size_t size) {
+    switch (size) {
+    case 1:
+        return "BYTE";
+    case 2:
+        return "WORD";
+    case 4:
+        return "DWORD";
+    case 8:
+        return "QWORD";
+    default:
+        error("Not supported size.");
+        return NULL;
+    }
+}
+
 static int stack = 0;
 static int num_args = 0;
 static int num_vars = 0;
@@ -438,14 +455,16 @@ gen_add(const char *op, Node *lhs, Node *rhs) {
     }
 }
 
-static Node *
-new_assign(Node *lhs, Node *rhs) {
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_ASSIGN;
-    node->ty = lhs->ty;
-    node->lhs = lhs;
-    node->rhs = rhs;
-    return node;
+static void
+gen_assign(Node *lhs, Node *rhs) {
+    const size_t size = sizeof_ty(lhs->ty);
+    gen_lval(lhs);
+    gen(rhs);
+
+    pop("rdi");
+    pop("rax");
+    printf("  mov %s PTR [rax], %s\n", ptr_size(size), di(size));
+    push("rdi");
 }
 
 static void
@@ -468,7 +487,7 @@ gen_local_declare(const Declaration *decl) {
                 Node *idx = new_node_num(index);
                 Node *lhs = deref_offset_ptr(as_ptr(var), idx);
                 Node *rhs = deref_offset_ptr(init->expr, idx);
-                gen(new_assign(lhs, rhs));
+                gen_assign(lhs, rhs);
                 pop("rax");
             }
             return;
@@ -481,10 +500,10 @@ gen_local_declare(const Declaration *decl) {
                     if (list->inner->expr == NULL) {
                         error("Not supported nested initilizer lists.");
                     }
-                    gen(new_assign(lhs, list->inner->expr));
+                    gen_assign(lhs, list->inner->expr);
                     list = list->next;
                 } else {
-                    gen(new_assign(lhs, new_node_num(0)));
+                    gen_assign(lhs, new_node_num(0));
                 }
                 pop("rax");
             }
@@ -511,10 +530,10 @@ gen_local_declare(const Declaration *decl) {
                     if (list->inner->expr == NULL) {
                         error("Not supported nested initilizer lists.");
                     }
-                    gen(new_assign(lhs, list->inner->expr));
+                    gen_assign(lhs, list->inner->expr);
                     list = list->next;
                 } else {
-                    gen(new_assign(lhs, new_node_num(0)));
+                    gen_assign(lhs, new_node_num(0));
                 }
                 pop("rax");
             }
@@ -527,7 +546,7 @@ gen_local_declare(const Declaration *decl) {
         if (init->expr == NULL) {
             error("Not supported initializer lists");
         }
-        gen(new_assign(var, init->expr));
+        gen_assign(var, init->expr);
         pop("rax");
     }
 }
@@ -707,13 +726,7 @@ gen(Node *node) {
         }
         break;
     case ND_ASSIGN:
-        gen_lval(node->lhs);
-        gen(node->rhs);
-
-        pop("rdi");
-        pop("rax");
-        printf("  mov [rax], %s\n", di(sizeof_ty(node->lhs->ty)));
-        push("rdi");
+        gen_assign(node->lhs, node->rhs);
         break;
     case ND_CALL:
         gen_call(node);
@@ -726,7 +739,7 @@ gen(Node *node) {
             printf("  movsx rax, BYTE PTR [rax]\n");
             break;
         case (4):
-            printf("  movsx rax, WORD PTR [rax]\n");
+            printf("  movsx rax, DWORD PTR [rax]\n");
             break;
         default:
             printf("  mov rax, [rax]\n");
