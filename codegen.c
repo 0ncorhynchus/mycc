@@ -4,7 +4,7 @@
 
 static const char *arg_registers[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
-const char *
+static const char *
 ax(size_t size) {
     switch (size) {
     case 1:
@@ -19,7 +19,7 @@ ax(size_t size) {
     }
 }
 
-const char *
+static const char *
 di(size_t size) {
     switch (size) {
     case 1:
@@ -38,19 +38,19 @@ static int stack = 0;
 static int num_args = 0;
 static int num_vars = 0;
 
-void
+static void
 push(const char *arg) {
     stack++;
     printf("  push %s\n", arg);
 }
 
-void
+static void
 push_val(int val) {
     stack++;
     printf("  push %d\n", val);
 }
 
-void
+static void
 pop(const char *arg) {
     stack--;
     printf("  pop %s\n", arg);
@@ -74,7 +74,7 @@ epilogue(Node *node) {
     num_vars = 0;
 }
 
-void
+static void
 gen_lval(Node *node) {
     const Var *var;
     switch (node->kind) {
@@ -102,10 +102,11 @@ gen_lval(Node *node) {
         error("lvalue is not a varialbe or dereference");
     }
 }
-void
+
+static void
 gen_statement(const Statement *statement);
 
-void
+static void
 gen_while(const Statement *statement) {
     const int jump_index = statement->jump_index;
     printf(".Lbegin%d:\n", jump_index);
@@ -122,7 +123,7 @@ gen_while(const Statement *statement) {
 static void
 gen_local_declare(const Declaration *decl);
 
-void
+static void
 gen_for(const Statement *statement) {
     const int jump_index = statement->jump_index;
 
@@ -166,7 +167,7 @@ gen_block(const BlockItems *list) {
     }
 }
 
-void
+static void
 gen_call(Node *node) {
     int num_args = 0;
     NodeList *args = node->args;
@@ -221,7 +222,7 @@ gen_func(const Function *fn) {
     epilogue(NULL);
 }
 
-bool
+static bool
 eval_constexpr(const Node *node, int *val) {
     int lhs, rhs;
     switch (node->kind) {
@@ -360,7 +361,7 @@ gen_top(Unit *code) {
     }
 }
 
-void
+static void
 gen_add(const char *op, Node *lhs, Node *rhs) {
     if (lhs->ty->ty == PTR) {
         if (rhs->ty->ty == PTR) {
@@ -577,7 +578,7 @@ gen_switch(const Statement *statement) {
     printf(".Lend%d:\n", statement->jump_index);
 }
 
-void
+static void
 gen_statement(const Statement *statement) {
     switch (statement->kind) {
     case ST_LABEL:
@@ -653,7 +654,7 @@ gen_shift(const char *op, Node *lhs, Node *rhs) {
     push("rax");
 }
 
-void
+static void
 gen_bitwise(const char *op, Node *lhs, Node *rhs) {
     gen(lhs);
     gen(rhs);
@@ -663,7 +664,7 @@ gen_bitwise(const char *op, Node *lhs, Node *rhs) {
     push("rax");
 }
 
-void
+static void
 gen_logical(const char *op, Node *lhs, Node *rhs) {
     gen(lhs);
     gen(rhs);
