@@ -652,15 +652,19 @@ gen_comparison(const char *op, Node *lhs, Node *rhs) {
 
 static void
 gen_increment(const char *op, Node *node) {
+    const size_t size = sizeof_ty(node->ty);
     gen_lval(node);
     pop("rax");
-    printf("  mov rdi, [rax]\n");
+
+    printf("  mov %s, %s PTR [rax]\n", di(size), ptr_size(size));
+
     push("rdi");
     push("rax");
     gen_add(op, node, new_node_num(1));
     pop("rdi");
+
     pop("rax");
-    printf("  mov [rax], %s\n", di(sizeof_ty(node->ty)));
+    printf("  mov %s PTR [rax], %s\n", ptr_size(size), di(size));
 }
 
 static void
@@ -721,7 +725,7 @@ gen(Node *node) {
         } else {
             gen_lval(node);
             pop("rax");
-            printf("  mov rax, [rax]\n");
+            printf("  mov rax, QWORD PTR [rax]\n");
             push("rax");
         }
         break;
@@ -742,7 +746,7 @@ gen(Node *node) {
             printf("  movsx rax, DWORD PTR [rax]\n");
             break;
         default:
-            printf("  mov rax, [rax]\n");
+            printf("  mov rax, QWORD PTR [rax]\n");
             break;
         }
         push("rax");
