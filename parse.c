@@ -1029,6 +1029,9 @@ postfix(const Token **rest, const Token *tok, Env *env) {
             continue;
         }
         if (consume(&tok, tok, "(")) {
+            if (node->ty->ty != FUNCTION) {
+                return NULL;
+            }
             assert(node->ty->ty == FUNCTION);
             if (node->kind == ND_LVAR) {
                 node->fn = node->var->ident;

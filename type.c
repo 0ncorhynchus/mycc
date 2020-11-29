@@ -201,8 +201,11 @@ is_subtype(const Type *base, const Type *derived) {
             if (base_size > derived_size) {
                 return true;
             } else if (base_size == derived_size) {
-                return base->integer.is_unsigned ==
-                       derived->integer.is_unsigned;
+                if (base->integer.is_unsigned == derived->integer.is_unsigned) {
+                    return true;
+                } else {
+                    return derived->integer.is_unsigned;
+                }
             }
         }
         return false;
