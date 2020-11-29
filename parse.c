@@ -334,6 +334,9 @@ spec_qual_list(const Token **rest, const Token *tok, Env *env) {
 //
 const Type *
 struct_union_spec(const Token **rest, const Token *tok, Env *env) {
+    if (consume(&tok, tok, "union")) {
+        not_implemented(&tok->span, "union");
+    }
     if (!consume(&tok, tok, "struct")) {
         return NULL;
     }
