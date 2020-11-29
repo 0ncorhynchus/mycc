@@ -412,6 +412,9 @@ new_node_num(int val);
 Node *
 deref_offset_ptr(Node *ptr, Node *index);
 
+bool
+eval_constexpr(const Node *node, int *val);
+
 void
 gen(Node *node);
 void

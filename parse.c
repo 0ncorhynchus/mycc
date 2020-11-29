@@ -30,17 +30,16 @@ typedef struct {
 } TypeSpec;
 
 static const TypeSpec
-type_specifier(const Token **rest, const Token *tok, const Env *env);
+type_specifier(const Token **rest, const Token *tok, Env *env);
 
 static const TypeQualifier
 type_qualifier(const Token **rest, const Token *tok);
 
 static Declaration *
-declarator(const Token **rest, const Token *tok, const Env *env,
-           const Type *ty);
+declarator(const Token **rest, const Token *tok, Env *env, const Type *ty);
 
 static const Type *
-type_name(const Token **rest, const Token *tok, const Env *env);
+type_name(const Token **rest, const Token *tok, Env *env);
 
 static Node *
 expr(const Token **rest, const Token *tok, Env *env);
@@ -293,7 +292,7 @@ construct_type(const TypeSpec spec, const Span *span) {
 //  specifier_qualifier_list = ( type_specifier | type_qualifier )+
 //
 static const Type *
-spec_qual_list(const Token **rest, const Token *tok, const Env *env) {
+spec_qual_list(const Token **rest, const Token *tok, Env *env) {
     const Span start = tok->span;
     TypeSpec ty_spec = {};
     for (;;) {
@@ -334,7 +333,7 @@ spec_qual_list(const Token **rest, const Token *tok, const Env *env) {
 //      declarator? ":" constant_expression
 //
 const Type *
-struct_union_spec(const Token **rest, const Token *tok, const Env *env) {
+struct_union_spec(const Token **rest, const Token *tok, Env *env) {
     if (!consume(&tok, tok, "struct")) {
         return NULL;
     }
@@ -385,7 +384,7 @@ struct_union_spec(const Token **rest, const Token *tok, const Env *env) {
 // atomic_type_specifier = "_Atomic" "(" type_name ")"
 //
 static const Type *
-atomic_type_spec(const Token **rest, const Token *tok, const Env *env) {
+atomic_type_spec(const Token **rest, const Token *tok, Env *env) {
     if (consume(&tok, tok, "_Atomic")) {
         expect(&tok, tok, "(");
         const Type *ty = type_name(&tok, tok, env);
@@ -416,7 +415,7 @@ type_spec(const TypeSpecKind kind, const Type *ty) {
 //  typedef_name = identifier
 //
 static const TypeSpec
-type_specifier(const Token **rest, const Token *tok, const Env *env) {
+type_specifier(const Token **rest, const Token *tok, Env *env) {
     if (consume(rest, tok, "void")) {
         return type_spec(TS_VOID, NULL);
     }
@@ -617,7 +616,7 @@ typedef struct {
 } DeclSpec;
 
 static const DeclSpec
-declspec(const Token **rest, const Token *tok, const Env *env) {
+declspec(const Token **rest, const Token *tok, Env *env) {
     const Span start = tok->span;
     DeclSpec spec = {};
     TypeSpec ty_spec = {};
@@ -689,7 +688,7 @@ abstract_declarator(const Token **rest, const Token *tok, const Type *ty) {
 //      declaration_specifiers abstract_declarator?
 //
 static Declaration *
-param_decl(const Token **rest, const Token *tok, const Env *env) {
+param_decl(const Token **rest, const Token *tok, Env *env) {
     const Type *ty = declspec(&tok, tok, env).ty;
     if (ty == NULL) {
         return NULL;
@@ -714,7 +713,7 @@ param_decl(const Token **rest, const Token *tok, const Env *env) {
 //  parameter_list = parameter_declaration ("," parameter_declaration)*
 //
 static ParamList *
-param_list(const Token **rest, const Token *tok, const Env *env) {
+param_list(const Token **rest, const Token *tok, Env *env) {
     Declaration *decl = param_decl(&tok, tok, env);
     if (decl == NULL)
         return NULL;
@@ -756,7 +755,7 @@ param_list(const Token **rest, const Token *tok, const Env *env) {
 //  function_args = ( parameter_type_list | identifier_list )
 //
 static Declaration *
-direct_declarator(const Token **rest, const Token *tok, const Env *env,
+direct_declarator(const Token **rest, const Token *tok, Env *env,
                   const Type *ty) {
     const Token *ident = consume_ident(&tok, tok);
     if (ident == NULL) {
@@ -767,10 +766,28 @@ direct_declarator(const Token **rest, const Token *tok, const Env *env,
         ty = mk_func(ty, param_list(&tok, tok, env));
         expect(&tok, tok, ")");
     } else if (consume(&tok, tok, "[")) {
-        int array_size = -1;
-        number(&tok, tok, &array_size);
+        if (consume(&tok, tok, "static")) {
+            not_implemented(&tok->span, NULL);
+        } else {
+            const int qualifier = type_qualifier_list(&tok, tok);
+            if (qualifier != TQ_NULL) {
+                if (consume(&tok, tok, "static")) {
+                    not_implemented(&tok->span, NULL);
+                }
+            }
+
+            if (consume(&tok, tok, "*")) {
+                not_implemented(&tok->span, NULL);
+            } else {
+                int array_size = -1;
+                Node *node = assign(&tok, tok, env);
+                if (node) {
+                    eval_constexpr(node, &array_size);
+                }
+                ty = mk_array(ty, array_size);
+            }
+        }
         expect(&tok, tok, "]");
-        ty = mk_array(ty, array_size);
     }
 
     Declaration *decl = calloc(1, sizeof(Declaration));
@@ -786,8 +803,7 @@ direct_declarator(const Token **rest, const Token *tok, const Env *env,
 // declarator = pointer? direct_declarator
 //
 static Declaration *
-declarator(const Token **rest, const Token *tok, const Env *env,
-           const Type *ty) {
+declarator(const Token **rest, const Token *tok, Env *env, const Type *ty) {
     ty = pointer(&tok, tok, ty);
     return direct_declarator(rest, tok, env, ty);
 }
@@ -796,7 +812,7 @@ declarator(const Token **rest, const Token *tok, const Env *env,
 //  type_name = specifier_qualifier_list abstract_declarator?
 //
 static const Type *
-type_name(const Token **rest, const Token *tok, const Env *env) {
+type_name(const Token **rest, const Token *tok, Env *env) {
     const Type *ty = spec_qual_list(&tok, tok, env);
     if (ty == NULL) {
         return NULL;

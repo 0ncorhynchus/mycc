@@ -36,5 +36,10 @@ main() {
     c_ptr++;
     assert_int('b', *c_ptr);
 
+    int b[1 + 1] = {0, 1};
+    assert_int(8, sizeof(b));
+    assert_int(0, b[0]);
+    assert_int(1, b[1]);
+
     return summary();
 }

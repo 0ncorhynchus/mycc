@@ -239,7 +239,7 @@ gen_func(const Function *fn) {
     epilogue(NULL);
 }
 
-static bool
+bool
 eval_constexpr(const Node *node, int *val) {
     int lhs, rhs;
     switch (node->kind) {
