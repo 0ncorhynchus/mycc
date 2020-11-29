@@ -719,8 +719,10 @@ gen_cast(Node *node) {
 
     const Type *from = node->lhs->ty;
     const Type *to = node->ty;
-    if (from->ty != INTEGER || to->ty != INTEGER) {
-        error("Error at %s:%d", __FILE__, __LINE__);
+    if ((from->ty != INTEGER && from->ty != ENUM && from->ty != PTR) ||
+        (to->ty != INTEGER && to->ty != ENUM)) {
+        error("Not implemented cast from '%s' to '%s'", type_to_str(from),
+              type_to_str(to));
     }
 
     const size_t from_size = sizeof_ty(from);

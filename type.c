@@ -111,6 +111,7 @@ type_to_str(const Type *ty) {
             switch (tmp->integer.kind) {
             case CHAR:
                 strcat(buffer, "rahc");
+                break;
             case SHORT:
                 strcat(buffer, "trohs");
                 break;
@@ -119,8 +120,10 @@ type_to_str(const Type *ty) {
                 break;
             case LONG:
                 strcat(buffer, "gnol");
+                break;
             case LONG_LONG:
                 strcat(buffer, "gnol gnol");
+                break;
             }
             if (tmp->integer.is_unsigned) {
                 strcat(buffer, " dengisnu");

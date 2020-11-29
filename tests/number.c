@@ -30,6 +30,9 @@ main() {
     y = 0;
     z = "abc";
 
+    assert_int(0, x);
+    assert_int(0, y);
+
     assert_int(0, x + y);
     assert_int(0, y + x);
     assert_int(0, x - y);

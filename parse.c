@@ -1,4 +1,5 @@
 #include "mycc.h"
+#include <assert.h>
 #include <string.h>
 
 //
@@ -913,15 +914,30 @@ deref_offset_ptr(Node *ptr, Node *index) {
     return deref(new_node(ND_ADD, ptr, index));
 }
 
+Node *
+new_cast(Node *node, const Type *ty) {
+    Node *new = calloc(1, sizeof(Node));
+    new->kind = ND_CAST;
+    new->ty = ty;
+    new->lhs = node;
+    return new;
+}
+
 //
 //  argument_expression_list? = ( assign ( "," assign )* )?
 //
 static NodeList *
-argexprlist(const Token **rest, const Token *tok, Env *env) {
+argexprlist(const Token **rest, const Token *tok, Env *env,
+            const ParamList *params) {
     Node *node = assign(&tok, tok, env);
     if (!node) {
         return NULL;
     }
+
+    if (!is_same_type(node->ty, params->decl->var->ty)) {
+        node = new_cast(node, params->decl->var->ty);
+    }
+    params = params->next;
 
     NodeList *list = calloc(1, sizeof(NodeList));
     list->node = node;
@@ -931,6 +947,12 @@ argexprlist(const Token **rest, const Token *tok, Env *env) {
         if (node == NULL) {
             error("Invalid argument");
         }
+
+        if (!is_same_type(node->ty, params->decl->var->ty)) {
+            node = new_cast(node, params->decl->var->ty);
+        }
+        params = params->next;
+
         NodeList *new = calloc(1, sizeof(NodeList));
         new->next = list;
         new->node = node;
@@ -1007,11 +1029,13 @@ postfix(const Token **rest, const Token *tok, Env *env) {
             continue;
         }
         if (consume(&tok, tok, "(")) {
+            assert(node->ty->ty == FUNCTION);
             if (node->kind == ND_LVAR) {
                 node->fn = node->var->ident;
             }
             node->kind = ND_CALL;
-            node->args = argexprlist(&tok, tok, env);
+            node->args = argexprlist(&tok, tok, env, node->ty->args);
+            node->ty = node->ty->retty;
             if (consume(&tok, tok, ")")) {
                 continue;
             }
