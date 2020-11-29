@@ -29,5 +29,12 @@ main() {
     p = a;
     assert_int(3, *p + *(p + 1));
 
+    char *str = "abcdefg";
+    char *c_ptr = str;
+
+    assert_int('a', *c_ptr);
+    c_ptr++;
+    assert_int('b', *c_ptr);
+
     return summary();
 }
