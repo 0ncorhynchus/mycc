@@ -713,6 +713,43 @@ gen_ternary(Node *node) {
     printf(".Lend%d:\n", node->jump_index);
 }
 
+static void
+gen_cast(Node *node) {
+    gen(node->lhs);
+
+    const Type *from = node->lhs->ty;
+    const Type *to = node->ty;
+    if (from->ty != INTEGER || to->ty != INTEGER) {
+        error("Error at %s:%d", __FILE__, __LINE__);
+    }
+
+    const size_t from_size = sizeof_ty(from);
+    const size_t to_size = sizeof_ty(to);
+    if (to_size <= from_size) {
+        return;
+    }
+
+    pop("rax");
+    if (to_size > 4) {
+        if (from->integer.is_unsigned) {
+            printf("  movzx rax, %s\n", ax(from_size));
+        } else {
+            if (from_size == 4) {
+                printf("  movsxd rax, eax\n");
+            } else {
+                printf("  movsx rax, %s\n", ax(from_size));
+            }
+        }
+    } else {
+        if (from->integer.is_unsigned) {
+            printf("  movzx eax, %s\n", ax(from_size));
+        } else {
+            printf("  movsx eax, %s\n", ax(from_size));
+        }
+    }
+    push("rax");
+}
+
 void
 gen(Node *node) {
     switch (node->kind) {
@@ -822,6 +859,9 @@ gen(Node *node) {
         break;
     case ND_TERNARY:
         gen_ternary(node);
+        break;
+    case ND_CAST:
+        gen_cast(node);
         break;
     }
 }

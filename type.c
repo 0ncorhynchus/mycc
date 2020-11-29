@@ -66,9 +66,8 @@ sizeof_ty(const Type *ty) {
         case INT:
             return 4;
         case LONG:
-            return 8;
         case LONG_LONG:
-            return 16;
+            return 8;
         }
     case PTR:
         return 8;

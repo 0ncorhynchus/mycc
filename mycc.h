@@ -174,6 +174,7 @@ typedef enum {
     ND_ADDR,    // "&"
     ND_DEREF,   // "*"
     ND_STRING,
+    ND_CAST,
 } NodeKind;
 
 typedef struct NodeList NodeList;

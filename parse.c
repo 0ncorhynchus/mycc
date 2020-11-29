@@ -886,9 +886,11 @@ primary(const Token **rest, const Token *tok, Env *env) {
 
     if (consume(&tok, tok, "(")) {
         Node *node = expr(&tok, tok, env);
-        expect(&tok, tok, ")");
-        *rest = tok;
-        return node;
+        if (node) {
+            expect(&tok, tok, ")");
+            *rest = tok;
+            return node;
+        }
     }
 
     return NULL;
@@ -993,6 +995,9 @@ member(Node *var, const Token *ident_token) {
 static Node *
 postfix(const Token **rest, const Token *tok, Env *env) {
     Node *node = primary(&tok, tok, env);
+    if (node == NULL) {
+        return NULL;
+    }
     for (;;) {
         if (consume(&tok, tok, "[")) {
             Node *index = expr(&tok, tok, env);
@@ -1065,16 +1070,35 @@ cast(const Token **rest, const Token *tok, Env *env) {
 //
 static Node *
 cast_expression(const Token **rest, const Token *tok, Env *env) {
+    Node *top = NULL;
+    Node *current = NULL;
     for (;;) {
-        const Token *tmp = tok;
         const Type *ty = cast(&tok, tok, env);
         if (ty) {
-            not_implemented(&tmp->span, "cast");
+            Node *node = calloc(1, sizeof(Node));
+            node->kind = ND_CAST;
+            node->ty = ty;
+            if (current) {
+                current->lhs = node;
+                current = current->lhs;
+            } else {
+                top = node;
+                current = top;
+            }
         } else {
             break;
         }
     }
-    return unary(rest, tok, env);
+    Node *val = unary(rest, tok, env);
+    if (val == NULL) {
+        return NULL;
+    }
+    if (current) {
+        current->lhs = val;
+    } else {
+        top = val;
+    }
+    return top;
 }
 
 //

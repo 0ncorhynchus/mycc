@@ -16,7 +16,7 @@ static int test_no = 0;
 static int num_passed = 0;
 static int num_failed;
 
-int
+void
 assert_int(int expected, int actual) {
     test_no = test_no + 1;
     if (expected == actual) {
@@ -28,7 +28,20 @@ assert_int(int expected, int actual) {
         printf("     expected: 0x%08X\n", expected);
         printf("     actual:   0x%08X\n", actual);
     }
-    return 0;
+}
+
+void
+assert_unsigned_int(unsigned int expected, unsigned int actual) {
+    test_no = test_no + 1;
+    if (expected == actual) {
+        num_passed = num_passed + 1;
+    } else {
+        num_failed = num_failed + 1;
+        printf("%03d: ", test_no);
+        printf("Failed. %d expected, but got %d\n", expected, actual);
+        printf("     expected: 0x%08X\n", expected);
+        printf("     actual:   0x%08X\n", actual);
+    }
 }
 
 long
