@@ -16,6 +16,14 @@ union Union {
     char character;
 };
 
+struct Anonymous {
+    int i;
+    struct {
+        int j;
+        int k;
+    };
+};
+
 int
 main() {
     assert_int(16, sizeof(struct Span));
@@ -44,6 +52,11 @@ main() {
     union Union u = {257};
     assert_int(257, u.integer);
     assert_int(1, (int)u.character);
+
+    struct Anonymous a = {0, 1, 2};
+    assert_int(0, a.i);
+    assert_int(1, a.j);
+    assert_int(2, a.k);
 
     return summary();
 }

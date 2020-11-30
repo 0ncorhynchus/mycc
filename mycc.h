@@ -66,7 +66,7 @@ typedef struct String String;
 typedef struct Members Members;
 struct Members {
     Members *next;
-    const Var *member;
+    Var *member;
 };
 
 typedef struct {

@@ -345,16 +345,41 @@ struct_union_spec(const Token **rest, const Token *tok, Env *env) {
     size_t size = 0;
     Members *members = NULL;
     if (consume(&tok, tok, "{")) {
+        Members *last = NULL;
         const Type *ty = spec_qual_list(&tok, tok, env);
         const Declaration *decl = declarator(&tok, tok, env, ty);
-        if (is_struct) {
-            decl->var->offset = size;
+        if (decl) {
+            if (is_struct) {
+                decl->var->offset = size;
+            } else {
+                decl->var->offset = 0;
+            }
+            members = calloc(1, sizeof(Members));
+            members->member = decl->var;
+            last = members;
         } else {
-            decl->var->offset = 0;
+            if ((ty->ty != STRUCT && ty->ty != UNION) ||
+                ty->struct_ty.tag != NULL) {
+                error_at(&tok->span, "Invalid type for anonymous member");
+            }
+            const Members *inner = ty->struct_ty.members;
+            while (inner) {
+                if (is_struct) {
+                    inner->member->offset += size;
+                }
+                if (members) {
+                    members = calloc(1, sizeof(Members));
+                    members->member = inner->member;
+                    last = members;
+                } else {
+                    last->next = calloc(1, sizeof(Members));
+                    last = last->next;
+                    last->member = inner->member;
+                }
+                inner = inner->next;
+            }
         }
-        members = calloc(1, sizeof(Members));
-        members->member = decl->var;
-        const size_t sz = expand_for_align(sizeof_ty(decl->var->ty));
+        const size_t sz = expand_for_align(sizeof_ty(ty));
         if (is_struct) {
             size += sz;
         } else if (sz > size) {
@@ -362,19 +387,35 @@ struct_union_spec(const Token **rest, const Token *tok, Env *env) {
         }
         expect(&tok, tok, ";");
 
-        Members *last = members;
         while (!consume(&tok, tok, "}")) {
             const Type *ty = spec_qual_list(&tok, tok, env);
             const Declaration *decl = declarator(&tok, tok, env, ty);
-            if (is_struct) {
-                decl->var->offset = size;
+            if (decl) {
+                if (is_struct) {
+                    decl->var->offset = size;
+                } else {
+                    decl->var->offset = 0;
+                }
+                last->next = calloc(1, sizeof(Members));
+                last = last->next;
+                last->member = decl->var;
             } else {
-                decl->var->offset = 0;
+                if ((ty->ty != STRUCT && ty->ty != UNION) ||
+                    ty->struct_ty.tag != NULL) {
+                    error_at(&tok->span, "Invalid type for anonymous member");
+                }
+                const Members *inner = ty->struct_ty.members;
+                while (inner) {
+                    if (is_struct) {
+                        inner->member->offset += size;
+                    }
+                    last->next = calloc(1, sizeof(Members));
+                    last = last->next;
+                    last->member = inner->member;
+                    inner = inner->next;
+                }
             }
-            last->next = calloc(1, sizeof(Members));
-            last = last->next;
-            last->member = decl->var;
-            const size_t sz = expand_for_align(sizeof_ty(decl->var->ty));
+            const size_t sz = expand_for_align(sizeof_ty(ty));
             if (is_struct) {
                 size += sz;
             } else if (sz > size) {
