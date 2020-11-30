@@ -479,6 +479,9 @@ tokenize(const char *path) {
 
             p++; // consume begining '"'
             while (*p != '"') {
+                if (*p == '\\') {
+                    p++;
+                }
                 p++;
             }
             p++; // consume ending '"'
