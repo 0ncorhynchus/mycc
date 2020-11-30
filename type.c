@@ -84,6 +84,11 @@ sizeof_ty(const Type *ty) {
                   ty->struct_ty.tag);
         }
         return ty->struct_ty.size;
+    case UNION:
+        if (ty->struct_ty.size == 0) {
+            error("storage size of union '%s' is not known", ty->struct_ty.tag);
+        }
+        return ty->struct_ty.size;
     default:
         error("The size of '%s' is unknown.", type_to_str(ty));
         return 0;
@@ -165,6 +170,16 @@ type_to_str(const Type *ty) {
                 free(c);
             } else {
                 strcat(buffer, "tcurts");
+            }
+            break;
+        case UNION:
+            if (ty->struct_ty.tag) {
+                c = calloc(7 + strlen(ty->struct_ty.tag), 1);
+                sprintf(c, "union %s", ty->struct_ty.tag);
+                strcat(buffer, revstr(c));
+                free(c);
+            } else {
+                strcat(buffer, "noinu");
             }
             break;
         default:

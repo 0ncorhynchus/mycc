@@ -11,6 +11,11 @@ struct Span2 {
     char *ptr;
 };
 
+union Union {
+    int integer;
+    char character;
+};
+
 int
 main() {
     assert_int(16, sizeof(struct Span));
@@ -35,6 +40,10 @@ main() {
     assert_int(1, span2.ptr);
     span2.len = 2;
     assert_int(2, span2.len);
+
+    union Union u = {257};
+    assert_int(257, u.integer);
+    assert_int(1, (int)u.character);
 
     return summary();
 }

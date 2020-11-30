@@ -89,7 +89,7 @@ typedef struct {
     const char *tag;
     const Members *members;
     size_t size;
-} Struct;
+} StructOrUnion;
 
 typedef struct {
     enum { CHAR, SHORT, INT, LONG, LONG_LONG } kind;
@@ -97,7 +97,18 @@ typedef struct {
 } Integer;
 
 struct Type {
-    enum { BOOL, INTEGER, REAL, PTR, ARRAY, VOID, FUNCTION, ENUM, STRUCT } ty;
+    enum {
+        BOOL,
+        INTEGER,
+        REAL,
+        PTR,
+        ARRAY,
+        VOID,
+        FUNCTION,
+        ENUM,
+        STRUCT,
+        UNION
+    } ty;
 
     // For INTEGER
     Integer integer;
@@ -115,8 +126,8 @@ struct Type {
     // For ENUM
     Enum enum_ty;
 
-    // For STRUCT
-    Struct struct_ty;
+    // For STRUCT or UNION
+    StructOrUnion struct_ty;
 };
 
 extern const Type VOID_T;

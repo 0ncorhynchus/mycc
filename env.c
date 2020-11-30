@@ -261,7 +261,7 @@ declare_struct(Env *env, const Type *ty) {
 
     Type *declared = find_tag(env, ty->struct_ty.tag);
     if (declared) {
-        if (declared->ty != STRUCT || declared->struct_ty.members) {
+        if (declared->ty != ty->ty || declared->struct_ty.members) {
             error("'%s' is already defined as a tag");
         }
         declared->struct_ty.members = ty->struct_ty.members;
@@ -285,6 +285,7 @@ declare_tag(Env *env, const Type *ty) {
         declare_enum(env, ty);
         return;
     case STRUCT:
+    case UNION:
         declare_struct(env, ty);
         return;
     default:
@@ -306,6 +307,7 @@ declare_typedef(Env *env, const Var *var) {
         redefined->ty = declare_enum(env, var->ty);
         break;
     case STRUCT:
+    case UNION:
         redefined->ty = declare_struct(env, var->ty);
         break;
     default:

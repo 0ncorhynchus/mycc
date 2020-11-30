@@ -334,10 +334,10 @@ spec_qual_list(const Token **rest, const Token *tok, Env *env) {
 //
 const Type *
 struct_union_spec(const Token **rest, const Token *tok, Env *env) {
+    bool is_struct = true;
     if (consume(&tok, tok, "union")) {
-        not_implemented(&tok->span, "union");
-    }
-    if (!consume(&tok, tok, "struct")) {
+        is_struct = false;
+    } else if (!consume(&tok, tok, "struct")) {
         return NULL;
     }
 
@@ -347,28 +347,46 @@ struct_union_spec(const Token **rest, const Token *tok, Env *env) {
     if (consume(&tok, tok, "{")) {
         const Type *ty = spec_qual_list(&tok, tok, env);
         const Declaration *decl = declarator(&tok, tok, env, ty);
-        decl->var->offset = size;
+        if (is_struct) {
+            decl->var->offset = size;
+        } else {
+            decl->var->offset = 0;
+        }
         members = calloc(1, sizeof(Members));
         members->member = decl->var;
-        size += expand_for_align(sizeof_ty(decl->var->ty));
+        const size_t sz = expand_for_align(sizeof_ty(decl->var->ty));
+        if (is_struct) {
+            size += sz;
+        } else if (sz > size) {
+            size = sz;
+        }
         expect(&tok, tok, ";");
 
         Members *last = members;
         while (!consume(&tok, tok, "}")) {
             const Type *ty = spec_qual_list(&tok, tok, env);
             const Declaration *decl = declarator(&tok, tok, env, ty);
-            decl->var->offset = size;
+            if (is_struct) {
+                decl->var->offset = size;
+            } else {
+                decl->var->offset = 0;
+            }
             last->next = calloc(1, sizeof(Members));
             last = last->next;
             last->member = decl->var;
-            size += expand_for_align(sizeof_ty(decl->var->ty));
+            const size_t sz = expand_for_align(sizeof_ty(decl->var->ty));
+            if (is_struct) {
+                size += sz;
+            } else if (sz > size) {
+                size = sz;
+            }
             expect(&tok, tok, ";");
         }
     } else if (tag == NULL) {
-        error("struct requires an identifier or a block at least");
+        error("struct or union requires an identifier or a block at least");
     }
 
-    Struct st = {};
+    StructOrUnion st = {};
     if (tag) {
         st.tag = char_from_span(&tag->span);
     }
@@ -376,7 +394,11 @@ struct_union_spec(const Token **rest, const Token *tok, Env *env) {
     st.members = members;
 
     Type *ty = calloc(1, sizeof(Type));
-    ty->ty = STRUCT;
+    if (is_struct) {
+        ty->ty = STRUCT;
+    } else {
+        ty->ty = UNION;
+    }
     ty->struct_ty = st;
 
     *rest = tok;
@@ -984,8 +1006,8 @@ argexprlist(const Token **rest, const Token *tok, Env *env,
 
 static Node *
 member(Node *var, const Token *ident_token) {
-    if (var->ty->ty != STRUCT) {
-        error("Not struct");
+    if (var->ty->ty != STRUCT && var->ty->ty != UNION) {
+        error("Not struct or union");
     }
 
     const char *ident = char_from_span(&ident_token->span);

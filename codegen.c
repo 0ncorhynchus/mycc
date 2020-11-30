@@ -541,10 +541,21 @@ gen_local_declare(const Declaration *decl) {
             error("Not supported an initializer expression for struct.");
         }
         break;
+    case UNION:
+        if (init->list == NULL) {
+            error("An initializer expression is invalid for union.");
+        }
+        const InitList *list = init->list;
+        if (list->inner->expr == NULL) {
+            error("A nested initilizer list is invalid for union.");
+        }
+        gen_assign(var, list->inner->expr);
+        pop("rax");
+        break;
     default:
         // check if `init` is an initializer list
         if (init->expr == NULL) {
-            error("Not supported initializer lists");
+            error("Not supported initializer lists for '%s'", type_to_str(ty));
         }
         gen_assign(var, init->expr);
         pop("rax");
