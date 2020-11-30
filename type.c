@@ -89,6 +89,17 @@ sizeof_ty(const Type *ty) {
             error("storage size of union '%s' is not known", ty->struct_ty.tag);
         }
         return ty->struct_ty.size;
+    case BOOL:
+        return 1;
+    case REAL:
+        switch (ty->fkind) {
+        case FLOAT:
+            return 4;
+        case DOUBLE:
+            return 8;
+        case LONG_DOUBLE:
+            return 16;
+        }
     default:
         error("The size of '%s' is unknown.", type_to_str(ty));
         return 0;
@@ -180,6 +191,25 @@ type_to_str(const Type *ty) {
                 free(c);
             } else {
                 strcat(buffer, "noinu");
+            }
+            break;
+        case FUNCTION:
+            strcat(buffer, "noitcnuf");
+            break;
+        case BOOL:
+            strcat(buffer, "looB_");
+            break;
+        case REAL:
+            switch (ty->fkind) {
+            case FLOAT:
+                strcat(buffer, "taolf");
+                break;
+            case DOUBLE:
+                strcat(buffer, "elbuod");
+                break;
+            case LONG_DOUBLE:
+                strcat(buffer, "elbuod gnol");
+                break;
             }
             break;
         default:
