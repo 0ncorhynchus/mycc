@@ -247,6 +247,7 @@ construct_type(const TypeSpec spec, const Span *span) {
     case TS_INT:
     case TS_SIGNED + TS_INT:
         return &INT_T;
+    case TS_UNSIGNED:
     case TS_UNSIGNED + TS_INT:
         return &UINT_T;
     case TS_LONG:
