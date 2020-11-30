@@ -357,6 +357,12 @@ struct_union_spec(const Token **rest, const Token *tok, Env *env) {
             members = calloc(1, sizeof(Members));
             members->member = decl->var;
             last = members;
+            const size_t sz = expand_for_align(sizeof_ty(decl->var->ty));
+            if (is_struct) {
+                size += sz;
+            } else if (sz > size) {
+                size = sz;
+            }
         } else {
             if ((ty->ty != STRUCT && ty->ty != UNION) ||
                 ty->struct_ty.tag != NULL) {
@@ -368,22 +374,22 @@ struct_union_spec(const Token **rest, const Token *tok, Env *env) {
                     inner->member->offset += size;
                 }
                 if (members) {
-                    members = calloc(1, sizeof(Members));
-                    members->member = inner->member;
-                    last = members;
-                } else {
                     last->next = calloc(1, sizeof(Members));
                     last = last->next;
                     last->member = inner->member;
+                } else {
+                    members = calloc(1, sizeof(Members));
+                    members->member = inner->member;
+                    last = members;
                 }
                 inner = inner->next;
             }
-        }
-        const size_t sz = expand_for_align(sizeof_ty(ty));
-        if (is_struct) {
-            size += sz;
-        } else if (sz > size) {
-            size = sz;
+            const size_t sz = expand_for_align(sizeof_ty(ty));
+            if (is_struct) {
+                size += sz;
+            } else if (sz > size) {
+                size = sz;
+            }
         }
         expect(&tok, tok, ";");
 
@@ -399,6 +405,12 @@ struct_union_spec(const Token **rest, const Token *tok, Env *env) {
                 last->next = calloc(1, sizeof(Members));
                 last = last->next;
                 last->member = decl->var;
+                const size_t sz = expand_for_align(sizeof_ty(decl->var->ty));
+                if (is_struct) {
+                    size += sz;
+                } else if (sz > size) {
+                    size = sz;
+                }
             } else {
                 if ((ty->ty != STRUCT && ty->ty != UNION) ||
                     ty->struct_ty.tag != NULL) {
@@ -414,12 +426,12 @@ struct_union_spec(const Token **rest, const Token *tok, Env *env) {
                     last->member = inner->member;
                     inner = inner->next;
                 }
-            }
-            const size_t sz = expand_for_align(sizeof_ty(ty));
-            if (is_struct) {
-                size += sz;
-            } else if (sz > size) {
-                size = sz;
+                const size_t sz = expand_for_align(sizeof_ty(ty));
+                if (is_struct) {
+                    size += sz;
+                } else if (sz > size) {
+                    size = sz;
+                }
             }
             expect(&tok, tok, ";");
         }

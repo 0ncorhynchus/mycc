@@ -228,6 +228,9 @@ declare_enum(Env *env, const Type *ty) {
     if (ty->enum_ty.tag) {
         Type *defined = find_tag(env, ty->enum_ty.tag);
         if (defined) {
+            if (defined == ty) {
+                return defined;
+            }
             if (defined->ty != ENUM || defined->enum_ty.consts) {
                 error("'%s' is already defined as a tag");
             }
@@ -261,6 +264,9 @@ declare_struct(Env *env, const Type *ty) {
 
     Type *declared = find_tag(env, ty->struct_ty.tag);
     if (declared) {
+        if (declared == ty) {
+            return declared;
+        }
         if (declared->ty != ty->ty || declared->struct_ty.members) {
             error("'%s' is already defined as a tag");
         }
