@@ -153,7 +153,7 @@ char_from_span(const Span *span) {
 //  enumerator_list = enumerator ( "," enumerator )*
 //  enumerator =
 //      enumeration_constant
-//      enumeration_constant = constant_expression
+//      enumeration_constant "=" constant_expression
 //
 static const Type *
 enum_specifier(const Token **rest, const Token *tok) {
@@ -174,7 +174,13 @@ enum_specifier(const Token **rest, const Token *tok) {
             error_at(&tok->span, "Failed to parse enum");
         }
         e.consts = calloc(1, sizeof(String));
-        e.consts->index = val;
+        if (consume(&tok, tok, "=")) {
+            if (!number(&tok, tok, &e.consts->index)) {
+                error("Expect a number.");
+            }
+        } else {
+            e.consts->index = val;
+        }
         e.consts->ident = char_from_span(&constant->span);
 
         String *last = e.consts;
@@ -189,7 +195,13 @@ enum_specifier(const Token **rest, const Token *tok) {
 
             val++;
             last->next = calloc(1, sizeof(String));
-            last->next->index = val;
+            if (consume(&tok, tok, "=")) {
+                if (!number(&tok, tok, &last->next->index)) {
+                    error("Expect a number.");
+                }
+            } else {
+                last->next->index = val;
+            }
             last->next->ident = char_from_span(&constant->span);
             last = last->next;
         }
