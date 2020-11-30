@@ -1718,8 +1718,12 @@ function(const Token **rest, const Token *tok, Env *parent) {
     Env env = make_scope(parent);
     const ParamList *arg = fn->def->ty->args;
     while (arg) {
-        Declaration *decl = arg->decl;
+        const Declaration *decl = arg->decl;
 
+        if (decl == NULL) { // in the case of "..."
+            // TODO
+            break;
+        }
         if (decl->var->ty == &VOID_T) {
             if (arg->next != NULL || fn->num_args > 0) {
                 error_at(&tok->span, "void is allowed only for empty argument");
