@@ -2131,29 +2131,42 @@ stmt(const Token **rest, const Token *tok, Env *env) {
 //
 //  program = ( function | declaration )*
 //
-void
-program(const Token *token, Env *env, Unit *code[]) {
-    int i = 0;
+const Unit *
+program(const Token *token, Env *env) {
+    Unit *code = NULL;
+    Unit *current = NULL;
+
     while (!at_eof(token)) {
         const Function *fn = function(&token, token, env);
         if (fn) {
-            code[i] = calloc(1, sizeof(Unit));
-            code[i]->function = fn;
-            i++;
+            if (current) {
+                current->next = calloc(1, sizeof(Unit));
+                current = current->next;
+            } else {
+                code = calloc(1, sizeof(sizeof(Unit)));
+                current = code;
+            }
+            current->function = fn;
             continue;
         }
 
         const Declaration *decl = declaration(&token, token, env);
         if (decl) {
             if (decl->var) {
-                code[i] = calloc(1, sizeof(Unit));
-                code[i]->declaration = decl;
-                i++;
+                if (current) {
+                    current->next = calloc(1, sizeof(Unit));
+                    current = current->next;
+                } else {
+                    code = calloc(1, sizeof(sizeof(Unit)));
+                    current = code;
+                }
+                current->declaration = decl;
             }
             continue;
         }
 
         error_at(&token->span, "Cannot parse the program.");
     }
-    code[i] = NULL;
+
+    return code;
 }

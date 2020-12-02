@@ -8,19 +8,18 @@ main(int argc, char **argv) {
         return 1;
     }
 
-    Unit *code[100];
-
     const char *path = argv[1];
     const Token *token = tokenize(path);
 
     Env global = init_env();
-    program(token, &global, code);
+    const Unit *code = program(token, &global);
 
     printf(".intel_syntax noprefix\n");
     gen_strings(&global);
-    for (int i = 0; code[i]; i++) {
+    while (code) {
         printf("\n");
-        gen_top(code[i]);
+        gen_top(code);
+        code = code->next;
     }
 
     return 0;

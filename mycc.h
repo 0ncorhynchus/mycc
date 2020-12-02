@@ -345,6 +345,7 @@ struct Function {
 
 typedef struct Unit Unit;
 struct Unit {
+    Unit *next;
     const Function *function;
     const Declaration *declaration;
 };
@@ -411,8 +412,8 @@ push_string(Env *env, const char *ident);
 void
 push_label(Env *env, const Label *label);
 
-void
-program(const Token *token, Env *env, Unit *code[]);
+const Unit *
+program(const Token *token, Env *env);
 
 Node *
 as_ptr(Node *array);
@@ -429,6 +430,6 @@ eval_constexpr(const Node *node, int *val);
 void
 gen(Node *node);
 void
-gen_top(Unit *node);
+gen_top(const Unit *node);
 void
 gen_strings(Env *env);

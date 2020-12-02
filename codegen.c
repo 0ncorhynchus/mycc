@@ -367,7 +367,7 @@ gen_declare(const Declaration *decl) {
 }
 
 void
-gen_top(Unit *code) {
+gen_top(const Unit *code) {
     printf(".text\n");
     if (code->function) {
         gen_func(code->function);
