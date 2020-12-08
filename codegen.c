@@ -81,8 +81,7 @@ epilogue(Node *node) {
     } else {
         printf("  mov rax, 0\n");
     }
-    printf("  mov rsp, rbp\n");
-    printf("  pop rbp\n");
+    printf("  leave\n");
     printf("  ret\n");
 
     assert(stack == num_args);
