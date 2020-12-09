@@ -210,7 +210,7 @@ enum_specifier(const Token **rest, const Token *tok) {
     }
 
     Type *ty = calloc(1, sizeof(Type));
-    ty->ty = ENUM;
+    ty->kind = ENUM;
     ty->enum_ty = e;
 
     *rest = tok;
@@ -398,7 +398,7 @@ struct_union_spec(const Token **rest, const Token *tok, Env *env) {
                 size = sz;
             }
         } else {
-            if (decl.ptr != NULL || (ty->ty != STRUCT && ty->ty != UNION) ||
+            if (decl.ptr != NULL || (ty->kind != STRUCT && ty->kind != UNION) ||
                 ty->struct_ty.tag != NULL) {
                 error_at(&tok->span, "Invalid type for anonymous member");
             }
@@ -449,7 +449,8 @@ struct_union_spec(const Token **rest, const Token *tok, Env *env) {
                     size = sz;
                 }
             } else {
-                if (decl.ptr != NULL || (ty->ty != STRUCT && ty->ty != UNION) ||
+                if (decl.ptr != NULL ||
+                    (ty->kind != STRUCT && ty->kind != UNION) ||
                     ty->struct_ty.tag != NULL) {
                     error_at(&tok->span, "Invalid type for anonymous member");
                 }
@@ -485,9 +486,9 @@ struct_union_spec(const Token **rest, const Token *tok, Env *env) {
 
     Type *ty = calloc(1, sizeof(Type));
     if (is_struct) {
-        ty->ty = STRUCT;
+        ty->kind = STRUCT;
     } else {
-        ty->ty = UNION;
+        ty->kind = UNION;
     }
     ty->struct_ty = st;
 
@@ -973,7 +974,7 @@ refer(Node *inner, const Type *ty) {
 // Implicit converter from array T[] to pointer T*
 Node *
 as_ptr(Node *array) {
-    if (array == NULL || array->ty == NULL || array->ty->ty != ARRAY)
+    if (array == NULL || array->ty == NULL || array->ty->kind != ARRAY)
         return array;
 
     return refer(array, array->ty->ptr_to);
@@ -1055,7 +1056,7 @@ primary(const Token **rest, const Token *tok, Env *env) {
 
 static Node *
 deref(Node *ptr) {
-    if (ptr->ty->ty != PTR) {
+    if (ptr->ty->kind != PTR) {
         error("Cannot deref: '%s'", type_to_str(ptr->ty));
     }
     Node *node = calloc(1, sizeof(Node));
@@ -1121,7 +1122,7 @@ argexprlist(const Token **rest, const Token *tok, Env *env,
 
 static Node *
 member(Node *var, const Token *ident_token) {
-    if (var->ty->ty != STRUCT && var->ty->ty != UNION) {
+    if (var->ty->kind != STRUCT && var->ty->kind != UNION) {
         error("Not struct or union");
     }
 
@@ -1185,10 +1186,10 @@ postfix(const Token **rest, const Token *tok, Env *env) {
             continue;
         }
         if (consume(&tok, tok, "(")) {
-            if (node->ty->ty != FUNCTION) {
+            if (node->ty->kind != FUNCTION) {
                 return NULL;
             }
-            assert(node->ty->ty == FUNCTION);
+            assert(node->ty->kind == FUNCTION);
             if (node->kind == ND_LVAR) {
                 node->fn = node->var->ident;
             }
@@ -1705,7 +1706,7 @@ function(const Token **rest, const Token *tok, Env *parent) {
     }
 
     const Declarator d = declarator(&tok, tok, parent, ty);
-    if (d.decl == NULL || d.decl->var->ty->ty != FUNCTION) {
+    if (d.decl == NULL || d.decl->var->ty->kind != FUNCTION) {
         return NULL;
     }
 
@@ -1846,7 +1847,7 @@ declaration(const Token **rest, const Token *tok, Env *env) {
         if (init == NULL) {
             return NULL;
         }
-        if (decl->var->ty->ty == ARRAY && decl->var->ty->array_size == -1) {
+        if (decl->var->ty->kind == ARRAY && decl->var->ty->array_size == -1) {
             int array_size = -1;
             if (init->expr && init->expr->kind == ND_STRING) {
                 array_size = strlen(init->expr->str) + 1;

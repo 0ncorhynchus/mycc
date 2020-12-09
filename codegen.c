@@ -310,7 +310,7 @@ eval_constexpr(const Node *node, int *val) {
 static void
 gen_declare(const Declaration *decl) {
     const Var *var = decl->var;
-    if (var->ty->ty == FUNCTION) {
+    if (var->ty->kind == FUNCTION) {
         return;
     }
 
@@ -379,8 +379,8 @@ gen_top(const Unit *code) {
 
 static void
 gen_add(const char *op, Node *lhs, Node *rhs) {
-    if (lhs->ty->ty == PTR) {
-        if (rhs->ty->ty == PTR) {
+    if (lhs->ty->kind == PTR) {
+        if (rhs->ty->kind == PTR) {
             error("Invalid operands to binary '%s' between pointers", op);
         } else {
             size_t size = sizeof_ty(lhs->ty->ptr_to);
@@ -404,7 +404,7 @@ gen_add(const char *op, Node *lhs, Node *rhs) {
             push("rax");
         }
     } else {
-        if (rhs->ty->ty == PTR) {
+        if (rhs->ty->kind == PTR) {
             size_t size = sizeof_ty(rhs->ty->ptr_to);
             gen(rhs);
             gen(lhs);
@@ -479,7 +479,7 @@ gen_local_declare(const Declaration *decl) {
 
     const Type *ty = decl->var->ty;
     const Initializer *init = decl->init;
-    switch (ty->ty) {
+    switch (ty->kind) {
     case ARRAY:
         if (init->expr && init->expr->kind == ND_STRING) {
             for (int index = 0; index < ty->array_size; index++) {
@@ -662,7 +662,7 @@ gen_comparison(const char *op, Node *lhs, Node *rhs) {
 
 static void
 gen_increment(const char *op, Node *node) {
-    if (node->ty->ty == PTR) {
+    if (node->ty->kind == PTR) {
         const size_t size = sizeof_ty(node->ty->ptr_to);
         gen_lval(node);
         pop("rax");
@@ -670,7 +670,7 @@ gen_increment(const char *op, Node *node) {
         push("rdi");
         printf("  %s rdi, %ld\n", op, size);
         printf("  mov QWORD PTR [rax], rdi\n");
-    } else if (node->ty->ty == INTEGER) {
+    } else if (node->ty->kind == INTEGER) {
         const size_t size = sizeof_ty(node->ty);
         gen_lval(node);
         pop("rax");
@@ -733,8 +733,8 @@ gen_cast(Node *node) {
 
     const Type *from = node->lhs->ty;
     const Type *to = node->ty;
-    if ((from->ty != INTEGER && from->ty != ENUM && from->ty != PTR) ||
-        (to->ty != INTEGER && to->ty != ENUM)) {
+    if ((from->kind != INTEGER && from->kind != ENUM && from->kind != PTR) ||
+        (to->kind != INTEGER && to->kind != ENUM)) {
         error("Not implemented cast from '%s' to '%s'", type_to_str(from),
               type_to_str(to));
     }

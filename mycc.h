@@ -96,19 +96,21 @@ typedef struct {
     bool is_unsigned;
 } Integer;
 
+typedef enum {
+    BOOL,
+    INTEGER,
+    REAL,
+    PTR,
+    ARRAY,
+    VOID,
+    FUNCTION,
+    ENUM,
+    STRUCT,
+    UNION
+} TypeKind;
+
 struct Type {
-    enum {
-        BOOL,
-        INTEGER,
-        REAL,
-        PTR,
-        ARRAY,
-        VOID,
-        FUNCTION,
-        ENUM,
-        STRUCT,
-        UNION
-    } ty;
+    TypeKind kind;
 
     // For INTEGER
     Integer integer;

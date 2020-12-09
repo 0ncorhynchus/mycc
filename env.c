@@ -231,13 +231,13 @@ declare_enum(Env *env, const Type *ty) {
             if (defined == ty) {
                 return defined;
             }
-            if (defined->ty != ENUM || defined->enum_ty.consts) {
+            if (defined->kind != ENUM || defined->enum_ty.consts) {
                 error("'%s' is already defined as a tag");
             }
             defined->enum_ty.consts = ty->enum_ty.consts;
         } else {
             defined = calloc(1, sizeof(Type));
-            defined->ty = ty->ty;
+            defined->kind = ty->kind;
             defined->enum_ty = ty->enum_ty;
             push_tag(env, ty->enum_ty.tag, defined);
         }
@@ -267,7 +267,7 @@ declare_struct(Env *env, const Type *ty) {
         if (declared == ty) {
             return declared;
         }
-        if (declared->ty != ty->ty || declared->struct_ty.members) {
+        if (declared->kind != ty->kind || declared->struct_ty.members) {
             error("'%s' is already defined as a tag");
         }
         declared->struct_ty.members = ty->struct_ty.members;
@@ -276,7 +276,7 @@ declare_struct(Env *env, const Type *ty) {
     }
 
     Type *new_type = calloc(1, sizeof(Type));
-    new_type->ty = ty->ty;
+    new_type->kind = ty->kind;
     new_type->struct_ty = ty->struct_ty;
 
     push_tag(env, ty->struct_ty.tag, new_type);
@@ -286,7 +286,7 @@ declare_struct(Env *env, const Type *ty) {
 
 void
 declare_tag(Env *env, const Type *ty) {
-    switch (ty->ty) {
+    switch (ty->kind) {
     case ENUM:
         declare_enum(env, ty);
         return;
@@ -308,7 +308,7 @@ declare_typedef(Env *env, const Var *var) {
 
     Var *redefined = calloc(1, sizeof(Var));
     redefined->ident = var->ident;
-    switch (var->ty->ty) {
+    switch (var->ty->kind) {
     case ENUM:
         redefined->ty = declare_enum(env, var->ty);
         break;

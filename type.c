@@ -26,7 +26,7 @@ const Type BOOL_T = {BOOL};
 const Type *
 mk_ptr(const Type *base, int qualifier) {
     Type *ptr = calloc(1, sizeof(Type));
-    ptr->ty = PTR;
+    ptr->kind = PTR;
     ptr->ptr_to = base;
     return ptr;
 }
@@ -34,7 +34,7 @@ mk_ptr(const Type *base, int qualifier) {
 const Type *
 mk_array(const Type *base, int array_size) {
     Type *array = calloc(1, sizeof(Type));
-    array->ty = ARRAY;
+    array->kind = ARRAY;
     array->ptr_to = base;
     array->array_size = array_size;
     return array;
@@ -43,7 +43,7 @@ mk_array(const Type *base, int array_size) {
 const Type *
 mk_func(const Type *retty, const ParamList *args) {
     Type *func = calloc(1, sizeof(Type));
-    func->ty = FUNCTION;
+    func->kind = FUNCTION;
     func->retty = retty;
     func->args = args;
     return func;
@@ -56,7 +56,7 @@ sizeof_ty(const Type *ty) {
             "Internal compile error: try to obtain the size of unknown type.");
     }
 
-    switch (ty->ty) {
+    switch (ty->kind) {
     case INTEGER:
         switch (ty->integer.kind) {
         case CHAR:
@@ -122,7 +122,7 @@ type_to_str(const Type *ty) {
 
     const Type *tmp;
     for (tmp = ty; tmp; tmp = tmp->ptr_to) {
-        switch (tmp->ty) {
+        switch (tmp->kind) {
         case INTEGER:
             switch (tmp->integer.kind) {
             case CHAR:
@@ -229,18 +229,18 @@ is_subtype(const Type *base, const Type *derived) {
         return false;
     }
 
-    if (base->ty == ENUM) {
+    if (base->kind == ENUM) {
         return is_subtype(&INT_T, derived);
     }
-    if (derived->ty == ENUM) {
+    if (derived->kind == ENUM) {
         return is_subtype(base, &INT_T);
     }
 
     const ParamList *barg, *darg;
 
-    switch (base->ty) {
+    switch (base->kind) {
     case INTEGER:
-        if (derived->ty == INTEGER) {
+        if (derived->kind == INTEGER) {
             size_t base_size = sizeof_ty(base);
             size_t derived_size = sizeof_ty(derived);
             if (base_size > derived_size) {
@@ -255,17 +255,17 @@ is_subtype(const Type *base, const Type *derived) {
         }
         return false;
     case PTR:
-        if (derived->ty == PTR) {
+        if (derived->kind == PTR) {
             return is_subtype(base->ptr_to, derived->ptr_to);
         }
-        return derived->ty == INTEGER;
+        return derived->kind == INTEGER;
     case ARRAY:
-        if (derived->ty == ARRAY && base->array_size == derived->array_size) {
+        if (derived->kind == ARRAY && base->array_size == derived->array_size) {
             return is_subtype(base->ptr_to, derived->ptr_to);
         }
         return false;
     case FUNCTION:
-        if (derived->ty != FUNCTION) {
+        if (derived->kind != FUNCTION) {
             return false;
         }
         if (!is_subtype(base->retty, derived->retty)) {
