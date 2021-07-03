@@ -161,7 +161,7 @@ type_to_str(const Type *ty) {
             strcat(buffer, "[");
             break;
         case VOID:
-            strcat(buffer, "doiv");
+            strcat(buffer, "diov");
             break;
         case ENUM:
             if (ty->enum_ty.tag) {
