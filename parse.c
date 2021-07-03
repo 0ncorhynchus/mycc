@@ -1731,9 +1731,15 @@ function(const Token **rest, const Token *tok, Env *parent) {
             break;
         }
 
-        if (!declare_arg(&env, decl->var)) {
+        //
+        // In the case that function is declared without body.
+        //
+        if (decl->var->ident == NULL) {
+            // TODO
+        } else if (!declare_arg(&env, decl->var)) {
             error_at(&tok->span, "'%s' is already declared", decl->var->ident);
         }
+
         fn->num_args++;
         arg = arg->next;
     }
