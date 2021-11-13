@@ -776,13 +776,16 @@ declspec(const Token **rest, const Token *tok, Env *env) {
 }
 
 //
-// abstract_declarator? = pointer? direct_abstract_declarator?
+//  abstract_declarator =
+//      pointer
+//      pointer? direct_abstract_declarator
 //
 static const Type *
 abstract_declarator(const Token **rest, const Token *tok, const Type *ty) {
+    const Type *retval = ty;
     const PtrList *plist = pointer(&tok, tok);
     while (plist) {
-        ty = mk_ptr(ty, plist->qualifier);
+        retval = mk_ptr(retval, plist->qualifier);
         plist = plist->next;
     }
 
@@ -794,11 +797,15 @@ abstract_declarator(const Token **rest, const Token *tok, const Type *ty) {
         }
         expect(&tok, tok, "]");
 
-        ty = mk_array(ty, size);
+        retval = mk_array(retval, size);
+    }
+
+    if (retval == ty) {
+        return NULL;
     }
 
     *rest = tok;
-    return ty;
+    return retval;
 }
 
 //
@@ -819,11 +826,15 @@ param_decl(const Token **rest, const Token *tok, Env *env) {
         return decl;
     }
 
-    ty = abstract_declarator(rest, tok, ty);
+    const Type *t = abstract_declarator(&tok, tok, ty);
+    if (t) {
+        ty = t;
+    }
     Declaration *retval = calloc(1, sizeof(Declaration));
     retval->var = calloc(1, sizeof(Var));
     retval->var->ty = ty;
 
+    *rest = tok;
     return retval;
 }
 
@@ -949,7 +960,13 @@ type_name(const Token **rest, const Token *tok, Env *env) {
         return NULL;
     }
 
-    return abstract_declarator(rest, tok, ty);
+    const Type *t = abstract_declarator(&tok, tok, ty);
+    if (t) {
+        ty = t;
+    }
+
+    *rest = tok;
+    return ty;
 }
 
 Node *
