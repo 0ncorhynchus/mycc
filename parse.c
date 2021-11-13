@@ -40,12 +40,7 @@ typedef struct PtrList {
     int qualifier;
 } PtrList;
 
-typedef struct {
-    const PtrList *ptr;
-    Declaration *decl;
-} Declarator;
-
-static Declarator
+static Declaration *
 declarator(const Token **rest, const Token *tok, Env *env, const Type *ty);
 
 static const Type *
@@ -379,26 +374,24 @@ struct_union_spec(const Token **rest, const Token *tok, Env *env) {
     if (consume(&tok, tok, "{")) {
         Members *last = NULL;
         const Type *ty = spec_qual_list(&tok, tok, env);
-        const Declarator decl = declarator(&tok, tok, env, ty);
-        if (decl.decl) {
-            decl.decl->var->ty =
-                generate_ptr_type(decl.ptr, decl.decl->var->ty);
+        Declaration *decl = declarator(&tok, tok, env, ty);
+        if (decl) {
             if (is_struct) {
-                decl.decl->var->offset = size;
+                decl->var->offset = size;
             } else {
-                decl.decl->var->offset = 0;
+                decl->var->offset = 0;
             }
             members = calloc(1, sizeof(Members));
-            members->member = decl.decl->var;
+            members->member = decl->var;
             last = members;
-            const size_t sz = expand_for_align(sizeof_ty(decl.decl->var->ty));
+            const size_t sz = expand_for_align(sizeof_ty(decl->var->ty));
             if (is_struct) {
                 size += sz;
             } else if (sz > size) {
                 size = sz;
             }
         } else {
-            if (decl.ptr != NULL || (ty->ty != STRUCT && ty->ty != UNION) ||
+            if ((ty->ty != STRUCT && ty->ty != UNION) ||
                 ty->struct_ty.tag != NULL) {
                 error_at(&tok->span, "Invalid type for anonymous member");
             }
@@ -429,27 +422,24 @@ struct_union_spec(const Token **rest, const Token *tok, Env *env) {
 
         while (!consume(&tok, tok, "}")) {
             const Type *ty = spec_qual_list(&tok, tok, env);
-            const Declarator decl = declarator(&tok, tok, env, ty);
-            if (decl.decl) {
-                decl.decl->var->ty =
-                    generate_ptr_type(decl.ptr, decl.decl->var->ty);
+            const Declaration *decl = declarator(&tok, tok, env, ty);
+            if (decl) {
                 if (is_struct) {
-                    decl.decl->var->offset = size;
+                    decl->var->offset = size;
                 } else {
-                    decl.decl->var->offset = 0;
+                    decl->var->offset = 0;
                 }
                 last->next = calloc(1, sizeof(Members));
                 last = last->next;
-                last->member = decl.decl->var;
-                const size_t sz =
-                    expand_for_align(sizeof_ty(decl.decl->var->ty));
+                last->member = decl->var;
+                const size_t sz = expand_for_align(sizeof_ty(decl->var->ty));
                 if (is_struct) {
                     size += sz;
                 } else if (sz > size) {
                     size = sz;
                 }
             } else {
-                if (decl.ptr != NULL || (ty->ty != STRUCT && ty->ty != UNION) ||
+                if ((ty->ty != STRUCT && ty->ty != UNION) ||
                     ty->struct_ty.tag != NULL) {
                     error_at(&tok->span, "Invalid type for anonymous member");
                 }
@@ -823,11 +813,10 @@ param_decl(const Token **rest, const Token *tok, Env *env) {
         return NULL;
     }
 
-    const Declarator decl = declarator(&tok, tok, env, ty);
-    if (decl.decl) {
-        decl.decl->var->ty = generate_ptr_type(decl.ptr, decl.decl->var->ty);
+    Declaration *decl = declarator(&tok, tok, env, ty);
+    if (decl) {
         *rest = tok;
-        return decl.decl;
+        return decl;
     }
 
     ty = abstract_declarator(rest, tok, ty);
@@ -887,24 +876,23 @@ param_list(const Token **rest, const Token *tok, Env *env) {
 static Declaration *
 direct_declarator(const Token **rest, const Token *tok, Env *env,
                   const Type *ty) {
-    Declarator d;
+    Declaration *decl;
     if (consume(&tok, tok, "(")) {
-        d = declarator(&tok, tok, env, ty);
+        decl = declarator(&tok, tok, env, ty);
         expect(&tok, tok, ")");
     } else {
         const Token *ident = consume_ident(&tok, tok);
         if (ident == NULL) {
             return NULL;
         }
-        d.ptr = NULL;
-        d.decl = calloc(1, sizeof(Declaration));
-        d.decl->var = calloc(1, sizeof(Var));
-        d.decl->var->ty = ty;
-        d.decl->var->ident = char_from_span(&ident->span);
+        decl = calloc(1, sizeof(Declaration));
+        decl->var = calloc(1, sizeof(Var));
+        decl->var->ty = ty;
+        decl->var->ident = char_from_span(&ident->span);
     }
 
     if (consume(&tok, tok, "(")) {
-        d.decl->var->ty = mk_func(d.decl->var->ty, param_list(&tok, tok, env));
+        decl->var->ty = mk_func(decl->var->ty, param_list(&tok, tok, env));
         expect(&tok, tok, ")");
     } else if (consume(&tok, tok, "[")) {
         if (consume(&tok, tok, "static")) {
@@ -925,26 +913,29 @@ direct_declarator(const Token **rest, const Token *tok, Env *env,
                 if (node) {
                     eval_constexpr(node, &array_size);
                 }
-                d.decl->var->ty = mk_array(d.decl->var->ty, array_size);
+                decl->var->ty = mk_array(decl->var->ty, array_size);
             }
         }
         expect(&tok, tok, "]");
     }
 
-    d.decl->var->ty = generate_ptr_type(d.ptr, d.decl->var->ty);
-
     *rest = tok;
-    return d.decl;
+    return decl;
 }
 
 //
 // declarator = pointer? direct_declarator
 //
-static Declarator
+static Declaration *
 declarator(const Token **rest, const Token *tok, Env *env, const Type *ty) {
-    Declarator retval = {};
-    retval.ptr = pointer(&tok, tok);
-    retval.decl = direct_declarator(rest, tok, env, ty);
+    const PtrList *ptr = pointer(&tok, tok);
+    Declaration *retval = direct_declarator(&tok, tok, env, ty);
+    if (retval == NULL) {
+        return NULL;
+    }
+
+    retval->var->ty = generate_ptr_type(ptr, retval->var->ty);
+    *rest = tok;
     return retval;
 }
 
@@ -1704,13 +1695,10 @@ function(const Token **rest, const Token *tok, Env *parent) {
         return NULL;
     }
 
-    const Declarator d = declarator(&tok, tok, parent, ty);
-    if (d.decl == NULL || d.decl->var->ty->ty != FUNCTION) {
+    const Declaration *decl = declarator(&tok, tok, parent, ty);
+    if (decl == NULL || decl->var->ty->ty != FUNCTION) {
         return NULL;
     }
-
-    d.decl->var->ty = generate_ptr_type(d.ptr, d.decl->var->ty);
-    const Declaration *decl = d.decl;
 
     Function *fn = calloc(1, sizeof(Function));
     fn->def = decl->var;
@@ -1826,17 +1814,14 @@ declaration(const Token **rest, const Token *tok, Env *env) {
         return NULL;
     }
 
-    Declarator d = declarator(&tok, tok, env, spec.ty);
-    if (d.decl == NULL) {
+    Declaration *decl = declarator(&tok, tok, env, spec.ty);
+    if (decl == NULL) {
         expect(&tok, tok, ";");
 
         declare_tag(env, spec.ty);
         *rest = tok;
         return calloc(1, sizeof(Declaration));
     }
-
-    d.decl->var->ty = generate_ptr_type(d.ptr, d.decl->var->ty);
-    Declaration *decl = d.decl;
 
     // typedef
     if (spec.storage == TYPEDEF) {
