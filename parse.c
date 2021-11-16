@@ -880,7 +880,7 @@ abstract_declarator(const Token **rest, const Token *tok, const Type *ty,
 //      declaration_specifiers declarator
 //      declaration_specifiers abstract_declarator?
 //
-static Declaration *
+static Var *
 param_decl(const Token **rest, const Token *tok, Env *env) {
     const Type *ty = declspec(&tok, tok, env).ty;
     if (ty == NULL) {
@@ -890,21 +890,18 @@ param_decl(const Token **rest, const Token *tok, Env *env) {
     Var *var = declarator2var(declarator(&tok, tok, env, ty));
     if (var) {
         *rest = tok;
-        Declaration *decl = calloc(1, sizeof(Declaration));
-        decl->var = var;
-        return decl;
+        return var;
     }
 
     const Type *t = abstract_declarator(&tok, tok, ty, env);
     if (t) {
         ty = t;
     }
-    Declaration *retval = calloc(1, sizeof(Declaration));
-    retval->var = calloc(1, sizeof(Var));
-    retval->var->ty = ty;
+    var = calloc(1, sizeof(Var));
+    var->ty = ty;
 
     *rest = tok;
-    return retval;
+    return var;
 }
 
 //
@@ -913,21 +910,21 @@ param_decl(const Token **rest, const Token *tok, Env *env) {
 //
 static ParamList *
 param_list(const Token **rest, const Token *tok, Env *env) {
-    Declaration *decl = param_decl(&tok, tok, env);
-    if (decl == NULL)
+    Var *var = param_decl(&tok, tok, env);
+    if (var == NULL)
         return NULL;
 
     ParamList *top = calloc(1, sizeof(ParamList));
-    top->decl = decl;
+    top->var = var;
     ParamList *last = top;
     for (;;) {
         if (!consume(&tok, tok, ",")) {
             break;
         }
-        decl = param_decl(&tok, tok, env);
-        if (decl) {
+        var = param_decl(&tok, tok, env);
+        if (var) {
             last->next = calloc(1, sizeof(ParamList));
-            last->next->decl = decl;
+            last->next->var = var;
             last = last->next;
         } else if (consume(&tok, tok, "...")) {
             // "..." == ParamList { NULL, NULL }
@@ -1176,8 +1173,8 @@ argexprlist(const Token **rest, const Token *tok, Env *env,
         return NULL;
     }
 
-    if (!is_same_type(node->ty, params->decl->var->ty)) {
-        node = new_cast(node, params->decl->var->ty);
+    if (!is_same_type(node->ty, params->var->ty)) {
+        node = new_cast(node, params->var->ty);
     }
     params = params->next;
 
@@ -1190,8 +1187,8 @@ argexprlist(const Token **rest, const Token *tok, Env *env,
             error("Invalid argument");
         }
 
-        if (!is_same_type(node->ty, params->decl->var->ty)) {
-            node = new_cast(node, params->decl->var->ty);
+        if (!is_same_type(node->ty, params->var->ty)) {
+            node = new_cast(node, params->var->ty);
         }
         params = params->next;
 
@@ -1801,13 +1798,13 @@ function(const Token **rest, const Token *tok, Env *parent) {
     Env env = make_scope(parent);
     const ParamList *arg = fn->def->ty->args;
     while (arg) {
-        const Declaration *decl = arg->decl;
+        Var *var = arg->var;
 
-        if (decl == NULL) { // in the case of "..."
+        if (var == NULL) { // in the case of "..."
             // TODO
             break;
         }
-        if (decl->var->ty == &VOID_T) {
+        if (var->ty == &VOID_T) {
             if (arg->next != NULL || fn->num_args > 0) {
                 error_at(&tok->span, "void is allowed only for empty argument");
             }
@@ -1817,10 +1814,10 @@ function(const Token **rest, const Token *tok, Env *parent) {
         //
         // In the case that function is declared without body.
         //
-        if (decl->var->ident == NULL) {
+        if (var->ident == NULL) {
             // TODO
-        } else if (!declare_arg(&env, decl->var)) {
-            error_at(&tok->span, "'%s' is already declared", decl->var->ident);
+        } else if (!declare_arg(&env, var)) {
+            error_at(&tok->span, "'%s' is already declared", var->ident);
         }
 
         fn->num_args++;

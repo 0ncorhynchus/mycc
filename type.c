@@ -274,7 +274,7 @@ is_subtype(const Type *base, const Type *derived) {
         barg = base->args;
         darg = derived->args;
         while (barg && darg) {
-            if (!is_subtype(darg->decl->var->ty, barg->decl->var->ty)) {
+            if (!is_subtype(darg->var->ty, barg->var->ty)) {
                 return false;
             }
             barg = barg->next;

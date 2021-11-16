@@ -77,7 +77,7 @@ typedef struct {
 typedef struct ParamList ParamList;
 struct ParamList {
     ParamList *next;
-    Declaration *decl;
+    Var *var;
 };
 
 typedef struct {
