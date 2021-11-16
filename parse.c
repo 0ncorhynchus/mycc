@@ -40,7 +40,7 @@ typedef struct PtrList {
     int qualifier;
 } PtrList;
 
-static Declaration *
+static Var *
 declarator(const Token **rest, const Token *tok, Env *env, const Type *ty);
 
 static const Type *
@@ -374,17 +374,17 @@ struct_union_spec(const Token **rest, const Token *tok, Env *env) {
     if (consume(&tok, tok, "{")) {
         Members *last = NULL;
         const Type *ty = spec_qual_list(&tok, tok, env);
-        Declaration *decl = declarator(&tok, tok, env, ty);
-        if (decl) {
+        Var *var = declarator(&tok, tok, env, ty);
+        if (var) {
             if (is_struct) {
-                decl->var->offset = size;
+                var->offset = size;
             } else {
-                decl->var->offset = 0;
+                var->offset = 0;
             }
             members = calloc(1, sizeof(Members));
-            members->member = decl->var;
+            members->member = var;
             last = members;
-            const size_t sz = expand_for_align(sizeof_ty(decl->var->ty));
+            const size_t sz = expand_for_align(sizeof_ty(var->ty));
             if (is_struct) {
                 size += sz;
             } else if (sz > size) {
@@ -422,17 +422,17 @@ struct_union_spec(const Token **rest, const Token *tok, Env *env) {
 
         while (!consume(&tok, tok, "}")) {
             const Type *ty = spec_qual_list(&tok, tok, env);
-            const Declaration *decl = declarator(&tok, tok, env, ty);
-            if (decl) {
+            Var *var = declarator(&tok, tok, env, ty);
+            if (var) {
                 if (is_struct) {
-                    decl->var->offset = size;
+                    var->offset = size;
                 } else {
-                    decl->var->offset = 0;
+                    var->offset = 0;
                 }
                 last->next = calloc(1, sizeof(Members));
                 last = last->next;
-                last->member = decl->var;
-                const size_t sz = expand_for_align(sizeof_ty(decl->var->ty));
+                last->member = var;
+                const size_t sz = expand_for_align(sizeof_ty(var->ty));
                 if (is_struct) {
                     size += sz;
                 } else if (sz > size) {
@@ -879,9 +879,11 @@ param_decl(const Token **rest, const Token *tok, Env *env) {
         return NULL;
     }
 
-    Declaration *decl = declarator(&tok, tok, env, ty);
-    if (decl) {
+    Var *var = declarator(&tok, tok, env, ty);
+    if (var) {
         *rest = tok;
+        Declaration *decl = calloc(1, sizeof(Declaration));
+        decl->var = var;
         return decl;
     }
 
@@ -943,13 +945,13 @@ param_list(const Token **rest, const Token *tok, Env *env) {
 //      direct_declarator "(" function_args? ")"
 //  function_args = ( parameter_type_list | identifier_list )
 //
-static Declaration *
+static Var *
 direct_declarator(const Token **rest, const Token *tok, Env *env,
                   const Type *ty) {
-    Declaration *decl = NULL;
+    Var *var = NULL;
     if (consume(&tok, tok, "(")) {
-        decl = declarator(&tok, tok, env, ty);
-        if (decl == NULL) {
+        var = declarator(&tok, tok, env, ty);
+        if (var == NULL) {
             return NULL;
         }
         expect(&tok, tok, ")");
@@ -958,14 +960,13 @@ direct_declarator(const Token **rest, const Token *tok, Env *env,
         if (ident == NULL) {
             return NULL;
         }
-        decl = calloc(1, sizeof(Declaration));
-        decl->var = calloc(1, sizeof(Var));
-        decl->var->ty = ty;
-        decl->var->ident = char_from_span(&ident->span);
+        var = calloc(1, sizeof(Var));
+        var->ty = ty;
+        var->ident = char_from_span(&ident->span);
     }
 
     if (consume(&tok, tok, "(")) {
-        decl->var->ty = mk_func(decl->var->ty, param_list(&tok, tok, env));
+        var->ty = mk_func(var->ty, param_list(&tok, tok, env));
         expect(&tok, tok, ")");
     } else if (consume(&tok, tok, "[")) {
         if (consume(&tok, tok, "static")) {
@@ -986,28 +987,28 @@ direct_declarator(const Token **rest, const Token *tok, Env *env,
                 if (node) {
                     eval_constexpr(node, &array_size);
                 }
-                decl->var->ty = mk_array(decl->var->ty, array_size);
+                var->ty = mk_array(var->ty, array_size);
             }
         }
         expect(&tok, tok, "]");
     }
 
     *rest = tok;
-    return decl;
+    return var;
 }
 
 //
 // declarator = pointer? direct_declarator
 //
-static Declaration *
+static Var *
 declarator(const Token **rest, const Token *tok, Env *env, const Type *ty) {
     const PtrList *ptr = pointer(&tok, tok);
-    Declaration *retval = direct_declarator(&tok, tok, env, ty);
+    Var *retval = direct_declarator(&tok, tok, env, ty);
     if (retval == NULL) {
         return NULL;
     }
 
-    retval->var->ty = generate_ptr_type(ptr, retval->var->ty);
+    retval->ty = generate_ptr_type(ptr, retval->ty);
     *rest = tok;
     return retval;
 }
@@ -1774,13 +1775,13 @@ function(const Token **rest, const Token *tok, Env *parent) {
         return NULL;
     }
 
-    const Declaration *decl = declarator(&tok, tok, parent, ty);
-    if (decl == NULL || decl->var->ty->ty != FUNCTION) {
+    Var *var = declarator(&tok, tok, parent, ty);
+    if (var == NULL || var->ty->ty != FUNCTION) {
         return NULL;
     }
 
     Function *fn = calloc(1, sizeof(Function));
-    fn->def = decl->var;
+    fn->def = var;
 
     Env env = make_scope(parent);
     const ParamList *arg = fn->def->ty->args;
@@ -1821,7 +1822,7 @@ function(const Token **rest, const Token *tok, Env *parent) {
     fn->body = body;
     fn->lvar_offset = env.maximum_offset - argument_offset;
 
-    declare_fn(parent, decl->var);
+    declare_fn(parent, var);
 
     *rest = tok;
 
@@ -1893,21 +1894,22 @@ declaration(const Token **rest, const Token *tok, Env *env) {
         return NULL;
     }
 
-    Declaration *decl = declarator(&tok, tok, env, spec.ty);
-    if (decl == NULL) {
+    Declaration *decl = calloc(1, sizeof(Declaration));
+
+    Var *var = declarator(&tok, tok, env, spec.ty);
+    if (var == NULL) {
         expect(&tok, tok, ";");
 
         declare_tag(env, spec.ty);
         *rest = tok;
-        return calloc(1, sizeof(Declaration));
+        return decl;
     }
 
     // typedef
     if (spec.storage == TYPEDEF) {
         expect(&tok, tok, ";");
-        declare_typedef(env, decl->var);
+        declare_typedef(env, var);
         *rest = tok;
-        decl->var = NULL;
         return decl;
     }
 
@@ -1916,7 +1918,7 @@ declaration(const Token **rest, const Token *tok, Env *env) {
         if (init == NULL) {
             return NULL;
         }
-        if (decl->var->ty->ty == ARRAY && decl->var->ty->array_size == -1) {
+        if (var->ty->ty == ARRAY && var->ty->array_size == -1) {
             int array_size = -1;
             if (init->expr && init->expr->kind == ND_STRING) {
                 array_size = strlen(init->expr->str) + 1;
@@ -1928,15 +1930,17 @@ declaration(const Token **rest, const Token *tok, Env *env) {
             }
             // XXX: Replace array type with newly allocated one
             // due to const Type*.
-            decl->var->ty = mk_array(decl->var->ty->ptr_to, array_size);
+            var->ty = mk_array(var->ty->ptr_to, array_size);
         }
         decl->init = init;
     }
     expect(&tok, tok, ";");
 
-    if (!declare_var(env, decl->var)) {
-        error_at(&tok->span, "'%s' is already declared", decl->var->ident);
+    if (!declare_var(env, var)) {
+        error_at(&tok->span, "'%s' is already declared", var->ident);
     }
+
+    decl->var = var;
 
     *rest = tok;
     return decl;
