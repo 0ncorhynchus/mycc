@@ -41,7 +41,7 @@ mk_array(const Type *base, int array_size) {
 }
 
 const Type *
-mk_func(const Type *retty, const ParamList *args) {
+mk_func(const Type *retty, const Vars *args) {
     Type *func = calloc(1, sizeof(Type));
     func->ty = FUNCTION;
     func->retty = retty;
@@ -236,7 +236,7 @@ is_subtype(const Type *base, const Type *derived) {
         return is_subtype(base, &INT_T);
     }
 
-    const ParamList *barg, *darg;
+    const Vars *barg, *darg;
 
     switch (base->ty) {
     case INTEGER:

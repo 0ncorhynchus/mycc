@@ -378,9 +378,9 @@ struct_union_spec(const Token **rest, const Token *tok, Env *env) {
 
     const Token *tag = consume_ident(&tok, tok);
     size_t size = 0;
-    Members *members = NULL;
+    Vars *members = NULL;
     if (consume(&tok, tok, "{")) {
-        Members *last = NULL;
+        Vars *last = NULL;
         const Type *ty = spec_qual_list(&tok, tok, env);
         Var *var = declarator2var(declarator(&tok, tok, env, ty));
         if (var) {
@@ -389,8 +389,8 @@ struct_union_spec(const Token **rest, const Token *tok, Env *env) {
             } else {
                 var->offset = 0;
             }
-            members = calloc(1, sizeof(Members));
-            members->member = var;
+            members = calloc(1, sizeof(Vars));
+            members->var = var;
             last = members;
             const size_t sz = expand_for_align(sizeof_ty(var->ty));
             if (is_struct) {
@@ -403,18 +403,18 @@ struct_union_spec(const Token **rest, const Token *tok, Env *env) {
                 ty->struct_ty.tag != NULL) {
                 error_at(&tok->span, "Invalid type for anonymous member");
             }
-            const Members *inner = ty->struct_ty.members;
+            const Vars *inner = ty->struct_ty.members;
             while (inner) {
                 if (is_struct) {
-                    inner->member->offset += size;
+                    inner->var->offset += size;
                 }
                 if (members) {
-                    last->next = calloc(1, sizeof(Members));
+                    last->next = calloc(1, sizeof(Vars));
                     last = last->next;
-                    last->member = inner->member;
+                    last->var = inner->var;
                 } else {
-                    members = calloc(1, sizeof(Members));
-                    members->member = inner->member;
+                    members = calloc(1, sizeof(Vars));
+                    members->var = inner->var;
                     last = members;
                 }
                 inner = inner->next;
@@ -437,9 +437,9 @@ struct_union_spec(const Token **rest, const Token *tok, Env *env) {
                 } else {
                     var->offset = 0;
                 }
-                last->next = calloc(1, sizeof(Members));
+                last->next = calloc(1, sizeof(Vars));
                 last = last->next;
-                last->member = var;
+                last->var = var;
                 const size_t sz = expand_for_align(sizeof_ty(var->ty));
                 if (is_struct) {
                     size += sz;
@@ -451,14 +451,14 @@ struct_union_spec(const Token **rest, const Token *tok, Env *env) {
                     ty->struct_ty.tag != NULL) {
                     error_at(&tok->span, "Invalid type for anonymous member");
                 }
-                const Members *inner = ty->struct_ty.members;
+                const Vars *inner = ty->struct_ty.members;
                 while (inner) {
                     if (is_struct) {
-                        inner->member->offset += size;
+                        inner->var->offset += size;
                     }
-                    last->next = calloc(1, sizeof(Members));
+                    last->next = calloc(1, sizeof(Vars));
                     last = last->next;
-                    last->member = inner->member;
+                    last->var = inner->var;
                     inner = inner->next;
                 }
                 const size_t sz = expand_for_align(sizeof_ty(ty));
@@ -787,7 +787,7 @@ static const Type *
 abstract_declarator(const Token **rest, const Token *tok, const Type *ty,
                     Env *env);
 
-static ParamList *
+static Vars *
 param_list(const Token **rest, const Token *tok, Env *env);
 
 //
@@ -809,7 +809,7 @@ direct_abstract_declarator(const Token **rest, const Token *tok, const Type *ty,
         if (t) {
             retval = t;
         } else {
-            const ParamList *params = param_list(&tok, tok, env);
+            const Vars *params = param_list(&tok, tok, env);
             if (params == NULL) {
                 return NULL;
             }
@@ -820,7 +820,7 @@ direct_abstract_declarator(const Token **rest, const Token *tok, const Type *ty,
 
     while (true) {
         if (consume(&tok, tok, "(")) {
-            const ParamList *params = param_list(&tok, tok, env);
+            const Vars *params = param_list(&tok, tok, env);
             if (params == NULL) {
                 return NULL;
             }
@@ -908,27 +908,27 @@ param_decl(const Token **rest, const Token *tok, Env *env) {
 //  parameter_type_list = parameter_list ("," "...")?
 //  parameter_list = parameter_declaration ("," parameter_declaration)*
 //
-static ParamList *
+static Vars *
 param_list(const Token **rest, const Token *tok, Env *env) {
     Var *var = param_decl(&tok, tok, env);
     if (var == NULL)
         return NULL;
 
-    ParamList *top = calloc(1, sizeof(ParamList));
+    Vars *top = calloc(1, sizeof(Vars));
     top->var = var;
-    ParamList *last = top;
+    Vars *last = top;
     for (;;) {
         if (!consume(&tok, tok, ",")) {
             break;
         }
         var = param_decl(&tok, tok, env);
         if (var) {
-            last->next = calloc(1, sizeof(ParamList));
+            last->next = calloc(1, sizeof(Vars));
             last->next->var = var;
             last = last->next;
         } else if (consume(&tok, tok, "...")) {
-            // "..." == ParamList { NULL, NULL }
-            last->next = calloc(1, sizeof(ParamList));
+            // "..." == Vars { NULL, NULL }
+            last->next = calloc(1, sizeof(Vars));
             break;
         } else {
             unexpected("<parameter_declaration> or \"...\"", tok);
@@ -1167,7 +1167,7 @@ new_cast(Node *node, const Type *ty) {
 //
 static NodeList *
 argexprlist(const Token **rest, const Token *tok, Env *env,
-            const ParamList *params) {
+            const Vars *params) {
     Node *node = assign(&tok, tok, env);
     if (!node) {
         return NULL;
@@ -1209,12 +1209,12 @@ member(Node *var, const Token *ident_token) {
     }
 
     const char *ident = char_from_span(&ident_token->span);
-    const Members *members = var->ty->struct_ty.members;
+    const Vars *members = var->ty->struct_ty.members;
 
     const Var *m = NULL;
     while (members) {
-        if (strcmp(members->member->ident, ident) == 0) {
-            m = members->member;
+        if (strcmp(members->var->ident, ident) == 0) {
+            m = members->var;
             break;
         }
         members = members->next;
@@ -1796,7 +1796,7 @@ function(const Token **rest, const Token *tok, Env *parent) {
     fn->def = var;
 
     Env env = make_scope(parent);
-    const ParamList *arg = fn->def->ty->args;
+    const Vars *arg = fn->def->ty->args;
     while (arg) {
         Var *var = arg->var;
 

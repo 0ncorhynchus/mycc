@@ -63,22 +63,16 @@ struct Initializer {
 
 typedef struct String String;
 
-typedef struct Members Members;
-struct Members {
-    Members *next;
-    Var *member;
+typedef struct Vars Vars;
+struct Vars {
+    Vars *next;
+    Var *var;
 };
 
 typedef struct {
     Var *var;
     const Initializer *init;
 } Declaration;
-
-typedef struct ParamList ParamList;
-struct ParamList {
-    ParamList *next;
-    Var *var;
-};
 
 typedef struct {
     const char *tag;
@@ -87,7 +81,7 @@ typedef struct {
 
 typedef struct {
     const char *tag;
-    const Members *members;
+    const Vars *members;
     size_t size;
 } StructOrUnion;
 
@@ -121,7 +115,7 @@ struct Type {
 
     // For FUNCTION
     const Type *retty;
-    const ParamList *args;
+    const Vars *args;
 
     // For ENUM
     Enum enum_ty;
@@ -373,7 +367,7 @@ mk_ptr(const Type *base, int qualifier);
 const Type *
 mk_array(const Type *base, int array_size);
 const Type *
-mk_func(const Type *retty, const ParamList *args);
+mk_func(const Type *retty, const Vars *args);
 
 size_t
 sizeof_ty(const Type *ty);

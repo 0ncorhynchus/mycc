@@ -513,13 +513,13 @@ gen_local_declare(const Declaration *decl) {
         }
     case STRUCT:
         if (init->list) {
-            const Members *member = ty->struct_ty.members;
+            const Vars *members = ty->struct_ty.members;
             const InitList *list = init->list;
-            for (; member; member = member->next) {
+            for (; members; members = members->next) {
                 Var *mvar = calloc(1, sizeof(Var));
-                mvar->ident = member->member->ident;
-                mvar->ty = member->member->ty;
-                mvar->offset = var->var->offset - member->member->offset;
+                mvar->ident = members->var->ident;
+                mvar->ty = members->var->ty;
+                mvar->offset = var->var->offset - members->var->offset;
 
                 Node *lhs = calloc(1, sizeof(Node));
                 lhs->kind = ND_LVAR;
