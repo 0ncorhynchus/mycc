@@ -775,13 +775,78 @@ declspec(const Token **rest, const Token *tok, Env *env) {
     return spec;
 }
 
+static const Type *
+abstract_declarator(const Token **rest, const Token *tok, const Type *ty,
+                    Env *env);
+
+static ParamList *
+param_list(const Token **rest, const Token *tok, Env *env);
+
+//
+//  direct_abstract_declarator =
+//      "(" abstract_declarator ")"
+//      direct_abstract_declarator? "[" type_qualifier_list? assignment_expression? "]"
+//      direct_abstract_declarator? "[" "static" type_qualifier_list? assignment_expression "]"
+//      direct_abstract_declarator? "[" type_qualifier_list "static" assignment_expression "]"
+//      direct_abstract_declarator? "[" "*" "]"
+//      direct_abstract_declarator? "(" parameter_type_list? ")"
+//
+static const Type *
+direct_abstract_declarator(const Token **rest, const Token *tok, const Type *ty,
+                           Env *env) {
+    const Type *retval = ty;
+
+    if (consume(&tok, tok, "(")) {
+        const Type *t = abstract_declarator(&tok, tok, retval, env);
+        if (t) {
+            retval = t;
+        } else {
+            const ParamList *params = param_list(&tok, tok, env);
+            if (params == NULL) {
+                return NULL;
+            }
+            retval = mk_func(retval, params);
+        }
+        expect(&tok, tok, ")");
+    }
+
+    while (true) {
+        if (consume(&tok, tok, "(")) {
+            const ParamList *params = param_list(&tok, tok, env);
+            if (params == NULL) {
+                return NULL;
+            }
+            retval = mk_func(retval, params);
+            expect(&tok, tok, ")");
+        } else if (consume(&tok, tok, "[")) {
+            int size;
+            if (!number(&tok, tok, &size)) {
+                error("Expect a number.");
+            }
+            expect(&tok, tok, "]");
+
+            retval = mk_array(retval, size);
+        } else {
+            break;
+        }
+    }
+
+    if (retval == ty) {
+        return NULL;
+    }
+
+    *rest = tok;
+    return retval;
+}
+
 //
 //  abstract_declarator =
 //      pointer
 //      pointer? direct_abstract_declarator
 //
 static const Type *
-abstract_declarator(const Token **rest, const Token *tok, const Type *ty) {
+abstract_declarator(const Token **rest, const Token *tok, const Type *ty,
+                    Env *env) {
     const Type *retval = ty;
     const PtrList *plist = pointer(&tok, tok);
     while (plist) {
@@ -789,15 +854,9 @@ abstract_declarator(const Token **rest, const Token *tok, const Type *ty) {
         plist = plist->next;
     }
 
-    // direct_abstract_declarator
-    if (consume(&tok, tok, "[")) {
-        int size;
-        if (!number(&tok, tok, &size)) {
-            error("Expect a number.");
-        }
-        expect(&tok, tok, "]");
-
-        retval = mk_array(retval, size);
+    const Type *t = direct_abstract_declarator(&tok, tok, retval, env);
+    if (t) {
+        retval = t;
     }
 
     if (retval == ty) {
@@ -826,7 +885,7 @@ param_decl(const Token **rest, const Token *tok, Env *env) {
         return decl;
     }
 
-    const Type *t = abstract_declarator(&tok, tok, ty);
+    const Type *t = abstract_declarator(&tok, tok, ty, env);
     if (t) {
         ty = t;
     }
@@ -887,9 +946,12 @@ param_list(const Token **rest, const Token *tok, Env *env) {
 static Declaration *
 direct_declarator(const Token **rest, const Token *tok, Env *env,
                   const Type *ty) {
-    Declaration *decl;
+    Declaration *decl = NULL;
     if (consume(&tok, tok, "(")) {
         decl = declarator(&tok, tok, env, ty);
+        if (decl == NULL) {
+            return NULL;
+        }
         expect(&tok, tok, ")");
     } else {
         const Token *ident = consume_ident(&tok, tok);
@@ -960,7 +1022,7 @@ type_name(const Token **rest, const Token *tok, Env *env) {
         return NULL;
     }
 
-    const Type *t = abstract_declarator(&tok, tok, ty);
+    const Type *t = abstract_declarator(&tok, tok, ty, env);
     if (t) {
         ty = t;
     }
