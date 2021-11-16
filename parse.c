@@ -857,10 +857,7 @@ abstract_declarator(const Token **rest, const Token *tok, const Type *ty,
                     Env *env) {
     const Type *retval = ty;
     const PtrList *plist = pointer(&tok, tok);
-    while (plist) {
-        retval = mk_ptr(retval, plist->qualifier);
-        plist = plist->next;
-    }
+    retval = generate_ptr_type(plist, retval);
 
     const Type *t = direct_abstract_declarator(&tok, tok, retval, env);
     if (t) {
@@ -1020,8 +1017,10 @@ declarator(const Token **rest, const Token *tok, Env *env, const Type *ty) {
     Declarator retval;
     retval.ptr = pointer(&tok, tok);
     retval.var = direct_declarator(&tok, tok, env, ty);
+    if (retval.var) {
+        *rest = tok;
+    }
 
-    *rest = tok;
     return retval;
 }
 
