@@ -115,6 +115,31 @@ revstr(const char *str) {
     return reversed;
 }
 
+static const char *
+function_to_revstr(const Type *ty) {
+    char *buffer = calloc(256, 1);
+
+    strcat(buffer, type_to_str(ty->retty));
+    strcat(buffer, "(");
+    const Vars *args = ty->args;
+    if (args) {
+        strcat(buffer, type_to_str(args->var->ty));
+        for (args=args->next; args; args=args->next) {
+            strcat(buffer, ", ");
+            if (args->var) {
+                strcat(buffer, type_to_str(args->var->ty));
+            } else {
+                strcat(buffer, "...");
+            }
+        }
+    }
+    strcat(buffer, ")");
+
+    const char *retval = revstr(buffer);
+    free(buffer);
+    return retval;
+}
+
 const char *
 type_to_str(const Type *ty) {
     char *buffer = calloc(256, 1);
@@ -164,9 +189,9 @@ type_to_str(const Type *ty) {
             strcat(buffer, "diov");
             break;
         case ENUM:
-            if (ty->enum_ty.tag) {
-                c = calloc(6 + strlen(ty->enum_ty.tag), 1);
-                sprintf(c, "enum %s", ty->enum_ty.tag);
+            if (tmp->enum_ty.tag) {
+                c = calloc(6 + strlen(tmp->enum_ty.tag), 1);
+                sprintf(c, "enum %s", tmp->enum_ty.tag);
                 strcat(buffer, revstr(c));
                 free(c);
             } else {
@@ -174,9 +199,9 @@ type_to_str(const Type *ty) {
             }
             break;
         case STRUCT:
-            if (ty->struct_ty.tag) {
-                c = calloc(8 + strlen(ty->struct_ty.tag), 1);
-                sprintf(c, "struct %s", ty->struct_ty.tag);
+            if (tmp->struct_ty.tag) {
+                c = calloc(8 + strlen(tmp->struct_ty.tag), 1);
+                sprintf(c, "struct %s", tmp->struct_ty.tag);
                 strcat(buffer, revstr(c));
                 free(c);
             } else {
@@ -184,9 +209,9 @@ type_to_str(const Type *ty) {
             }
             break;
         case UNION:
-            if (ty->struct_ty.tag) {
-                c = calloc(7 + strlen(ty->struct_ty.tag), 1);
-                sprintf(c, "union %s", ty->struct_ty.tag);
+            if (tmp->struct_ty.tag) {
+                c = calloc(7 + strlen(tmp->struct_ty.tag), 1);
+                sprintf(c, "union %s", tmp->struct_ty.tag);
                 strcat(buffer, revstr(c));
                 free(c);
             } else {
@@ -194,13 +219,14 @@ type_to_str(const Type *ty) {
             }
             break;
         case FUNCTION:
-            strcat(buffer, "noitcnuf");
+            /* strcat(buffer, "noitcnuf"); */
+            strcat(buffer, function_to_revstr(tmp));
             break;
         case BOOL:
             strcat(buffer, "looB_");
             break;
         case REAL:
-            switch (ty->fkind) {
+            switch (tmp->fkind) {
             case FLOAT:
                 strcat(buffer, "taolf");
                 break;
