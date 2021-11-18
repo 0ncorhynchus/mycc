@@ -187,11 +187,6 @@ static void
 gen_call(Node *node) {
     int num_args = 0;
     NodeList *args = node->args;
-    bool is_shifted = (stack + num_vars) % 2 == 1;
-
-    if (is_shifted) {
-        push_val(0); // align stack
-    }
 
     while (args) {
         gen(args->node);
@@ -207,9 +202,6 @@ gen_call(Node *node) {
 
     for (int i = 6; i < num_args; i++) {
         pop("rdi"); // consume remained arguments
-    }
-    if (is_shifted) {
-        pop("rdi"); // restore shifted stack
     }
 
     push("rax");
@@ -367,8 +359,8 @@ gen_declare(const Declaration *decl) {
 
 void
 gen_top(const Unit *code) {
-    printf(".text\n");
     if (code->function) {
+        printf(".text\n");
         gen_func(code->function);
     } else if (code->declaration) {
         gen_declare(code->declaration);
