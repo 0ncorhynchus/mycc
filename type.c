@@ -255,6 +255,10 @@ is_subtype(const Type *base, const Type *derived) {
         return false;
     }
 
+    if (base == derived) {
+        return true;
+    }
+
     if (base->ty == ENUM) {
         return is_subtype(&INT_T, derived);
     }
