@@ -124,7 +124,7 @@ function_to_revstr(const Type *ty) {
     const Vars *args = ty->args;
     if (args) {
         strcat(buffer, type_to_str(args->var->ty));
-        for (args=args->next; args; args=args->next) {
+        for (args = args->next; args; args = args->next) {
             strcat(buffer, ", ");
             if (args->var) {
                 strcat(buffer, type_to_str(args->var->ty));

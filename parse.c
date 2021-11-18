@@ -1047,7 +1047,6 @@ direct_declarator(const Token **rest, const Token *tok, Env *env) {
     return retval;
 }
 
-
 //
 // declarator = pointer? direct_declarator
 //
@@ -1058,7 +1057,6 @@ declarator(const Token **rest, const Token *tok, Env *env) {
     if (direct_decl == NULL) {
         return NULL;
     }
-
 
     Declarator *retval = malloc(sizeof(Declarator));
     retval->ptr = ptr;
