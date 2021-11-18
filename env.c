@@ -336,6 +336,15 @@ const String *
 push_string(Env *env, const char *ident) {
     Env *global = get_global(env);
 
+    const size_t len = strlen(ident);
+    const String *s = global->strings;
+    while (s) {
+        if (strlen(s->ident) == len && strncmp(s->ident, ident, len) == 0) {
+            return s;
+        }
+        s = s->next;
+    }
+
     String *str = calloc(1, sizeof(String));
     str->next = global->strings;
     str->index = global->maximum_strings;
