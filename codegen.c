@@ -74,9 +74,19 @@ pop(const char *arg) {
 }
 
 static void
+drop(const char *arg, const size_t eightbytes) {
+    for (size_t i = 0; i < eightbytes; i++) {
+        pop(arg);
+    }
+}
+
+static size_t
+gen(Node *node);
+
+static void
 epilogue(Node *node) {
     if (node) {
-        gen(node);
+        gen(node); // TODO
         pop("rax");
     } else {
         printf("  mov rax, 0\n");
@@ -91,7 +101,7 @@ epilogue(Node *node) {
 }
 
 static void
-gen_lval(Node *node) {
+gen_lval(const Node *node) {
     const Var *var;
     switch (node->kind) {
     case ND_LVAR:
@@ -144,15 +154,15 @@ gen_for(const Statement *statement) {
     const int jump_index = statement->jump_index;
 
     if (statement->init) {
-        gen(statement->init);
-        pop("rax"); // consume the retval
+        drop("rax", gen(statement->init));
     } else if (statement->declaration) {
         gen_local_declare(statement->declaration);
     }
     printf(".Lbegin%d:\n", jump_index);
 
     if (statement->cond) {
-        gen(statement->cond);
+        const size_t i = gen(statement->cond);
+        assert(i == 1);
         pop("rax");
         printf("  cmp rax, 0\n");
         printf("  je .Lend%d\n", jump_index);
@@ -162,8 +172,7 @@ gen_for(const Statement *statement) {
 
     printf(".Lcontin%d:\n", jump_index);
     if (statement->end) {
-        gen(statement->end);
-        pop("rax"); // consume the retval
+        drop("rax", gen(statement->end));
     }
     printf("  jmp .Lbegin%d\n", jump_index);
     printf(".Lend%d:\n", jump_index);
@@ -529,7 +538,13 @@ gen_local_declare(const Declaration *decl) {
                 pop("rax");
             }
         } else {
-            error("Not supported an initializer expression for struct.");
+            const size_t eightbytes = gen(init->expr);
+            gen_lval(var);
+            pop("rax");
+            for (size_t i = eightbytes; i > 0; i--) {
+                pop("rdi");
+                printf("  mov QWORD PTR [rax+%ld], rdi\n", (i - 1) * 8);
+            }
         }
         break;
     case UNION:
@@ -611,8 +626,7 @@ gen_statement(const Statement *statement) {
         break;
     case ST_EXPRESSION:
         if (statement->expression) {
-            gen(statement->expression);
-            pop("rax");
+            drop("rax", gen(statement->expression));
         }
         break;
     case ST_IF:
@@ -758,22 +772,34 @@ gen_cast(Node *node) {
     push("rax");
 }
 
-void
+static size_t
+gen_lvar(const Node *node) {
+    if (node->var->is_const) {
+        push_val(node->var->enum_val);
+        return 1;
+    }
+
+    gen_lval(node);
+    pop("rax");
+
+    size_t eightbytes = 0;
+    const size_t size = sizeof_ty(node->var->ty);
+    for (size_t i = 0; i < size; i += 8) {
+        printf("  mov rdi, QWORD PTR [rax+%ld]\n", i);
+        push("rdi");
+        eightbytes++;
+    }
+    return eightbytes;
+}
+
+static size_t
 gen(Node *node) {
     switch (node->kind) {
     case ND_NUM:
         push_val(node->val);
         break;
     case ND_LVAR:
-        if (node->var->is_const) {
-            push_val(node->var->enum_val);
-        } else {
-            gen_lval(node);
-            pop("rax");
-            printf("  mov rax, QWORD PTR [rax]\n");
-            push("rax");
-        }
-        break;
+        return gen_lvar(node);
     case ND_ASSIGN:
         gen_assign(node->lhs, node->rhs);
         break;
@@ -872,6 +898,7 @@ gen(Node *node) {
         gen_cast(node);
         break;
     }
+    return 1;
 }
 
 void

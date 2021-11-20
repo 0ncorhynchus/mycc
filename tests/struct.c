@@ -38,6 +38,10 @@ main() {
     span.len = 2;
     assert_int(2, span.len);
 
+    Span tmp = span;
+    assert_int(1, tmp.ptr);
+    assert_int(2, tmp.len);
+
     assert_int(16, sizeof(struct Span2));
 
     struct Span2 span2 = {1, 1};
@@ -49,9 +53,13 @@ main() {
     span2.len = 2;
     assert_int(2, span2.len);
 
+    assert_int(8, sizeof(union Union));
+
     union Union u = {257};
     assert_int(257, u.integer);
     assert_int(1, (int)u.character);
+
+    assert_int(24, sizeof(struct Anonymous));
 
     struct Anonymous a = {0, 1, 2};
     assert_int(0, a.i);

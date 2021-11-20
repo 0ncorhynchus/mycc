@@ -422,8 +422,6 @@ bool
 eval_constexpr(const Node *node, int *val);
 
 void
-gen(Node *node);
-void
 gen_top(const Unit *node);
 void
 gen_strings(Env *env);
