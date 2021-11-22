@@ -196,7 +196,7 @@ enum_specifier(const Token **rest, const Token *tok) {
         e.consts = calloc(1, sizeof(String));
         if (consume(&tok, tok, "=")) {
             if (!number(&tok, tok, &e.consts->index)) {
-                error("Expect a number.");
+                error_at(&tok->span, "Expect a number.");
             }
         } else {
             e.consts->index = val;
@@ -217,7 +217,7 @@ enum_specifier(const Token **rest, const Token *tok) {
             last->next = calloc(1, sizeof(String));
             if (consume(&tok, tok, "=")) {
                 if (!number(&tok, tok, &last->next->index)) {
-                    error("Expect a number.");
+                    error_at(&tok->span, "Expect a number.");
                 }
             } else {
                 last->next->index = val;
@@ -848,7 +848,7 @@ direct_abstract_declarator(const Token **rest, const Token *tok, const Type *ty,
         } else if (consume(&tok, tok, "[")) {
             int size;
             if (!number(&tok, tok, &size)) {
-                error("Expect a number.");
+                error_at(&tok->span, "Expect a number.");
             }
             expect(&tok, tok, "]");
 
@@ -1451,10 +1451,10 @@ cast_expression(const Token **rest, const Token *tok, Env *env) {
 static Node *
 unary(const Token **rest, const Token *tok, Env *env) {
     if (consume(&tok, tok, "++")) {
-        not_implemented(&tok->span, NULL);
+        not_implemented(&tok->span, "++");
     }
     if (consume(&tok, tok, "--")) {
-        not_implemented(&tok->span, NULL);
+        not_implemented(&tok->span, "--");
     }
     if (consume(&tok, tok, "&")) {
         Node *node = unary(&tok, tok, env);
@@ -1477,10 +1477,10 @@ unary(const Token **rest, const Token *tok, Env *env) {
                         cast_expression(rest, tok, env));
     }
     if (consume(&tok, tok, "~")) {
-        not_implemented(&tok->span, NULL);
+        not_implemented(&tok->span, "~");
     }
     if (consume(&tok, tok, "!")) {
-        not_implemented(&tok->span, NULL);
+        not_implemented(&tok->span, "!");
     }
     if (consume(&tok, tok, "sizeof")) {
         if (consume(&tok, tok, "(")) {
@@ -1508,7 +1508,7 @@ unary(const Token **rest, const Token *tok, Env *env) {
               "type");
     }
     if (consume(&tok, tok, "_Alignof")) {
-        not_implemented(&tok->span, NULL);
+        not_implemented(&tok->span, "_Alignof");
     }
     return postfix(rest, tok, env);
 }
