@@ -1257,10 +1257,12 @@ argexprlist(const Token **rest, const Token *tok, Env *env,
             error("Invalid argument");
         }
 
-        if (!is_same_type(node->ty, params->var->ty)) {
-            node = new_cast(node, params->var->ty);
+        if (params->var) {
+            if (!is_same_type(node->ty, params->var->ty)) {
+                node = new_cast(node, params->var->ty);
+            }
+            params = params->next;
         }
-        params = params->next;
 
         NodeList *new = calloc(1, sizeof(NodeList));
         new->next = list;
