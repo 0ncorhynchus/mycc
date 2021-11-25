@@ -1114,13 +1114,19 @@ type_name(const Token **rest, const Token *tok, Env *env) {
     return ty;
 }
 
+static Node *
+new_unary_op(const UnaryKind kind, Node *operand, const Type *ty) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_UNARY;
+    node->ty = ty ? ty : operand->ty;
+    node->unary.kind = kind;
+    node->unary.operand = operand;
+    return node;
+}
+
 Node *
 refer(Node *inner, const Type *ty) {
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_ADDR;
-    node->lhs = inner;
-    node->ty = mk_ptr(ty, TQ_NULL);
-    return node;
+    return new_unary_op(OP_ADDR, inner, mk_ptr(ty, TQ_NULL));
 }
 
 // Implicit converter from array T[] to pointer T*
@@ -1211,11 +1217,7 @@ deref(Node *ptr) {
     if (ptr->ty->ty != PTR) {
         error("Cannot deref: '%s'", type_to_str(ptr->ty));
     }
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_DEREF;
-    node->lhs = ptr;
-    node->ty = ptr->ty->ptr_to;
-    return node;
+    return new_unary_op(OP_DEREF, ptr, ptr->ty->ptr_to);
 }
 
 Node *
@@ -1225,11 +1227,7 @@ deref_offset_ptr(Node *ptr, Node *index) {
 
 Node *
 new_cast(Node *node, const Type *ty) {
-    Node *new = calloc(1, sizeof(Node));
-    new->kind = ND_CAST;
-    new->ty = ty;
-    new->lhs = node;
-    return new;
+    return new_unary_op(OP_CAST, node, ty);
 }
 
 //
@@ -1366,19 +1364,11 @@ postfix(const Token **rest, const Token *tok, Env *env) {
             continue;
         }
         if (consume(&tok, tok, "++")) {
-            Node *new = calloc(1, sizeof(Node));
-            new->kind = ND_INCR;
-            new->lhs = as_ptr(node);
-            new->ty = node->ty;
-            node = new;
+            node = new_unary_op(OP_INCR, as_ptr(node), NULL);
             continue;
         }
         if (consume(&tok, tok, "--")) {
-            Node *new = calloc(1, sizeof(Node));
-            new->kind = ND_DECR;
-            new->lhs = as_ptr(node);
-            new->ty = node->ty;
-            node = new;
+            node = new_unary_op(OP_DECR, as_ptr(node), NULL);
             continue;
         }
         break;
@@ -1414,11 +1404,12 @@ cast_expression(const Token **rest, const Token *tok, Env *env) {
         const Type *ty = cast(&tok, tok, env);
         if (ty) {
             Node *node = calloc(1, sizeof(Node));
-            node->kind = ND_CAST;
+            node->kind = ND_UNARY;
             node->ty = ty;
+            node->unary.kind = OP_CAST;
             if (current) {
-                current->lhs = node;
-                current = current->lhs;
+                current->unary.operand = node;
+                current = current->unary.operand;
             } else {
                 top = node;
                 current = top;
@@ -1432,7 +1423,7 @@ cast_expression(const Token **rest, const Token *tok, Env *env) {
         return NULL;
     }
     if (current) {
-        current->lhs = val;
+        current->unary.operand = val;
     } else {
         top = val;
     }

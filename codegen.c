@@ -121,9 +121,11 @@ gen_lval(const Node *node) {
             push("rax");
         }
         break;
-    case ND_DEREF:
-        gen(node->lhs);
-        break;
+    case ND_UNARY:
+        if (node->unary.kind == OP_DEREF) {
+            gen(node->unary.operand);
+            break;
+        }
     default:
         error("lvalue is not a varialbe or dereference");
     }
@@ -308,6 +310,11 @@ eval_constexpr(const Node *node, int *val) {
     }
 }
 
+static bool
+is_global_var(const Node *node) {
+    return node->kind == ND_LVAR && node->var->kind == VGLOBAL;
+}
+
 static void
 gen_declare(const Declaration *decl) {
     const Var *var = decl->var;
@@ -350,20 +357,23 @@ gen_declare(const Declaration *decl) {
     case (ND_STRING):
         printf("  .ascii \"%s\\0\"\n", init->str);
         return;
-    case (ND_ADDR):
-        if (lhs->kind == ND_LVAR && lhs->var->kind == VGLOBAL) {
-            printf("  .quad %s\n", lhs->var->ident);
+    case (ND_UNARY):
+        if (init->unary.kind == OP_ADDR && is_global_var(init->unary.operand)) {
+            printf("  .quad %s\n", init->unary.operand->var->ident);
             return;
         }
+        break;
     case (ND_ADD):
-        if (lhs->kind == ND_ADDR && lhs->lhs->kind == ND_LVAR &&
-            lhs->lhs->var->kind == VGLOBAL && rhs->kind == ND_NUM) {
-            printf("  .quad %s + %d\n", lhs->lhs->var->ident, rhs->val);
+        if (lhs->kind == ND_UNARY && lhs->unary.kind == OP_ADDR &&
+            is_global_var(lhs->unary.operand)) {
+            printf("  .quad %s + %d\n", lhs->unary.operand->var->ident,
+                   rhs->val);
             return;
         }
-    default:
-        error("Invalid initializer for a global variable");
+        break;
+    default:;
     }
+    error("Invalid initializer for a global variable");
 }
 
 void
@@ -734,11 +744,11 @@ gen_ternary(Node *node) {
 }
 
 static void
-gen_cast(Node *node) {
-    gen(node->lhs);
+gen_cast(Node *node, const Type *ty) {
+    gen(node);
 
-    const Type *from = node->lhs->ty;
-    const Type *to = node->ty;
+    const Type *from = node->ty;
+    const Type *to = ty;
     if ((from->ty != INTEGER && from->ty != ENUM && from->ty != PTR) ||
         (to->ty != INTEGER && to->ty != ENUM)) {
         error("Not implemented cast from '%s' to '%s'", type_to_str(from),
@@ -792,24 +802,22 @@ gen_lvar(const Node *node) {
     return eightbytes;
 }
 
-static size_t
-gen(Node *node) {
-    switch (node->kind) {
-    case ND_NUM:
-        push_val(node->val);
+static void
+gen_unary_op(const UnaryOp op, const Type *ty) {
+    switch (op.kind) {
+    case OP_INCR:
+        gen_increment("add", op.operand);
         break;
-    case ND_LVAR:
-        return gen_lvar(node);
-    case ND_ASSIGN:
-        gen_assign(node->lhs, node->rhs);
+    case OP_DECR:
+        gen_increment("sub", op.operand);
         break;
-    case ND_CALL:
-        gen_call(node);
+    case OP_ADDR:
+        gen_lval(op.operand);
         break;
-    case ND_DEREF:
-        gen(node->lhs);
+    case OP_DEREF:
+        gen(op.operand);
         pop("rax");
-        switch (sizeof_ty(node->lhs->ty->ptr_to)) {
+        switch (sizeof_ty(op.operand->ty->ptr_to)) {
         case (1):
             printf("  movsx rax, BYTE PTR [rax]\n");
             break;
@@ -822,8 +830,28 @@ gen(Node *node) {
         }
         push("rax");
         break;
-    case ND_ADDR:
-        gen_lval(node->lhs);
+    case OP_CAST:
+        gen_cast(op.operand, ty);
+        break;
+    }
+}
+
+static size_t
+gen(Node *node) {
+    switch (node->kind) {
+    case ND_UNARY:
+        gen_unary_op(node->unary, node->ty);
+        break;
+    case ND_NUM:
+        push_val(node->val);
+        break;
+    case ND_LVAR:
+        return gen_lvar(node);
+    case ND_ASSIGN:
+        gen_assign(node->lhs, node->rhs);
+        break;
+    case ND_CALL:
+        gen_call(node);
         break;
     case ND_ADD:
         gen_add("add", node->lhs, node->rhs);
@@ -864,12 +892,6 @@ gen(Node *node) {
     case ND_NE:
         gen_comparison("setne", node->lhs, node->rhs);
         break;
-    case ND_INCR:
-        gen_increment("add", node->lhs);
-        break;
-    case ND_DECR:
-        gen_increment("sub", node->lhs);
-        break;
     case ND_SHL:
         gen_shift("shl", node->lhs, node->rhs);
         break;
@@ -893,9 +915,6 @@ gen(Node *node) {
         break;
     case ND_TERNARY:
         gen_ternary(node);
-        break;
-    case ND_CAST:
-        gen_cast(node);
         break;
     }
     return 1;

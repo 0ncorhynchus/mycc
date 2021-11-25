@@ -154,8 +154,20 @@ struct LabelList {
 };
 
 typedef enum {
-    ND_INCR,    // "++"
-    ND_DECR,    // "--"
+    OP_INCR,  // "++"
+    OP_DECR,  // "--"
+    OP_ADDR,  // "&"
+    OP_DEREF, // "*"
+    OP_CAST,
+} UnaryKind;
+
+typedef struct {
+    UnaryKind kind;
+    Node *operand;
+} UnaryOp;
+
+typedef enum {
+    ND_UNARY,
     ND_ADD,     // "+"
     ND_SUB,     // "-"
     ND_MUL,     // "*"
@@ -176,10 +188,7 @@ typedef enum {
     ND_ASSIGN,  // "="
     ND_LVAR,    // [a-zA-Z_][a-zA-Z0-9_]*
     ND_CALL,    // <function call>
-    ND_ADDR,    // "&"
-    ND_DEREF,   // "*"
     ND_STRING,
-    ND_CAST,
 } NodeKind;
 
 typedef struct NodeList NodeList;
@@ -208,6 +217,8 @@ struct Node {
 
     // For ND_STRING
     const char *str;
+
+    UnaryOp unary;
 };
 
 struct NodeList {
