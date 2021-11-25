@@ -167,23 +167,33 @@ typedef struct {
 } UnaryOp;
 
 typedef enum {
+    OP_ADD,  // "+"
+    OP_SUB,  // "-"
+    OP_MUL,  // "*"
+    OP_DIV,  // "/"
+    OP_SHL,  // "<<"
+    OP_SHR,  // ">>"
+    OP_LT,   // "<"
+    OP_LE,   // "<="
+    OP_EQ,   // "=="
+    OP_NE,   // "!="
+    OP_AND,  // "&"
+    OP_OR,   // "|"
+    OP_XOR,  // "^"
+    OP_LAND, // "&&"
+    OP_LOR,  // "||"
+} BinaryKind;
+
+typedef struct {
+    BinaryKind kind;
+    Node *lhs;
+    Node *rhs;
+} BinaryOp;
+
+typedef enum {
     ND_UNARY,
-    ND_ADD,     // "+"
-    ND_SUB,     // "-"
-    ND_MUL,     // "*"
-    ND_DIV,     // "/"
+    ND_BINARY,
     ND_NUM,     // [0-9]+
-    ND_SHL,     // "<<"
-    ND_SHR,     // ">>"
-    ND_LT,      // "<"
-    ND_LE,      // "<="
-    ND_EQ,      // "=="
-    ND_NE,      // "!="
-    ND_AND,     // "&"
-    ND_XOR,     // "^"
-    ND_OR,      // "|"
-    ND_LAND,    // "&&"
-    ND_LOR,     // "||"
     ND_TERNARY, // x "?" y ":" z
     ND_ASSIGN,  // "="
     ND_LVAR,    // [a-zA-Z_][a-zA-Z0-9_]*
@@ -200,7 +210,7 @@ struct Node {
     // For ND_NUM, ND_STRING
     int val;
 
-    // For operators: ND_ADD, ND_SUB, ...
+    // For operators:  ...
     Node *lhs;
     Node *rhs;
 
@@ -219,6 +229,7 @@ struct Node {
     const char *str;
 
     UnaryOp unary;
+    BinaryOp binary;
 };
 
 struct NodeList {

@@ -1124,6 +1124,17 @@ new_unary_op(const UnaryKind kind, Node *operand, const Type *ty) {
     return node;
 }
 
+static Node *
+new_binary_op(const BinaryKind kind, Node *lhs, Node *rhs, const Type *ty) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_BINARY;
+    node->ty = ty ? ty : get_type(lhs, rhs);
+    node->binary.kind = kind;
+    node->binary.lhs = lhs;
+    node->binary.rhs = rhs;
+    return node;
+}
+
 Node *
 refer(Node *inner, const Type *ty) {
     return new_unary_op(OP_ADDR, inner, mk_ptr(ty, TQ_NULL));
@@ -1222,7 +1233,7 @@ deref(Node *ptr) {
 
 Node *
 deref_offset_ptr(Node *ptr, Node *index) {
-    return deref(new_node(ND_ADD, ptr, index));
+    return deref(new_binary_op(OP_ADD, ptr, index, NULL));
 }
 
 Node *
@@ -1466,8 +1477,8 @@ unary(const Token **rest, const Token *tok, Env *env) {
         return cast_expression(rest, tok, env);
     }
     if (consume(&tok, tok, "-")) {
-        return new_node(ND_SUB, new_node_num(0),
-                        cast_expression(rest, tok, env));
+        return new_binary_op(OP_SUB, new_node_num(0),
+                             cast_expression(rest, tok, env), NULL);
     }
     if (consume(&tok, tok, "~")) {
         not_implemented(&tok->span, "~");
@@ -1516,9 +1527,11 @@ mul(const Token **rest, const Token *tok, Env *env) {
 
     for (;;) {
         if (consume(&tok, tok, "*")) {
-            node = new_node(ND_MUL, node, cast_expression(&tok, tok, env));
+            node = new_binary_op(OP_MUL, node, cast_expression(&tok, tok, env),
+                                 NULL);
         } else if (consume(&tok, tok, "/")) {
-            node = new_node(ND_DIV, node, cast_expression(&tok, tok, env));
+            node = new_binary_op(OP_DIV, node, cast_expression(&tok, tok, env),
+                                 NULL);
         } else {
             *rest = tok;
             return node;
@@ -1536,9 +1549,11 @@ add(const Token **rest, const Token *tok, Env *env) {
 
     for (;;) {
         if (consume(&tok, tok, "+")) {
-            node = new_node(ND_ADD, as_ptr(node), as_ptr(mul(&tok, tok, env)));
+            node = new_binary_op(OP_ADD, as_ptr(node),
+                                 as_ptr(mul(&tok, tok, env)), NULL);
         } else if (consume(&tok, tok, "-")) {
-            node = new_node(ND_SUB, as_ptr(node), as_ptr(mul(&tok, tok, env)));
+            node = new_binary_op(OP_SUB, as_ptr(node),
+                                 as_ptr(mul(&tok, tok, env)), NULL);
         } else {
             *rest = tok;
             return node;
@@ -1554,11 +1569,11 @@ static Node *
 shift_expression(const Token **rest, const Token *tok, Env *env) {
     Node *node = add(&tok, tok, env);
     for (;;) {
-        NodeKind kind;
+        BinaryKind kind;
         if (consume(&tok, tok, "<<")) {
-            kind = ND_SHL;
+            kind = OP_SHL;
         } else if (consume(&tok, tok, ">>")) {
-            kind = ND_SHR;
+            kind = OP_SHR;
         } else {
             break;
         }
@@ -1568,12 +1583,7 @@ shift_expression(const Token **rest, const Token *tok, Env *env) {
             return NULL;
         }
 
-        Node *new = calloc(1, sizeof(Node));
-        new->kind = kind;
-        new->ty = node->ty;
-        new->lhs = node;
-        new->rhs = rhs;
-        node = new;
+        node = new_binary_op(kind, node, rhs, node->ty);
     }
 
     *rest = tok;
@@ -1593,22 +1603,22 @@ relational(const Token **rest, const Token *tok, Env *env) {
             Node *rhs = shift_expression(&tok, tok, env);
             if (!is_same_type(node->ty, rhs->ty))
                 error("Not supported: compare between different types");
-            node = new_node(ND_LT, node, rhs);
+            node = new_binary_op(OP_LT, node, rhs, &BOOL_T);
         } else if (consume(&tok, tok, "<=")) {
             Node *rhs = shift_expression(&tok, tok, env);
             if (!is_same_type(node->ty, rhs->ty))
                 error("Not supported: compare between different types");
-            node = new_node(ND_LE, node, rhs);
+            node = new_binary_op(OP_LE, node, rhs, &BOOL_T);
         } else if (consume(&tok, tok, ">")) {
             Node *lhs = shift_expression(&tok, tok, env);
             if (!is_same_type(node->ty, lhs->ty))
                 error("Not supported: compare between different types");
-            node = new_node(ND_LT, lhs, node);
+            node = new_binary_op(OP_LT, lhs, node, &BOOL_T);
         } else if (consume(&tok, tok, ">=")) {
             Node *lhs = shift_expression(&tok, tok, env);
             if (!is_same_type(node->ty, lhs->ty))
                 error("Not supported: compare between different types");
-            node = new_node(ND_LE, lhs, node);
+            node = new_binary_op(OP_LE, lhs, node, &BOOL_T);
         } else {
             *rest = tok;
             return node;
@@ -1627,9 +1637,9 @@ equality(const Token **rest, const Token *tok, Env *env) {
 
     for (;;) {
         if (consume(&tok, tok, "==")) {
-            node = new_node(ND_EQ, node, relational(&tok, tok, env));
+            node = new_binary_op(OP_EQ, node, relational(&tok, tok, env), NULL);
         } else if (consume(&tok, tok, "!=")) {
-            node = new_node(ND_NE, node, relational(&tok, tok, env));
+            node = new_binary_op(OP_NE, node, relational(&tok, tok, env), NULL);
         } else {
             *rest = tok;
             return node;
@@ -1649,7 +1659,7 @@ and_expression(const Token **rest, const Token *tok, Env *env) {
     }
 
     while (consume(&tok, tok, "&")) {
-        node = new_node(ND_AND, node, equality(&tok, tok, env));
+        node = new_binary_op(OP_AND, node, equality(&tok, tok, env), NULL);
     }
 
     *rest = tok;
@@ -1668,7 +1678,8 @@ exclusive_or_expression(const Token **rest, const Token *tok, Env *env) {
     }
 
     while (consume(&tok, tok, "^")) {
-        node = new_node(ND_XOR, node, and_expression(&tok, tok, env));
+        node =
+            new_binary_op(OP_XOR, node, and_expression(&tok, tok, env), NULL);
     }
 
     *rest = tok;
@@ -1687,7 +1698,8 @@ inclusive_or_expression(const Token **rest, const Token *tok, Env *env) {
     }
 
     while (consume(&tok, tok, "|")) {
-        node = new_node(ND_OR, node, exclusive_or_expression(&tok, tok, env));
+        node = new_binary_op(OP_OR, node,
+                             exclusive_or_expression(&tok, tok, env), NULL);
     }
 
     *rest = tok;
@@ -1706,7 +1718,8 @@ logical_and_expression(const Token **rest, const Token *tok, Env *env) {
     }
 
     while (consume(&tok, tok, "&&")) {
-        node = new_node(ND_LAND, node, inclusive_or_expression(&tok, tok, env));
+        node = new_binary_op(OP_LAND, node,
+                             inclusive_or_expression(&tok, tok, env), NULL);
     }
 
     *rest = tok;
@@ -1725,7 +1738,8 @@ logical_or_expression(const Token **rest, const Token *tok, Env *env) {
     }
 
     while (consume(&tok, tok, "||")) {
-        node = new_node(ND_LOR, node, logical_and_expression(&tok, tok, env));
+        node = new_binary_op(OP_LOR, node,
+                             logical_and_expression(&tok, tok, env), NULL);
     }
 
     *rest = tok;

@@ -248,59 +248,56 @@ eval_constexpr(const Node *node, int *val) {
     case (ND_NUM):
         *val = node->val;
         return true;
-    case (ND_ADD):
-        if (eval_constexpr(node->lhs, &lhs) &&
-            eval_constexpr(node->rhs, &rhs)) {
-            *val = lhs + rhs;
-            return true;
-        }
-        return false;
-    case (ND_SUB):
-        if (eval_constexpr(node->lhs, &lhs) &&
-            eval_constexpr(node->rhs, &rhs)) {
-            *val = lhs - rhs;
-            return true;
-        }
-        return false;
-    case (ND_MUL):
-        if (eval_constexpr(node->lhs, &lhs) &&
-            eval_constexpr(node->rhs, &rhs)) {
-            *val = lhs * rhs;
-            return true;
-        }
-        return false;
-    case (ND_DIV):
-        if (eval_constexpr(node->lhs, &lhs) &&
-            eval_constexpr(node->rhs, &rhs)) {
-            *val = lhs / rhs;
-            return true;
-        }
-        return false;
-    case (ND_LT):
-        if (eval_constexpr(node->lhs, &lhs) &&
-            eval_constexpr(node->rhs, &rhs)) {
-            *val = lhs < rhs;
-            return true;
-        }
-        return false;
-    case (ND_LE):
-        if (eval_constexpr(node->lhs, &lhs) &&
-            eval_constexpr(node->rhs, &rhs)) {
-            *val = lhs <= rhs;
-            return true;
-        }
-        return false;
-    case (ND_EQ):
-        if (eval_constexpr(node->lhs, &lhs) &&
-            eval_constexpr(node->rhs, &rhs)) {
-            *val = lhs == rhs;
-            return true;
-        }
-        return false;
-    case (ND_NE):
-        if (eval_constexpr(node->lhs, &lhs) &&
-            eval_constexpr(node->rhs, &rhs)) {
-            *val = lhs != rhs;
+    case (ND_BINARY):
+        if (eval_constexpr(node->binary.lhs, &lhs) &&
+            eval_constexpr(node->binary.rhs, &rhs)) {
+            switch (node->binary.kind) {
+            case OP_ADD:
+                *val = lhs + rhs;
+                break;
+            case OP_SUB:
+                *val = lhs - rhs;
+                break;
+            case OP_MUL:
+                *val = lhs * rhs;
+                break;
+            case OP_DIV:
+                *val = lhs / rhs;
+                break;
+            case OP_SHL:
+                *val = lhs << rhs;
+                break;
+            case OP_SHR:
+                *val = lhs >> rhs;
+                break;
+            case OP_LT:
+                *val = lhs < rhs;
+                break;
+            case OP_LE:
+                *val = lhs <= rhs;
+                break;
+            case OP_EQ:
+                *val = lhs == rhs;
+                break;
+            case OP_NE:
+                *val = lhs != rhs;
+                break;
+            case OP_AND:
+                *val = lhs & rhs;
+                break;
+            case OP_OR:
+                *val = lhs | rhs;
+                break;
+            case OP_XOR:
+                *val = lhs ^ rhs;
+                break;
+            case OP_LAND:
+                *val = lhs && rhs;
+                break;
+            case OP_LOR:
+                *val = lhs || rhs;
+                break;
+            }
             return true;
         }
         return false;
@@ -350,8 +347,8 @@ gen_declare(const Declaration *decl) {
         return;
     }
 
-    const Node *lhs = init->lhs;
-    const Node *rhs = init->rhs;
+    const Node *lhs = NULL;
+    const Node *rhs = NULL;
 
     switch (init->kind) {
     case (ND_STRING):
@@ -363,12 +360,16 @@ gen_declare(const Declaration *decl) {
             return;
         }
         break;
-    case (ND_ADD):
-        if (lhs->kind == ND_UNARY && lhs->unary.kind == OP_ADDR &&
-            is_global_var(lhs->unary.operand)) {
-            printf("  .quad %s + %d\n", lhs->unary.operand->var->ident,
-                   rhs->val);
-            return;
+    case (ND_BINARY):
+        if (init->binary.kind == OP_ADD) {
+            lhs = init->binary.lhs;
+            rhs = init->binary.rhs;
+            if (lhs->kind == ND_UNARY && lhs->unary.kind == OP_ADDR &&
+                is_global_var(lhs->unary.operand)) {
+                printf("  .quad %s + %d\n", lhs->unary.operand->var->ident,
+                       rhs->val);
+                return;
+            }
         }
         break;
     default:;
@@ -836,11 +837,76 @@ gen_unary_op(const UnaryOp op, const Type *ty) {
     }
 }
 
+static void
+gen_binary_op(const BinaryOp op) {
+    switch (op.kind) {
+    case OP_ADD:
+        gen_add("add", op.lhs, op.rhs);
+        break;
+    case OP_SUB:
+        gen_add("sub", op.lhs, op.rhs);
+        break;
+    case OP_MUL:
+        gen(op.lhs);
+        gen(op.rhs);
+        pop("rdi");
+        pop("rax");
+        printf("  imul rax, rdi\n");
+        push("rax");
+        break;
+    case OP_DIV:
+        gen(op.lhs);
+        gen(op.rhs);
+        pop("rdi");
+        pop("rax");
+        printf("  cqo\n");
+        printf("  idiv rdi\n");
+        push("rax");
+        break;
+    case OP_SHL:
+        gen_shift("shl", op.lhs, op.rhs);
+        break;
+    case OP_SHR:
+        gen_shift("shr", op.lhs, op.rhs);
+        break;
+    case OP_LT:
+        gen_comparison("setl", op.lhs, op.rhs);
+        break;
+    case OP_LE:
+        gen_comparison("setle", op.lhs, op.rhs);
+        break;
+    case OP_EQ:
+        gen_comparison("sete", op.lhs, op.rhs);
+        break;
+    case OP_NE:
+        gen_comparison("setne", op.lhs, op.rhs);
+        break;
+    case OP_AND:
+        gen_bitwise("and", op.lhs, op.rhs);
+        break;
+    case OP_OR:
+        gen_bitwise("or", op.lhs, op.rhs);
+        break;
+    case OP_XOR:
+        gen_bitwise("xor", op.lhs, op.rhs);
+        break;
+    case OP_LAND:
+        gen_logical("and", op.lhs, op.rhs);
+        break;
+    case OP_LOR:
+        gen_logical("or", op.lhs, op.rhs);
+        break;
+    }
+}
+
 static size_t
 gen(Node *node) {
     switch (node->kind) {
     case ND_UNARY:
         gen_unary_op(node->unary, node->ty);
+        break;
+    case ND_BINARY:
+        gen_binary_op(node->binary);
         break;
     case ND_NUM:
         push_val(node->val);
@@ -853,65 +919,9 @@ gen(Node *node) {
     case ND_CALL:
         gen_call(node);
         break;
-    case ND_ADD:
-        gen_add("add", node->lhs, node->rhs);
-        break;
-    case ND_SUB:
-        gen_add("sub", node->lhs, node->rhs);
-        break;
     case ND_STRING:
         printf("  lea rax, .LC%d[rip]\n", node->val);
         push("rax");
-        break;
-    case ND_MUL:
-        gen(node->lhs);
-        gen(node->rhs);
-        pop("rdi");
-        pop("rax");
-        printf("  imul rax, rdi\n");
-        push("rax");
-        break;
-    case ND_DIV:
-        gen(node->lhs);
-        gen(node->rhs);
-        pop("rdi");
-        pop("rax");
-        printf("  cqo\n");
-        printf("  idiv rdi\n");
-        push("rax");
-        break;
-    case ND_LT:
-        gen_comparison("setl", node->lhs, node->rhs);
-        break;
-    case ND_LE:
-        gen_comparison("setle", node->lhs, node->rhs);
-        break;
-    case ND_EQ:
-        gen_comparison("sete", node->lhs, node->rhs);
-        break;
-    case ND_NE:
-        gen_comparison("setne", node->lhs, node->rhs);
-        break;
-    case ND_SHL:
-        gen_shift("shl", node->lhs, node->rhs);
-        break;
-    case ND_SHR:
-        gen_shift("shr", node->lhs, node->rhs);
-        break;
-    case ND_AND:
-        gen_bitwise("and", node->lhs, node->rhs);
-        break;
-    case ND_XOR:
-        gen_bitwise("xor", node->lhs, node->rhs);
-        break;
-    case ND_OR:
-        gen_bitwise("or", node->lhs, node->rhs);
-        break;
-    case ND_LAND:
-        gen_logical("and", node->lhs, node->rhs);
-        break;
-    case ND_LOR:
-        gen_logical("or", node->lhs, node->rhs);
         break;
     case ND_TERNARY:
         gen_ternary(node);
